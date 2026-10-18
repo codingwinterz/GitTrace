@@ -16,6 +16,10 @@ traversal to answer three questions:
 **Hackathon:** Graph Hacks — Track 01 (Agents That Act on Connected Data).
 Team: **SUDO SAIYAN** (Avaneesh S, solo). Team code: `5S3M9E`.
 
+**Demo video:** [GIT TRACE's Working & Explanation](https://youtu.be/xwo16Zesdus)
+
+[![Watch the GitTrace demo](https://i.ytimg.com/vi/xwo16Zesdus/hqdefault.jpg)](https://youtu.be/xwo16Zesdus)
+
 **Current status (Oct 19, 2026):** the local stack is verified end to end. The seeded
 graph answers all three demo questions against live FalkorDB Cloud, the frontend renders
 the attack path as SVG with no console errors, and `test_app.py` passes 53/53 offline.
@@ -404,15 +408,28 @@ The backend supports two paths:
 
 ---
 
+## AI assistance disclosure (Rule 11)
+
+This project was built with AI coding assistance. An AI coding agent (Codebuff)
+wrote and edited code, tests, and documentation in this repository under the
+author's direction; the author ran the application, verified the graph queries
+against the live FalkorDB instance, and validated the outputs quoted in this
+README. No result in this document is a model claim — each one was produced by
+executing the code in this repo.
+
+---
+
 ## Submission checklist
 
-- [ ] Public GitHub repo
-- [ ] README with setup instructions (this file)
-- [ ] Graph data model documented (§Graph data model)
-- [ ] Actual Cypher queries included (§Agent tools)
-- [ ] Demo video (working project)
-- [ ] Live deployment OR complete local setup
-- [ ] Track(s) explicitly named in submission (Track 01)
+- [x] Public GitHub repo — <https://github.com/codingwinterz/GitTrace>
+- [x] README with setup instructions (this file)
+- [x] Graph data model documented (§Graph data model)
+- [x] Actual Cypher queries included (§Agent tools)
+- [x] Demo video (working project) — <https://youtu.be/xwo16Zesdus>
+- [x] Live deployment OR complete local setup (§First-time setup, verified on the
+  running stack)
+- [x] Track(s) explicitly named in submission (Track 01)
+- [x] AI assistance disclosed (§AI assistance disclosure)
 
 ---
 
@@ -425,7 +442,7 @@ The backend supports two paths:
 | At least 2 native graph algorithms | shortestPath + multi-hop traversal |
 | Explainable results | Demo shows exact path from entry point to vulnerability |
 | Visual graph proof | Live FalkorDB Browser deep link + in-app SVG attack-surface graph |
-| Live deployment | Frontend static; backend + graph on FalkorDB Cloud |
+| Live deployment | Rule 10 accepts complete local setup: backend + FalkorDB Cloud, frontend served statically. No public deployment is claimed. |
 
 ---
 
