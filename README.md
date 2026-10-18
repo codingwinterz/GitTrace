@@ -46,7 +46,6 @@ Removing FalkorDB breaks the product. This is the core of the submission.
 ```
 .
   .env.example  Template for credentials (copy to .env; never commit .env)
-  .github/README.md  Placeholder for GitHub-specific files (not a landing page)
   .gitignore  Keeps .env, .venv, caches, logs, debug/ out of the repo
   LICENSE  MIT license
   README.md  This file: setup, graph model, Cypher, demo, winning-criteria coverage
