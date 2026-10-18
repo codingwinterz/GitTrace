@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+*.log
+
+# Local debug scripts (one-off connectivity/auth probes, not part of the product)
+debug/
+
+*.bak
