@@ -6,7 +6,8 @@ security question (e.g. a CVE alert) and calls one or more of the three
 FalkorDB graph tools:
 
   - get_blast_radius(cve_id)
-  - find_shortest_dependency_path(start_service, target_function)
+  - find_shortest_dependency_path(start_service, target_function,
+                                  *, target_file_path=None, cve_id=None)
   - find_code_owner(function_name)
 
 Stack: FastAPI + LiteLLM (gemini-2.0-flash) + falkordb 1.8.0 Python client.
@@ -227,6 +228,7 @@ def find_shortest_dependency_path(
             "start_service": start_service,
             "target_function": target_function,
             "path_trace": [], "hop_count": None,
+            "cve_id": cve_id,
             "error": reason,
         }
 
@@ -237,9 +239,21 @@ def find_shortest_dependency_path(
             "start_service": start_service,
             "target_function": target_function,
             "path_trace": [], "hop_count": 0,
+            "cve_id": cve_id,
             "error": "shortestPath returned no nodes.",
         }
     path_trace = [str(item) for item in raw_trace if item]
+    # When the query was scoped by CVE, report the Function that the graph
+    # actually resolved to (the last node in path_trace) instead of echoing
+    # back whatever target_function the caller passed in. That keeps
+    # attack_path.target_function consistent with path_trace, e.g. when a
+    # different CVE affects get_user_profile rather than validate_token.
+    # For name-only and file-scoped queries there's no resolved target above
+    # the input, so keep echoing the parameter there.
+    if cve_id and path_trace:
+        last_node = path_trace[-1]
+        if last_node.startswith("Function:"):
+            target_function = last_node[len("Function:"):]
     return {
         "start_service": start_service,
         "target_function": target_function,
@@ -540,10 +554,11 @@ def run_agent(question: str) -> AgentResponse:
             # question has no CVE context.
             if cve_id:
                 args = {"start_service": start or "api-gateway",
-                        "target_function": "validate_token",
+                        "target_function": target or "validate_token",
                         "cve_id": cve_id}
             else:
-                args = {"start_service": start or "api-gateway",                          "target_function": target or "validate_token"}
+                args = {"start_service": start or "api-gateway",
+                        "target_function": target or "validate_token"}
         else:
             args = {"function_name": target or "validate_token"}
 

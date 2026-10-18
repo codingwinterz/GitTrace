@@ -185,6 +185,36 @@ class TestGraphTools:
         assert "File:/token-service/token.py" in out["path_trace"]
         assert out["target_function"] == "validate_token"
         assert out["cve_id"] == "CVE-2026-4421", out
+        # Regression guard: with a CVE context the Cypher must derive the target
+        # from the AFFECTS edge (same source as get_blast_radius) instead of
+        # matching Function by name alone — otherwise the tool silently falls
+        # back to the auth-service copy.
+        cypher_sent = mock_graph.query.call_args[0][0]
+        params_sent = mock_graph.query.call_args[1].get("params", {})
+        assert ")-[:AFFECTS]->(f:Function)" in cypher_sent, cypher_sent
+        assert params_sent.get("cve_id") == "CVE-2026-4421", params_sent
+
+    def test_find_shortest_dependency_path_cve_respects_resolved_target(self, mock_graph):
+        # CVE that affects a *different* function than the hardcoded classifier
+        # guess. Regression: the returned target_function must come from the
+        # resolved path_trace, not from the input parameter, otherwise a
+        # CVE-scoped path_trace ending at get_user_profile could still claim
+        # target_function == "validate_token", which is internally inconsistent.
+        mock_graph.query.return_value = _fake_query_result(
+            [[["Service:api-gateway", "Service:profile-service",
+               "File:/profile-service/profile.py", "Function:get_user_profile"], 3]]
+        )
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            out = find_shortest_dependency_path(
+                "api-gateway", "validate_token", cve_id="CVE-2026-5513"
+            )
+        assert out["hop_count"] == 3
+        assert "File:/profile-service/profile.py" in out["path_trace"]
+        assert out["target_function"] == "get_user_profile", (
+            f"target_function should be derived from the resolved path,"
+            f" not the input param; got {out['target_function']!r}"
+        )
+        assert out["cve_id"] == "CVE-2026-5513", out
 
     def test_find_shortest_dependency_path_file_scoped(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
@@ -376,6 +406,38 @@ class TestAgentLoop:
             resp = run_agent_with_litellm("blast radius of CVE-2026-4421",
                                           "gemini/gemini-3.8-flash")
         assert isinstance(resp, AgentResponse)
+
+    def test_llm_missing_cve_id_is_scoped_by_backend(self, mock_graph):
+        # Regression guard for the duplicate-function-name bug: even when the
+        # LLM calls find_shortest_dependency_path with name-only args, a CVE in
+        # the question must scope the query to the affected instance
+        # (token-service), not the auth-service copy.
+        mock_graph.query.return_value = _fake_query_result(
+            [[["Service:api-gateway", "Service:token-service",
+               "File:/token-service/token.py", "Function:validate_token"], 3]]
+        )
+        first = _tool_call_response(
+            "find_shortest_dependency_path",
+            {"start_service": "api-gateway", "target_function": "validate_token"},
+        )
+        second = _text_response(
+            "The attacker reaches the vulnerable code in 3 hops."
+        )
+        fake = _make_litellm_mock(first, second)
+        with patch.dict(sys.modules, {"litellm": fake}), \
+             patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            resp = run_agent_with_litellm(
+                "What's the shortest path from api-gateway to validate_token "
+                "for CVE-2026-4421?",
+                "gemini/gemini-3.8-flash",
+            )
+        call = [tc for tc in resp.tool_calls
+                if tc.name == "find_shortest_dependency_path"][0]
+        assert call.arguments.get("cve_id") == "CVE-2026-4421", call.arguments
+        result = [tr for tr in resp.tool_results
+                  if tr.name == "find_shortest_dependency_path"][0].result
+        assert "Service:token-service" in result["path_trace"], result
+        assert result["cve_id"] == "CVE-2026-4421", result
 
 
 # ---------------------------------------------------------------------------

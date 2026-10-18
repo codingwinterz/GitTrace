@@ -9,7 +9,8 @@ name-drop in the README).
 
 Tools exposed:
   - get_blast_radius(cve_id)
-  - find_shortest_dependency_path(start_service, target_function)
+  - find_shortest_dependency_path(start_service, target_function,
+                                  *, target_file_path=None, cve_id=None)
   - find_code_owner(function_name)
 
 Run (stdio transport, the standard for local MCP servers):
@@ -48,11 +49,17 @@ def get_blast_radius_tool(cve_id: str) -> str:
 
 
 @server.tool()
-def find_shortest_dependency_path_tool(start_service: str, target_function: str) -> str:
-    """Use FalkorDB's native shortestPath algorithm to trace how an attacker
-    reaches vulnerable code from a public-facing service. Use when asked for
-    the attack path, shortest path, or how an entry point reaches a function."""
-    return _fmt(find_shortest_dependency_path(start_service, target_function))
+def find_shortest_dependency_path_tool(start_service: str, target_function: str, *, cve_id: str | None = None, target_file_path: str | None = None) -> str:
+    """Use FalkorDB's native shortestPath to trace the attack path to a specific
+    vulnerable function from a public-facing service.
+
+    The target is scoped by the CVE's AFFECTS edge when cve_id is supplied
+    (recommended for CVE-driven questions), or by target_file_path when the
+    exact instance is known. Without either, the tool falls back to a name-only
+    match for functions that exist in a single place only."""
+    return _fmt(find_shortest_dependency_path(
+        start_service, target_function, cve_id=cve_id, target_file_path=target_file_path
+    ))
 
 
 @server.tool()

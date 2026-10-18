@@ -36,23 +36,25 @@ Removing FalkorDB breaks the product. This is the core of the submission.
 
 ```
 gittrace/
-├── seed_graph.py        # Seeds FalkorDB with the graph schema + mock data
-├── app.py               # FastAPI backend + LLM agent loop (3 graph tools)
-├── mcp_server.py        # MCP server exposing the 3 graph tools (Track 1)
-├── utils.py             # Shared FalkorDB connection helpers
-├── test_app.py          # Unit tests (mocked LLM + graph): 34 tests
-├── test_integration.py  # Live tests against FalkorDB Cloud + Gemini + MCP
-├── verify_contracts.py  # Asserts /demo and /query response shapes
-├── verify_graph_outputs.py  # Asserts live FalkorDB results for the demo scenario
-├── requirements.txt     # Python dependencies
-├── .env.example         # Template for credentials (copy to .env)
-├── .env                 # FalkorDB + Gemini credentials (gitignored)
-├── .gitignore
-├── README.md            # This file
+├── seed_graph.py             # Seeds FalkorDB with the graph schema + mock data
+├── app.py                    # FastAPI backend + LLM agent loop (3 graph tools)
+├── mcp_server.py             # MCP server exposing the 3 graph tools (Track 01)
+├── utils.py                  # Shared FalkorDB connection helpers
+├── requirements.txt          # Python dependencies
+├── .env.example              # Template for credentials (copy to .env; never commit .env)
+.github/                       # GitHub repo metadata (present after first push)
+LICENSE                        # MIT — see below
+├── README.md                 # This file — setup, graph model, Cypher, demo, winning-criteria coverage
+├── RUN.md                    # One-page clone→run companion for judges/teammates
+├── SPEC.md                   # Hackathon spec: schema, tools, demo script, build phases, submission checklist
+├── test_app.py               # Unit tests (mocked graph + mocked LLM): helpers, tools, agent, endpoints
+├── test_integration.py       # Live tests: FalkorDB Cloud + Gemini + MCP end-to-end
+├── verify_contracts.py       # Asserts /demo and /query response shapes match spec
+├── verify_graph_outputs.py   # Asserts live FalkorDB results for the demo scenario
 └── frontend/
-    ├── index.html       # Chat UI + Run demo button + graph panel
-    ├── app.js           # Frontend logic + SVG attack-path visualization
-    └── style.css        # Styles
+    ├── index.html            # Chat UI + Run demo button + graph panel
+    ├── app.js                # Frontend logic + SVG attack-path visualization
+    └── style.css             # Styles
 ```
 
 ---
@@ -148,9 +150,11 @@ This creates the `gittrace` graph and seeds:
 | Node type | Count |
 |-----------|-------|
 | Service | 7 |
-| Function | 20+ |
+| File | 7 |
+| Function | 22 |
 | Developer | 4 |
 | CVE | 2 |
+| APIEndpoint | 5 |
 
 The seed wires the demo scenario:
 
@@ -202,6 +206,56 @@ Endpoints:
 ### 7. Run the frontend
 
 Serve the `frontend/` folder from a static server. Examples:
+
+```bash
+# Python
+python -m http.server 5500 --directory frontend
+
+# or VS Code Live Server on port 5500
+```
+
+Open `http://localhost:5500` (or whatever the frontend server reports). The app expects
+the backend at `localhost:8000` when served from `localhost:5500`; see `frontend/app.js`
+for the `API_BASE` knob if your setup differs.
+
+The frontend embeds FalkorDB Browser via iframe at the graph tab URL from your Connect
+panel; set that URL in `.env` (`GITTRACE_FRONTEND_ORIGIN` is mainly for CORS on the
+_API_, not the iframe).
+
+---
+
+## First-time setup (clone → run in 60 seconds)
+
+This is the fastest path for a judge or teammate cloning the repo:
+
+```bash
+# 1. Env from the template (never commit .env)
+cp .env.example .env
+
+# 2. Fill in the four real values in .env:
+#    FALKORDB_HOST, FALKORDB_PORT, FALKORDB_USER, FALKORDB_PASSWORD,
+#    Gemini_API_Key
+
+# 3. Install deps
+pip install -r requirements.txt
+
+# 4. Seed the graph (one time)
+python seed_graph.py
+
+# 5. Start the backend
+python app.py
+
+# 6. Open the frontend
+python -m http.server 5500 --directory frontend
+# then open http://localhost:5500
+```
+
+If you don't have a FalkorDB instance yet, the backend still starts; only the graph-
+dependent endpoints (`/query`, `/demo`) will fail until the instance is wired up.
+
+---
+
+## Graph model
 
 ```bash
 # Python
@@ -268,20 +322,29 @@ RETURN
     count(DISTINCT s) AS service_count
 ```
 
-### `find_shortest_dependency_path(start_service, target_function)`
+### `find_shortest_dependency_path(start_service, target_function, *, cve_id=None, target_file_path=None)`
 
-Use FalkorDB's native `shortestPath` to trace how an attacker reaches the vulnerable code
-from a public-facing service.
+Use FalkorDB's native `shortestPath` to trace how an attacker reaches a **specific**
+Function node from a public-facing service. When `cve_id` is supplied the target is
+derived from the CVE's `AFFECTS` edge — the same relationship `get_blast_radius` uses —
+so both tools are guaranteed to point at the same instance of the code. When
+`target_file_path` is supplied the target is the Function defined by that exact file.
+Without either, the query falls back to a name-only match (correct only for functions
+that exist in a single place; see the known limitation above).
 
 ```cypher
-MATCH path = shortestPath(
-    (s:Service {name: $start_service, is_public: true})
-    -[:CONTAINS|DEPENDS_ON*1..10]->(f:Function {name: $target_function})
-)
+MATCH (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)
+MATCH (s:Service {name: $start_service, is_public: true})
+WITH s, f, shortestPath((s)-[:CONTAINS|DEFINES|DEPENDS_ON*1..10]->(f)) AS p
 RETURN
-    [n IN nodes(path) | labels(n)[0] + ':' + coalesce(n.name, n.path, n.id)] AS path_trace,
-    length(path) AS hop_count
+    [n IN nodes(p) | labels(n)[0] + ':' + coalesce(n.name, n.path, n.id)] AS path_trace,
+    length(p) AS hop_count
+ORDER BY hop_count ASC, path_trace ASC
+LIMIT 1
 ```
+
+`ORDER BY` makes the result deterministic when several equal-length paths exist; the
+name-only fallback has the same tie-break.
 
 ### `find_code_owner(function_name)`
 
@@ -306,7 +369,7 @@ The scripted demo (60-90s) runs from the **Run demo** button in the frontend or 
 `GET /demo`:
 
 1. **Blast radius** — "What's the blast radius of CVE-2026-4421?"
-2. **Attack path** — "What's the shortest path from api-gateway to validate_token?"
+2. **Attack path** — "What's the shortest path from api-gateway to validate_token for CVE-2026-4421?"
 3. **Code owner** — "Who owns validate_token and how do I contact them?"
 
 Expected results with the seeded graph:

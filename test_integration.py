@@ -65,8 +65,8 @@ class TestLiveGraph:
         # CVE-2026-4421 affects token-service.validate_token; the demo endpoint
         # now calls find_shortest_dependency_path with cve_id so the path is
         # scoped to that instance (not auth-service's copy).
-        demo = app.demo_scenario()
-        assert "token-service" in demo['attack_path']['path_trace']
+        demo = gittrace_app.demo_scenario()
+        assert any("token-service" in n for n in demo['attack_path']['path_trace']), demo
         assert 'File:/token-service/token.py' in demo['attack_path']['path_trace']
         assert demo['attack_path']['hop_count'] == 3
         assert demo['attack_path']['cve_id'] == 'CVE-2026-4421'
