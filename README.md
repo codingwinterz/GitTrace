@@ -31,31 +31,29 @@ GitTrace depends on two native graph capabilities that only a graph DB provides:
 Removing FalkorDB breaks the product. This is the core of the submission.
 
 ---
-
 ## Project structure
 
 ```
 .
-.env.example  Template for credentials (copy to .env; never commit .env)
-.github/  GitHub repo metadata (issue/PR templates, actions, etc.)
-.gitignore  Keeps .env, .venv, caches, logs, debug/ out of the repo
-LICENSE  MIT license
-README.md  This file: setup, graph model, Cypher, demo, winning-criteria coverage
-RUN.md  One-page clone-to-run companion for judges/teammates
-SPEC.md  Hackathon spec: schema, tools, demo script, build phases, submission checklist
-app.py  FastAPI backend + LLM agent loop (3 graph tools)
-frontend/  Static chat UI + Run demo button + graph panel
-  app.js  Frontend logic + SVG attack-path visualization
-  index.html  Chat UI + Run demo button + graph panel
-  style.css  Styles
-mcp_server.py  MCP server exposing the 3 graph tools (Track 01)
-requirements.txt  Python dependencies
-seed_graph.py  Seeds FalkorDB with the graph schema + mock data
-test_app.py  Unit tests (mocked graph + mocked LLM): helpers, tools, agent, endpoints
-test_integration.py  Live tests: FalkorDB Cloud + Gemini + MCP end-to-end
-utils.py  Shared FalkorDB connection helpers
-verify_contracts.py  Asserts /demo and /query response shapes match spec
-verify_graph_outputs.py  Asserts live FalkorDB results for the demo scenario
+  .env.example  Template for credentials (copy to .env; never commit .env)
+  .github/README.md  Repo landing copy for the GitHub web view
+  .gitignore  Keeps .env, .venv, caches, logs, debug/ out of the repo
+  LICENSE  MIT license
+  README.md  This file: setup, graph model, Cypher, demo, winning-criteria coverage
+  RUN.md  One-page clone-to-run companion for judges/teammates
+  SPEC.md  Hackathon spec: schema, tools, demo script, build phases, submission checklist
+  app.py  FastAPI backend + LLM agent loop (3 graph tools)
+  frontend/app.js  Frontend logic + SVG attack-path visualization
+  frontend/index.html  Chat UI + Run demo button + graph panel
+  frontend/style.css  Styles
+  mcp_server.py  MCP server exposing the 3 graph tools (Track 01)
+  requirements.txt  Python dependencies
+  seed_graph.py  Seeds FalkorDB with the graph schema + mock data
+  test_app.py  Unit tests (mocked graph + mocked LLM): helpers, tools, agent, endpoints
+  test_integration.py  Live tests: FalkorDB Cloud + Gemini + MCP end-to-end
+  utils.py  Shared FalkorDB connection helpers
+  verify_contracts.py  Asserts /demo and /query response shapes match spec
+  verify_graph_outputs.py  Asserts live FalkorDB results for the demo scenario
 ```
 
 
