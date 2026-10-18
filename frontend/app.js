@@ -256,9 +256,12 @@ function renderGraphViz(toolResults) {
   for (const [id, n] of nodes) {
     const p = pos.get(id);
     const color = NODE_COLORS[n.type] || "#888";
-    const w = Math.min(200, 24 + n.label.length * 7);
+    // Long labels (file paths) get a smaller font and a box measured from it,
+    // so text never overflows the rounded rect.
+    const fontSize = n.label.length > 22 ? 9.5 : 11;
+    const w = Math.min(260, 26 + n.label.length * fontSize * 0.63);
     svg += `<rect x="${p.x - w / 2}" y="${p.y - 16}" width="${w}" height="32" rx="8" fill="${color}" fill-opacity="${n.active ? 0.28 : 0.10}" stroke="${color}" stroke-width="${n.active ? 2 : 1}" opacity="${n.active ? 1 : 0.6}"/>`;
-    svg += `<text x="${p.x}" y="${p.y + 4}" fill="${n.active ? "#fff" : "#9aa4b2"}" font-size="11" text-anchor="middle">${n.label}</text>`;
+    svg += `<text x="${p.x}" y="${p.y + 4}" fill="${n.active ? "#fff" : "#9aa4b2"}" font-size="${fontSize}" text-anchor="middle">${n.label}</text>`;
   }
   svg += `<defs>`;
   svg += `<marker id="arrowA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff8a3d"/></marker>`;
@@ -328,59 +331,24 @@ async function postQuestion(question) {
   setBusy(true);
   addMessage("…", "system");
   const lastMsg = messagesEl.lastElementChild;
+  let ok = false;
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20_000);
-    let res;
-    try {
-      res = await fetch(API_BASE + "/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
-        signal: controller.signal,
-      });
-    } catch (fetchErr) {
-      if (lastMsg) lastMsg.remove();
-      const msg = fetchErr.name === "AbortError"
-        ? "Request timed out (backend took too long)"
-        : "Network error: " + fetchErr.message;
-      addMessage(msg, "agent");
-      console.warn("GITTRACE fetch failed:", fetchErr);
-      return;
-    }
-    if (!res.ok) {
-      if (lastMsg) lastMsg.remove();
-      const text = await res.text().catch(() => "");
-      throw new Error(`/query returned ${res.status}: ${text}`);
-    }
-    const data = await res.json();
-    if (lastMsg) lastMsg.remove();
-
-    if (data.tool_calls && data.tool_calls.length) {
-      for (const call of data.tool_calls) {
-        const tr = (data.tool_results || []).find((r) => r.name === call.name);
-        addToolMessage(call.name, call.arguments, tr ? tr.result : {});
-      }
-    }
-    addMessage(data.answer || "(no answer)", "agent");
-    if (data.tool_results && data.tool_results.length) {
-      state.lastResults = data.tool_results;
-      renderResultsFromToolResults(data.tool_results);
-      renderGraphViz(data.tool_results);
-    }
+    ok = await postQuestionInner(question);
   } catch (err) {
-    if (lastMsg) lastMsg.remove();
     addMessage("Error: " + err.message, "agent");
     console.error(err);
   } finally {
+    if (lastMsg) lastMsg.remove();
     setBusy(false);
     chatInput.focus();
   }
+  // setBusy(false) resets the pill, so the terminal state is applied after it.
+  statusPill.textContent = ok ? "done" : "error";
+  statusPill.className = ok ? "pill active" : "pill error";
 }
 
 function runQueryFromInput() {
   const q = chatInput.value.trim();
-  console.log("QUERY: q="+JSON.stringify(q)+", busy="+state.busy);
   if (!q || state.busy) return;
   addMessage("<strong>You:</strong> " + q, "agent");
   chatInput.value = "";
@@ -452,7 +420,11 @@ async function runDemo() {
     for (const step of steps) {
       addMessage(`<em>Running demo… ${step.label}</em>`, "system");
       addMessage("<strong>You:</strong> " + step.q, "agent");
-      await postQuestionInner(step.q);
+      const ok = await postQuestionInner(step.q);
+      if (!ok) {
+        failed = true;
+        break;
+      }
     }
   } catch (err) {
     failed = true;
@@ -468,7 +440,8 @@ async function runDemo() {
 }
 
 
-// Inner query used by demo that keeps the busy state managed by runDemo.
+// The single /query implementation, shared by the chat form and the demo.
+// Returns true when the backend answered, false when the request failed.
 async function postQuestionInner(question) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20_000);
@@ -486,13 +459,14 @@ async function postQuestionInner(question) {
       : "Network error: " + fetchErr.message;
     addMessage(msg, "agent");
     console.warn("GITTRACE fetch failed:", fetchErr);
-    return;
+    return false;
   } finally {
     clearTimeout(timer);
   }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`/query returned ${res.status}: ${text}`);
+    addMessage(`Error: /query returned ${res.status}: ${text}`, "agent");
+    return false;
   }
   const data = await res.json();
   if (data.tool_calls && data.tool_calls.length) {
@@ -507,6 +481,7 @@ async function postQuestionInner(question) {
     renderResultsFromToolResults(data.tool_results);
     renderGraphViz(state.lastResults);
   }
+  return true;
 }
 
 runDemoBtn.addEventListener("click", runDemo);
