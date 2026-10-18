@@ -1,7 +1,8 @@
 # Run GitTrace locally
 
 One-page, clone-to-run companion to README.md. For a full description, architecture,
-Cypher queries, and the MCP server, see README.md.
+Cypher queries, and the MCP server, see README.md. Demo video:
+<https://youtu.be/xwo16Zesdus>.
 
 ## Fastest start (judge/teammate friendly)
 
@@ -38,8 +39,9 @@ Or use VS Code Live Server on port 5500.
 
 ## Env vars
 
-See `.env.example`. The only required ones are the FalkorDB Cloud credentials and the
-Gemini API key. Never commit `.env`.
+See `.env.example`. The FalkorDB Cloud credentials are required; `Gemini_API_Key` is
+optional — without it the agent falls back to its keyword classifier and the demo still
+works end to end. Never commit `.env`.
 
 ## Tests
 
@@ -50,7 +52,8 @@ python -m pytest test_app.py test_integration.py -v
 `test_app.py` is fully mocked (no live DB, no API key needed). `test_integration.py`
 hits the live FalkorDB + Gemini + MCP setup, so it needs `.env`.
 
-Run only the offline suite before pushing — it is what CI would run:
+Run only the offline suite before pushing — this is exactly what CI runs on every push
+(`.github/workflows/tests.yml`), on Python 3.11–3.13:
 
 ```bash
 python -m pytest test_app.py -q

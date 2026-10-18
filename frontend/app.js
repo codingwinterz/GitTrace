@@ -442,6 +442,7 @@ async function runDemo() {
   setBusy(true);
   statusPill.textContent = "running demo…";
   statusPill.className = "pill busy";
+  let failed = false;
   try {
     const steps = [
       { label: "step 1 of 3: blast radius", q: DEMO.blastRadius.question },
@@ -453,17 +454,17 @@ async function runDemo() {
       addMessage("<strong>You:</strong> " + step.q, "agent");
       await postQuestionInner(step.q);
     }
-    statusPill.textContent = "done";
-    statusPill.className = "pill active";
   } catch (err) {
+    failed = true;
     addMessage("Demo error: " + err.message, "agent");
-    statusPill.textContent = "error";
-    statusPill.className = "pill error";
     console.error(err);
   } finally {
     setBusy(false);
     chatInput.focus();
   }
+  // setBusy(false) resets the pill, so the terminal state is applied after it.
+  statusPill.textContent = failed ? "error" : "done";
+  statusPill.className = failed ? "pill error" : "pill active";
 }
 
 

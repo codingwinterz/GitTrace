@@ -1,319 +1,130 @@
 # GitTrace
 
-**CVE blast-radius agent over FalkorDB.**
+**Turn a CVE alert into the blast radius, the shortest attack path, and the code owner — by traversing a service dependency graph in FalkorDB.**
 
-Given a security vulnerability alert (CVE) in a codebase, GitTrace uses FalkorDB graph
-traversal to answer three questions:
+[![tests](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml/badge.svg)](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)
+![FalkorDB](https://img.shields.io/badge/graph%20database-FalkorDB-orange)
+![license MIT](https://img.shields.io/badge/license-MIT-green)
 
-1. **Blast radius** — which services and functions are impacted, and how does the
-   vulnerability propagate?
-2. **Shortest attack path** — from a public entry point to the vulnerable code, how
-   many hops and through what path?
-3. **Code owner** — who owns the affected code and needs to be alerted?
-
-**Stack:** Python (FastAPI) + FalkorDB Cloud + LiteLLM (Gemini) + static frontend.
-
-**Hackathon:** Graph Hacks — Track 01 (Agents That Act on Connected Data).
-Team: **SUDO SAIYAN** (Avaneesh S, solo). Team code: `5S3M9E`.
-
-**Demo video:** [GIT TRACE's Working & Explanation](https://youtu.be/xwo16Zesdus)
+**Hackathon:** Graph Hacks — Track 01 (Agents That Act on Connected Data) · **Team:** SUDO SAIYAN (Avaneesh S, solo) · Team code `5S3M9E`
+**Demo video:** [GIT TRACE's Working & Explanation](https://youtu.be/xwo16Zesdus) (3 min)
 
 [![Watch the GitTrace demo](https://i.ytimg.com/vi/xwo16Zesdus/hqdefault.jpg)](https://youtu.be/xwo16Zesdus)
 
-**Current status (Oct 19, 2026):** the local stack is verified end to end. The seeded
-graph answers all three demo questions against live FalkorDB Cloud, the frontend renders
-the attack path as SVG with no console errors, and `test_app.py` passes 53/53 offline.
-Without a working LLM key the agent answers through the graph-driven classifier; the
-three tools and the UI are identical either way.
+---
+
+## The question it answers
+
+A scanner reports `CVE-2026-4421` in `validate_token`. Three things decide what you do next:
+
+1. **What is in the blast radius?** Which services and downstream functions are reachable from the vulnerable code?
+2. **How does an attacker actually get there?** Which public entry point reaches it, and through what path?
+3. **Who do you wake up?** Who owns the affected code?
+
+GitTrace answers all three from one graph, and returns the query that produced each answer.
+
+## See it work
+
+![GitTrace after running the scripted demo: chat on the left, attack surface on the right](docs/screenshots/demo-graph.png)
+
+![Attack surface graph: api-gateway → token-service → token.py → validate_token, with the CVE and its owner](docs/screenshots/attack-path.png)
+
+Tested against the seeded graph — the exact JSON from `GET /demo`:
+
+| Question | Answer returned |
+|---|---|
+| Blast radius of `CVE-2026-4421` | `CRITICAL`, 1 service (`token-service`), downstream function `parse_claims` |
+| Shortest path `api-gateway` → `validate_token` | `api-gateway → token-service → token-service/token.py → validate_token`, **3 hops** |
+| Owner of `validate_token` | Sarah Chen · `sarah.chen@acme.com` · `@sarahc` (also owns `auth-service`, `token-service`) |
 
 ---
 
-## Why FalkorDB (Rule 3)
+## Why FalkorDB is load-bearing
 
-A vector database can't run native graph algorithms or do multi-hop structural traversal.
-GitTrace depends on two native graph capabilities that only a graph DB provides:
+The answer *is* a path and a neighbourhood. A vector index can say which code chunks are semantically close to "authentication token"; it has no notion of an edge, so it cannot say that `validate_token` is three hops from a public gateway, or which functions a `CALLS` chain reaches.
 
-- **Multi-hop traversal** — `[:CALLS*1..5]` propagation from the vulnerable function to
-  downstream functions and the services that contain them.
-- **Native shortestPath** — FalkorDB's `shortestPath()` algorithm traces the exact attack
-  path from a public-facing service to the vulnerable function.
+Two native capabilities do all the work:
 
-Removing FalkorDB breaks the product. This is the core of the submission.
+- **Variable-length traversal** — `(f)-[:CALLS*1..5]->(downstream)` walks the call graph to whatever depth the bug actually propagates.
+- **`shortestPath()`** — resolves the exact route across five different relationship types (`CONTAINS`, `DEFINES`, `CALLS`, `DEPENDS_ON`, `EXPOSES`) in a single query.
 
----
-## Project structure
+Remove FalkorDB and the product still starts, but it can no longer answer any of the three questions — which is the test for "graph is essential" rather than decoration.
 
-```
-.
-  .env.example  Template for credentials (copy to .env; never commit .env)
-  .gitignore  Keeps .env, .venv, caches, logs, debug/ out of the repo
-  LICENSE  MIT license
-  README.md  This file: setup, graph model, Cypher, demo, winning-criteria coverage
-  RUN.md  One-page clone-to-run companion for judges/teammates
-  SPEC.md  Hackathon spec: schema, tools, demo script, build phases, submission checklist
-  app.py  FastAPI backend + LLM agent loop (3 graph tools)
-  frontend/app.js  Frontend logic + SVG attack-path visualization
-  frontend/index.html  Chat UI + Run demo button + graph panel
-  frontend/style.css  Styles
-  mcp_server.py  MCP server exposing the 3 graph tools (Track 01)
-  requirements.txt  Python dependencies
-  seed_graph.py  Seeds FalkorDB with the graph schema + mock data
-  test_app.py  Unit tests (mocked graph + mocked LLM): helpers, tools, agent, endpoints
-  test_integration.py  Live tests: FalkorDB Cloud + Gemini + MCP end-to-end
-  utils.py  Shared FalkorDB connection helpers
-  verify_contracts.py  Asserts /demo and /query response shapes match spec
-  verify_graph_outputs.py  Asserts live FalkorDB results for the demo scenario
+## Architecture
+
+```mermaid
+flowchart LR
+  UI["Static frontend<br/>chat + SVG attack surface"] -->|"POST /query"| API["FastAPI agent<br/>app.py"]
+  API -->|tool call| TOOLS["Graph tools<br/>blast radius · shortest path · owner"]
+  TOOLS -->|Cypher| DB[("FalkorDB Cloud<br/>gittrace")]
+  API -.->|"when a key is set"| LLM["LiteLLM → Gemini<br/>function calling"]
+  MCP["Any MCP host"] -->|stdio| SRV["mcp_server.py"] --> TOOLS
 ```
 
+Two execution paths, same tools:
 
-
-
-
-
-
-
-
-
----
-
-## MCP server (Track 01 requirement)
-
-GitTrace ships a real [Model Context Protocol](https://modelcontextprotocol.io) server,
-`mcp_server.py`, exposing the three FalkorDB graph tools so any MCP-capable agent host
-(Claude Desktop, custom agents, etc.) can query the dependency graph:
-
-```bash
-python mcp_server.py    # stdio transport
-```
-
-Register in your MCP host:
-
-```json
-{ "command": "python", "args": ["mcp_server.py"] }
-```
-
-Tools exposed: `get_blast_radius_tool`, `find_shortest_dependency_path_tool`,
-`find_code_owner_tool`. Verified by `test_integration.py::TestLiveMCP`.
-
----
-
-## Tests
-
-```bash
-python -m pytest test_app.py test_integration.py -v
-```
-
-- **`test_app.py`** (53 tests) — helper functions, all 3 graph tools (mocked graph), the
-  graph-driven classifier, the full LiteLLM agent loop (mocked LLM, covering success and
-  every fallback path), and the FastAPI endpoints. No DB or API key needed.
-- **`test_integration.py`** (8 tests) — live tests against the real FalkorDB Cloud
-  instance, the live Gemini agent loop, and an end-to-end MCP tool call. These skip
-  automatically when FalkorDB is unreachable.
+1. **LLM function calling** — Gemini picks a tool, the backend runs the Cypher, the model writes the answer.
+2. **Deterministic classifier** — if no key is configured or the model fails, keyword heuristics call the same tools. The demo works either way; only the prose changes.
 
 ---
 
 ## Quick start
 
-### 1. FalkorDB Cloud
-
-1. Sign up at [app.falkordb.cloud](https://app.falkordb.cloud).
-2. Create a **FalkorDB Free** deployment instance (Google Cloud, `us-central1` is fine).
-3. Open the instance → **Connectivity** → **Connect** and copy the host, port, user, and
-   password (or connection string).
-4. Copy the graph tab URL from the Connect panel. The frontend's **Open FalkorDB Browser**
-   button deep-links to it; the URL lives in `frontend/app.js` as `BROWSER_URL`.
-
-### 2. Install dependencies
-
 ```bash
-cd gittrace
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+git clone https://github.com/codingwinterz/GitTrace && cd GitTrace
+cp .env.example .env          # fill in FalkorDB host/port/user/password
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python seed_graph.py          # one-time: create the gittrace graph
+python app.py                 # API on http://localhost:8000
+python -m http.server 5500 --directory frontend     # UI on http://localhost:5500
 ```
 
-### 3. Configure credentials
+Open `http://localhost:5500` and press **Run demo**. The Gemini key is optional — without it the classifier path answers instead.
 
-Copy the template and fill in the real values:
+### Environment
 
-```bash
-cp .env.example .env
-```
+| Variable | Required | Purpose |
+|---|---|---|
+| `FALKORDB_HOST` / `FALKORDB_PORT` | yes | Cloud instance from **Connectivity → Connect** |
+| `FALKORDB_USER` / `FALKORDB_PASSWORD` | yes | Instance credentials |
+| `Gemini_API_Key` | no | Enables the LLM function-calling path |
+| `LITELLM_MODEL` | no | Defaults to `gemini/gemini-flash-lite-latest` |
+| `GITTRACE_PORT` | no | Backend port (default `8000`) |
+| `GITTRACE_FRONTEND_ORIGIN` | no | Extra CORS origin for a deployed frontend |
 
-Edit `.env`:
-
-```
-FALKORDB_HOST=<host from Connect panel>
-FALKORDB_PORT=<port from Connect panel>
-FALKORDB_USER=FalkorDB
-FALKORDB_PASSWORD=<password from Connect panel>
-
-# Google AI (Gemini) via LiteLLM
-Gemini_API_Key=<your Gemini API key>
-LITELLM_MODEL=gemini/gemini-flash-lite-latest
-```
-
-- `FALKORDB_PASSWORD` and `Gemini_API_Key` must be real values before the app runs.
-- `.env` is in `.gitignore` and must not be committed.
-
-### 4. Seed the graph
-
-```bash
-python seed_graph.py
-```
-
-This creates the `gittrace` graph and seeds:
-
-| Node type | Count |
-|-----------|-------|
-| Service | 7 |
-| File | 7 |
-| Function | 22 |
-| Developer | 4 |
-| CVE | 2 |
-| APIEndpoint | 5 |
-
-The seed wires the demo scenario:
-
-- `CVE-2026-4421` (CRITICAL) affects `token-service.validate_token`
-- Public entry → `api-gateway` → `token-service` → `token-service/token.py` → `validate_token`
-- Code owner: **Sarah Chen** (`sarah.chen@acme.com`, `@sarahc`)
-
-> ⚠️ **Known limitation — duplicate `validate_token` in the seed data.**
->
-> The original seed graph defined `validate_token` twice: once in
-> `auth-service/auth.go` and once in `token-service/token.py`. Because
-> `find_shortest_dependency_path` matched functions by name alone, it could
-> resolve to the auth-service instance by default — the wrong one for
-> CVE-2026-4421, which only affects the token-service copy. That produced a
-> misleading 3-hop auth-service path even though `get_blast_radius` correctly
-> scoped to the token-service instance via its AFFECTS edge. This was fixed by
-> adding optional `cve_id` and `target_file_path` disambiguators to
-> `find_shortest_dependency_path` so the tool now resolves CVE-driven path
-> queries to the exact affected instance (token-service) the same way
-> `get_blast_radius` already does.
-
-### 5. Run the tests
-
-```bash
-python -m pytest test_app.py -v
-```
-
-The suite covers the helper functions, all three FalkorDB graph tools (mocked, so
-no live DB is needed), the keyword-classifier agent, the LiteLLM agent loop (mocked
-LLM, so no Gemini API key or quota is consumed), and the FastAPI endpoints.
-
-### 6. Run the backend
-
-```bash
-python app.py
-```
-
-The API starts on `http://localhost:8000` by default (`GITTRACE_PORT` overrides it).
-
-Endpoints:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/` | Root health check — `{"status": "ok", "app": "GitTrace"}` |
-| `GET` | `/health` | Health check |
-| `POST` | `/query` | Ask a natural-language security question |
-| `GET` | `/tools` | List available graph tools (OpenAI-format tool schemas) |
-| `GET` | `/demo` | Run the scripted demo scenario and return all results |
-
-`POST /query` returns `400` with a readable `detail` when `question` is missing,
-empty, or whitespace-only. Valid questions return `200` with the answer plus the
-list of tool calls that produced it.
-
-### 7. Run the frontend
-
-Serve the `frontend/` folder from a static server. Examples:
-
-```bash
-# Python
-python -m http.server 5500 --directory frontend
-
-# or VS Code Live Server on port 5500
-```
-
-Open `http://localhost:5500` (or whatever the frontend server reports). The app expects
-the backend at `localhost:8000` when served from `localhost:5500`; see `frontend/app.js`
-for the `API_BASE` knob if your setup differs.
-
-`API_BASE` is auto-detected: served from `localhost:5500` the frontend calls
-`localhost:8000`, otherwise it calls the origin it was served from. The **Open FalkorDB
-Browser** button opens the hosted graph tab in a new tab using `BROWSER_URL` in
-`frontend/app.js` — update that constant for your own instance, and set
-`GITTRACE_FRONTEND_ORIGIN` in `.env` so the API's CORS allows a deployed frontend.
-
----
-
-## First-time setup (clone → run in 60 seconds)
-
-This is the fastest path for a judge or teammate cloning the repo:
-
-```bash
-# 1. Env from the template (never commit .env)
-cp .env.example .env
-
-# 2. Fill in the four real values in .env:
-#    FALKORDB_HOST, FALKORDB_PORT, FALKORDB_USER, FALKORDB_PASSWORD,
-#    Gemini_API_Key
-
-# 3. Install deps
-pip install -r requirements.txt
-
-# 4. Seed the graph (one time)
-python seed_graph.py
-
-# 5. Start the backend
-python app.py
-
-# 6. Open the frontend
-python -m http.server 5500 --directory frontend
-# then open http://localhost:5500
-```
-
-If you don't have a FalkorDB instance yet, the backend still starts; only the graph-
-dependent endpoints (`/query`, `/demo`) will fail until the instance is wired up.
+`.env` is gitignored. The **Open FalkorDB Browser** button deep-links to the hosted graph tab; the URL is the `BROWSER_URL` constant in `frontend/app.js`.
 
 ---
 
 ## Graph data model
 
-### Nodes
+The seeded graph is a small but complete microservice estate: **7 services, 7 files, 22 functions, 4 developers, 2 CVEs, 5 API endpoints, 73 edges**.
 
 | Node | Properties |
-|------|------------ |
-| `(:Service {name, language, port, is_public})` | Microservice name, language, port, whether publicly exposed |
-| `(:File {path})` | File path in the repo |
-| `(:Function {name, line_number, is_entry_point})` | Function name, line number, whether it's a public API endpoint |
-| `(:Developer {name, email, slack_handle})` | Team member info |
-| `(:CVE {id, severity, description})` | Vulnerability record |
-| `(:APIEndpoint {path, method})` | Public API surface |
-
-### Edges
+|---|---|
+| `(:Service)` | `name, language, port, is_public` |
+| `(:File)` | `path` |
+| `(:Function)` | `name, line_number, is_entry_point` |
+| `(:Developer)` | `name, email, slack_handle` |
+| `(:CVE)` | `id, severity, description` |
+| `(:APIEndpoint)` | `path, method` |
 
 | Edge | From → To | Meaning |
-|------|-----------|---------|
-| `CONTAINS` | Service → File | Service contains this file |
+|---|---|---|
+| `CONTAINS` | Service → File | Service ships this file |
 | `DEFINES` | File → Function | File defines this function |
 | `CALLS` | Function → Function | Function calls another function |
-| `DEPENDS_ON` | Service → Service | Service depends on another service |
+| `DEPENDS_ON` | Service → Service | Service calls another service |
 | `OWNS` | Developer → Service | Developer owns this service |
-| `AUTHORED` | Developer → File | Developer authored this file |
+| `AUTHORED` | Developer → File | Developer wrote this file |
 | `AFFECTS` | CVE → Function | CVE affects this function |
-| `EXPOSES` | APIEndpoint → Function | API endpoint exposes this function |
+| `EXPOSES` | APIEndpoint → Function | Endpoint reaches this function |
 
----
+## The three tools
 
-## Agent tools
-
-The backend exposes three FalkorDB-backed tools that the LLM agent can call.
-
-### `get_blast_radius(cve_id)`
-
-Find all services and functions impacted by a CVE, showing the propagation path.
+### Blast radius — `get_blast_radius(cve_id)`
 
 ```cypher
 MATCH path = (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)
@@ -327,15 +138,7 @@ RETURN
     count(DISTINCT s) AS service_count
 ```
 
-### `find_shortest_dependency_path(start_service, target_function, *, cve_id=None, target_file_path=None)`
-
-Use FalkorDB's native `shortestPath` to trace how an attacker reaches a **specific**
-Function node from a public-facing service. When `cve_id` is supplied the target is
-derived from the CVE's `AFFECTS` edge — the same relationship `get_blast_radius` uses —
-so both tools are guaranteed to point at the same instance of the code. When
-`target_file_path` is supplied the target is the Function defined by that exact file.
-Without either, the query falls back to a name-only match (correct only for functions
-that exist in a single place; see the known limitation above).
+### Shortest attack path — `find_shortest_dependency_path(start_service, target_function, *, cve_id=None, target_file_path=None)`
 
 ```cypher
 MATCH (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)
@@ -348,12 +151,7 @@ ORDER BY hop_count ASC, path_trace ASC
 LIMIT 1
 ```
 
-`ORDER BY` makes the result deterministic when several equal-length paths exist; the
-name-only fallback has the same tie-break.
-
-### `find_code_owner(function_name)`
-
-Find the developer who owns/authored the vulnerable code for alerting.
+### Code owner — `find_code_owner(function_name)`
 
 ```cypher
 MATCH (f:Function {name: $function_name})<-[:DEFINES]-(file:File)<-[:AUTHORED]-(dev:Developer)
@@ -366,93 +164,73 @@ RETURN
 LIMIT 1
 ```
 
----
+`/tools` returns the same three as OpenAI-format schemas, so any model can call them.
 
-## Demo scenario
+## API
 
-The scripted demo (60-90s) runs from the **Run demo** button in the frontend or from
-`GET /demo`:
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Root check — `{"status":"ok","app":"GitTrace"}` |
+| `GET` | `/health` | Health check |
+| `POST` | `/query` | Natural-language question → answer + tool calls |
+| `GET` | `/tools` | Tool schemas |
+| `GET` | `/demo` | Scripted three-question scenario, one JSON payload |
 
-1. **Blast radius** — "What's the blast radius of CVE-2026-4421?"
-2. **Attack path** — "What's the shortest path from api-gateway to validate_token for CVE-2026-4421?"
-3. **Code owner** — "Who owns validate_token and how do I contact them?"
+`POST /query` rejects missing, empty, or whitespace-only questions with `400` and a readable `detail`.
 
-Expected results with the seeded graph:
+## MCP server (Track 01)
 
-- Blast radius: `CVE-2026-4421`, CRITICAL, impacts `token-service` and downstream
-  functions including `validate_token`.
-- Attack path: `api-gateway` → `token-service` → `token-service/token.py` → `validate_token`, 3-hop path (CVE-scoped via AFFECTS edge to the affected instance).
-- Code owner: Sarah Chen, `sarah.chen@acme.com`, `@sarahc`, also owns `auth-service`
-  and `token-service`.
+```bash
+python mcp_server.py      # stdio transport
+```
 
-For the demo video, capture the FalkorDB Browser with the red attack path highlighted —
-that's the "why we need a graph" moment in §4 of the spec.
+```json
+{ "command": "python", "args": ["mcp_server.py"] }
+```
 
----
-
-## LLM / model notes
-
-The agent uses LiteLLM so the model is swappable. Set:
-
-- `LITELLM_MODEL` — e.g. `gemini/gemini-flash-lite-latest` (default) or any LiteLLM-supported model string. We use a Flash-Lite model because free-tier quotas are per-model; when one model's daily quota is exhausted, switching to another Flash-Lite variant keeps the agent live.
-- `Gemini_API_Key` (or the relevant provider key) in `.env`.
-
-The backend supports two paths:
-
-1. **Function calling path** — when the model supports tool calls, the agent calls tools
-   via LiteLLM, then feeds results back for a final answer.
-2. **Keyword classifier fallback** — if LiteLLM isn't configured or fails, the backend
-   classifies the question with keyword heuristics and calls the relevant tools directly.
-   The demo works through this path even without a valid API key.
+Exposes `get_blast_radius_tool`, `find_shortest_dependency_path_tool`, `find_code_owner_tool` over the Model Context Protocol, so Claude Desktop or any MCP host can query the same graph.
 
 ---
+
+## Tests
+
+```bash
+python -m pytest test_app.py -q        # 53 passed — no DB, no API key
+python -m pytest test_integration.py -q  # 8 live tests — needs FalkorDB + Gemini
+```
+
+The offline suite covers helpers, all three graph tools against a mocked FalkorDB layer, the agent loop against a mocked LLM, and every FastAPI endpoint. It runs on a clean clone before `.env` exists, and in CI on Python 3.11–3.13 (`.github/workflows/tests.yml`). The live suite skips itself when FalkorDB is unreachable.
+
+## Design decisions worth knowing
+
+- **CVE-scoped disambiguation.** `validate_token` exists in both `auth-service` and `token-service`; matching by name alone can resolve the wrong instance. Path queries accept `cve_id` (resolve the target through `AFFECTS`) or `target_file_path`, so the path and the blast radius always point at the same node.
+- **Native `shortestPath` instead of application-side BFS** — the graph engine does the traversal, so the code only formats the result.
+- **Deterministic fallback** — a dead API key or exhausted quota degrades the prose, not the product.
+
+## Track 01 and the submission rules
+
+| Requirement | Where |
+|---|---|
+| Public repo + README with setup and graph model | this file |
+| Cypher queries the product depends on | [The three tools](#the-three-tools) |
+| Demo video | [YouTube, 3 min](https://youtu.be/xwo16Zesdus) |
+| Live deployment **or** complete local setup | [Quick start](#quick-start) — verified end to end |
+| Track named | Track 01 — Agents That Act on Connected Data |
+| FalkorDB is primary and essential | [Why FalkorDB is load-bearing](#why-falkordb-is-load-bearing) |
+| MCP / GraphRAG-SDK used | [MCP server](#mcp-server-track-01) |
+| AI assistance disclosed | below |
+
+## Limitations
+
+- **Seed data is synthetic.** The graph models a representative microservice estate; it is not trained or evaluated on a real organisation's codebase.
+- **The LLM is optional, not required.** With a valid Gemini key the agent chooses tools via function calling; without one, the keyword classifier picks them. Same tools, less flexible phrasing.
+- **No public deployment.** Rule 10 accepts complete local setup, and that is what is documented and verified here.
+- **The frontend is a single-page demo**, not a hardened multi-tenant product: no auth, no persistence, no rate limiting.
 
 ## AI assistance disclosure (Rule 11)
 
-This project was built with AI coding assistance. An AI coding agent (Codebuff)
-wrote and edited code, tests, and documentation in this repository under the
-author's direction; the author ran the application, verified the graph queries
-against the live FalkorDB instance, and validated the outputs quoted in this
-README. No result in this document is a model claim — each one was produced by
-executing the code in this repo.
+This project was built with AI coding assistance. An AI coding agent (Codebuff) wrote and edited code, tests, and documentation in this repository under the author's direction; the author ran the application, verified the graph queries against the live FalkorDB instance, and validated the outputs quoted in this README. No result in this document is a model claim — each one was produced by executing the code in this repo.
 
----
+## License
 
-## Submission checklist
-
-- [x] Public GitHub repo — <https://github.com/codingwinterz/GitTrace>
-- [x] README with setup instructions (this file)
-- [x] Graph data model documented (§Graph data model)
-- [x] Actual Cypher queries included (§Agent tools)
-- [x] Demo video (working project) — <https://youtu.be/xwo16Zesdus>
-- [x] Live deployment OR complete local setup (§First-time setup, verified on the
-  running stack)
-- [x] Track(s) explicitly named in submission (Track 01)
-- [x] AI assistance disclosed (§AI assistance disclosure)
-
----
-
-## Winning criteria coverage
-
-| Criterion | How we hit it |
-|-----------|---------------|
-| Graph is essential (Rule 3) | Multi-hop traversal + native shortestPath — vector DB can't do this |
-| MCP or GraphRAG-SDK used | **Real MCP server** (`mcp_server.py`) exposing all 3 graph tools over the Model Context Protocol — runnable via `python mcp_server.py` |
-| At least 2 native graph algorithms | shortestPath + multi-hop traversal |
-| Explainable results | Demo shows exact path from entry point to vulnerability |
-| Visual graph proof | Live FalkorDB Browser deep link + in-app SVG attack-surface graph |
-| Live deployment | Rule 10 accepts complete local setup: backend + FalkorDB Cloud, frontend served statically. No public deployment is claimed. |
-
----
-
-## Risks & scope
-
-- Keep scope tight: 3 tools, 1 demo scenario, nothing more.
-- If the LLM doesn't call tools correctly, the keyword classifier fallback covers the demo.
-- FalkorDB Cloud connection issues: test the seed script early; the fallback classifier
-  doesn't need the DB for the demo if the graph is already seeded.
-- Demo video timing: script it tightly and practice once before recording.
-
----
-
-*Last updated: Oct 19, 2026*
+MIT — see [LICENSE](LICENSE).

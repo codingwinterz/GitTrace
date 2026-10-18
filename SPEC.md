@@ -1,11 +1,14 @@
-# GitTrace — Hackathon Project Spec
+# GitTrace — original build plan
+
+> **Status: historical.** This is the plan written before the build, kept for provenance.
+> It is not a description of what shipped — for that, see [README.md](README.md), which
+> reflects the code, tests, and demo video as they exist today.
 
 **Team:** SUDO SAIYAN (Avaneesh S, solo)  
 **Track:** Track 01 — Agents That Act on Connected Data  
 **Prize:** iPhone 18 Pro  
-**Stack:** Python + FalkorDB Cloud + Vercel/Netlify frontend  
-**Deadline:** Sunday, Oct 18, 11:59 PM IST  
-**Project Name:** GitTrace (working title — could also be SudoTrace)
+**Stack (planned):** Python + FalkorDB Cloud + static frontend  
+**Deadline:** Sunday, Oct 18, 11:59 PM IST
 
 ---
 
@@ -176,15 +179,9 @@ LIMIT 1
 
 ## 7. Submission Checklist
 
-| Requirement | Status |
-|-------------|--------|
-| Public GitHub repo | ⬜ |
-| README with setup instructions | ⬜ |
-| Graph data model documented | ⬜ |
-| Actual Cypher queries included | ⬜ |
-| Demo video (working project) | ⬜ |
-| Live deployment OR complete local setup | ⬜ |
-| Track(s) explicitly named in submission | ⬜ |
+Tracked live in [README.md](README.md#track-01-and-the-submission-rules); all items are
+complete except a public deployment, which rule 10 does not require when complete local
+setup is provided.
 
 ---
 
@@ -197,7 +194,7 @@ LIMIT 1
 | At least 2 native graph algorithms | shortestPath + multi-hop traversal (count as 2) |
 | Explainable results | Demo shows exact path from entry point to vulnerability |
 | Visual graph proof | FalkorDB Browser screenshot in demo video |
-| Live deployment | Frontend on Vercel, backend + graph on FalkorDB Cloud |
+| Live deployment | Local setup: backend + FalkorDB Cloud, frontend served statically |
 
 ---
 
