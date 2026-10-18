@@ -7,7 +7,7 @@ falkordb 1.8.0 exposes no ORM-style create/create_edge helpers).
 
 Demo scenario wired:
   - CVE-2026-4421 (CRITICAL) affects token-service.validate_token
-  - Public entry: api-gateway --DEPENDS_ON--> auth-service --CONTAINS--> auth.go --DEFINES--> validate_token  (4 hops)
+  - Public entry: api-gateway --DEPENDS_ON--> token-service --CONTAINS--> token.py --DEFINES--> validate_token  (3 hops)
   - Code owner: Sarah Chen (sarah.chen@acme.com, @sarahc)
 
 Env vars (from .env):
@@ -305,7 +305,7 @@ def seed(db) -> None:
     # ------------------------------------------------------------------
     print("\nDemo scenario wired:")
     print("  - CVE-2026-4421 (CRITICAL) affects token-service.validate_token")
-    print("  - Public entry: api-gateway -> auth-service -> auth.go -> validate_token")
+    print("  - Public entry: api-gateway -> token-service -> token.py -> validate_token (3 hops)")
     print("  - Code owner: Sarah Chen (sarah.chen@acme.com, @sarahc)")
 
 

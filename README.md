@@ -94,10 +94,10 @@ Tools exposed: `get_blast_radius_tool`, `find_shortest_dependency_path_tool`,
 python -m pytest test_app.py test_integration.py -v
 ```
 
-- **`test_app.py`** (34 tests) — helper functions, all 3 graph tools (mocked graph), the
-  keyword classifier, the full LiteLLM agent loop (mocked LLM, covering success and every
-  fallback path), and the FastAPI endpoints. No DB or API key needed.
-- **`test_integration.py`** (7 tests) — live tests against the real FalkorDB Cloud
+- **`test_app.py`** (53 tests) — helper functions, all 3 graph tools (mocked graph), the
+  graph-driven classifier, the full LiteLLM agent loop (mocked LLM, covering success and
+  every fallback path), and the FastAPI endpoints. No DB or API key needed.
+- **`test_integration.py`** (8 tests) — live tests against the real FalkorDB Cloud
   instance, the live Gemini agent loop, and an end-to-end MCP tool call. These skip
   automatically when FalkorDB is unreachable.
 
@@ -206,10 +206,15 @@ Endpoints:
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET` | `/` | Root health check — `{"status": "ok", "app": "GitTrace"}` |
 | `GET` | `/health` | Health check |
 | `POST` | `/query` | Ask a natural-language security question |
 | `GET` | `/tools` | List available graph tools (OpenAI-format tool schemas) |
 | `GET` | `/demo` | Run the scripted demo scenario and return all results |
+
+`POST /query` returns `400` with a readable `detail` when `question` is missing,
+empty, or whitespace-only. Valid questions return `200` with the answer plus the
+list of tool calls that produced it.
 
 ### 7. Run the frontend
 

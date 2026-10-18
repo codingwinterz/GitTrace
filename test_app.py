@@ -88,6 +88,25 @@ class TestHelpers:
     def test_extract_public_service_unknown(self):
         assert _extract_public_service("from nowhere to X") is None
 
+    def test_extract_function_name_uses_graph_names(self):
+        # Functions outside the old hardcoded list must still be recognized.
+        with patch.object(gittrace_app, "_graph_names",
+                          return_value=["delete_user", "refresh_token"]):
+            assert _extract_function_name("who owns delete_user?") == "delete_user"
+            assert _extract_function_name("who owns refresh_token?") == "refresh_token"
+
+    def test_extract_public_service_uses_graph_names(self):
+        with patch.object(gittrace_app, "_graph_names",
+                          return_value=["billing-service", "user-service"]):
+            assert _extract_public_service(
+                "path from billing-service to process_payment"
+            ) == "billing-service"
+
+    def test_extract_falls_back_when_graph_unavailable(self):
+        with patch.object(gittrace_app, "_graph_names", return_value=[]):
+            assert _extract_function_name("who owns validate_token?") == "validate_token"
+            assert _extract_public_service("from api-gateway to X") == "api-gateway"
+
     def test_synthesize_no_tool_calls(self):
         out = _synthesize_answer("q", [], [], None)
         assert "couldn't identify" in out
@@ -277,10 +296,113 @@ class TestRunAgent:
         assert any(tc.name == "find_code_owner" for tc in resp.tool_calls)
         assert "Sarah Chen" in resp.answer
 
+    def test_auth_failure_short_circuits_later_calls(self, mock_graph):
+        # A rejected API key must not cost a failed round-trip on every message.
+        mock_graph.query.return_value = _fake_query_result(
+            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+        )
+
+        class AuthenticationError(Exception):
+            pass
+
+        failing = MagicMock()
+        failing.completion.side_effect = AuthenticationError("API key not valid")
+        try:
+            with patch.dict(sys.modules, {"litellm": failing}), \
+                 patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+                first = run_agent_with_litellm(
+                    "blast radius of CVE-2026-4421", "gemini/gemini-3.8-flash"
+                )
+            assert "token-service" in first.answer
+            assert gittrace_app._llm_auth_cooldown_active()
+
+            healthy = _make_litellm_mock(
+                _tool_call_response("get_blast_radius", {"cve_id": "CVE-2026-4421"}),
+                _text_response("should not be used while the cooldown is active"),
+            )
+            with patch.dict(sys.modules, {"litellm": healthy}), \
+                 patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+                second = run_agent_with_litellm(
+                    "blast radius of CVE-2026-4421", "gemini/gemini-3.8-flash"
+                )
+            healthy.completion.assert_not_called()
+            assert "token-service" in second.answer
+        finally:
+            gittrace_app._llm_auth_cooldown_until = 0.0
+
     def test_unrecognized_question_no_tools(self):
         resp = run_agent("tell me a joke")
         assert resp.tool_calls == []
         assert "couldn't identify" in resp.answer
+
+    def test_greeting_gets_conversational_reply(self):
+        # Small talk must not fall through to the tool-help message.
+        resp = run_agent("hello")
+        assert resp.tool_calls == []
+        assert "couldn't identify" not in resp.answer
+        assert "GitTrace" in resp.answer
+
+    def test_greeting_with_name_still_conversational(self):
+        resp = run_agent("hi from me")
+        assert resp.tool_calls == []
+        assert "GitTrace" in resp.answer
+
+    def test_thanks_gets_conversational_reply(self):
+        resp = run_agent("thanks!")
+        assert resp.tool_calls == []
+        assert "Anytime" in resp.answer
+
+    def test_identity_question_lists_capabilities(self):
+        resp = run_agent("who are you?")
+        assert resp.tool_calls == []
+        assert "blast radius" in resp.answer.lower()
+        assert "couldn't identify" not in resp.answer
+
+    def test_owner_for_function_outside_static_list(self, mock_graph):
+        mock_graph.query.return_value = _fake_query_result(
+            [["Devon Park", "devon.park@acme.com", "@devonp", ["billing-service"]]]
+        )
+        with patch.object(gittrace_app, "_graph_names",
+                          return_value=["delete_user", "process_payment"]) as names, \
+             patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            # _graph_names is patched for both labels; the owner query still runs.
+            resp = run_agent("who owns delete_user?")
+        assert any(tc.name == "find_code_owner" for tc in resp.tool_calls)
+        assert "Devon Park" in resp.answer
+
+    def test_owner_question_naming_only_the_cve(self, mock_graph):
+        mock_graph.query.return_value = _fake_query_result(
+            [["Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service"]]]
+        )
+        with patch.object(gittrace_app, "_graph_names", return_value=[]), \
+             patch.object(gittrace_app, "_function_for_cve",
+                          return_value="validate_token"), \
+             patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            resp = run_agent("who owns the vulnerable function in CVE-2026-4421?")
+        assert any(tc.name == "find_code_owner" for tc in resp.tool_calls)
+        assert "Sarah Chen" in resp.answer
+
+    def test_attack_path_without_start_defaults_to_gateway(self, mock_graph):
+        mock_graph.query.return_value = _fake_query_result(
+            [[["Service:api-gateway", "Function:validate_token"], 1]]
+        )
+        with patch.object(gittrace_app, "_graph_names", return_value=[]), \
+             patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            resp = run_agent("shortest path to validate_token")
+        call = next(
+            tc for tc in resp.tool_calls if tc.name == "find_shortest_dependency_path"
+        )
+        assert call.arguments["start_service"] == "api-gateway"
+
+    def test_greeting_does_not_skip_real_questions(self, mock_graph):
+        # A greeting inside a real question must still dispatch tools.
+        mock_graph.query.return_value = _fake_query_result(
+            [["Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service"]]]
+        )
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            resp = run_agent("hi, who owns validate_token?")
+        assert any(tc.name == "find_code_owner" for tc in resp.tool_calls)
+        assert "Sarah Chen" in resp.answer
 
 
 # ---------------------------------------------------------------------------
@@ -463,6 +585,11 @@ class TestEndpoints:
         assert r.status_code == 200
         assert r.json() == {"status": "ok"}
 
+    def test_root_health(self, client):
+        r = client.get("/")
+        assert r.status_code == 200
+        assert r.json() == {"status": "ok", "app": "GitTrace"}
+
     def test_tools(self, client):
         r = client.get("/tools")
         assert r.status_code == 200
@@ -486,7 +613,18 @@ class TestEndpoints:
 
     def test_query_empty_question_400(self, client):
         r = client.post("/query", json={"question": ""})
-        assert r.status_code == 422  # pydantic min_length=1 catches it first
+        assert r.status_code == 400
+        assert "question is required" in r.json()["detail"]
+
+    def test_query_whitespace_question_400(self, client):
+        r = client.post("/query", json={"question": "   \n\t "})
+        assert r.status_code == 400
+        assert "question is required" in r.json()["detail"]
+
+    def test_query_missing_question_400(self, client):
+        r = client.post("/query", json={})
+        assert r.status_code == 400
+        assert "question is required" in r.json()["detail"]
 
     def test_query_classifier_path(self, client, mock_graph):
         mock_graph.query.return_value = _fake_query_result(

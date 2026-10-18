@@ -150,9 +150,9 @@ function renderGraphViz(toolResults) {
   const nodes = new Map(); // id -> {label, type, active}
   const edges = []; // {from, to, label, active}
 
-  const path = toolResults.find((r) => r.name === "find_shortest_dependency_path")?.result;
-  const blast = toolResults.find((r) => r.name === "get_blast_radius")?.result;
-  const owner = toolResults.find((r) => r.name === "find_code_owner")?.result;
+  let path = toolResults.find((r) => r.name === "find_shortest_dependency_path")?.result;
+  let blast = toolResults.find((r) => r.name === "get_blast_radius")?.result;
+  let owner = toolResults.find((r) => r.name === "find_code_owner")?.result;
 
   // Track tool status for per-card error badges.
   const toolErrors = new Map(); // name -> error string

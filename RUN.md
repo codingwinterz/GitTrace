@@ -30,6 +30,7 @@ Or use VS Code Live Server on port 5500.
   - "What's the shortest path from api-gateway to validate_token?"
   - "Who owns validate_token?"
 - Backend API: `python app.py` → `http://localhost:8000`
+  - `GET  /`        (root health check)
   - `GET  /health`
   - `POST /query`  (natural-language security question)
   - `GET  /tools`  (tool schemas)
@@ -49,6 +50,12 @@ python -m pytest test_app.py test_integration.py -v
 `test_app.py` is fully mocked (no live DB, no API key needed). `test_integration.py`
 hits the live FalkorDB + Gemini + MCP setup, so it needs `.env`.
 
+Run only the offline suite before pushing — it is what CI would run:
+
+```bash
+python -m pytest test_app.py -q
+```
+
 ## MCP server (Track 01)
 
 ```bash
@@ -57,3 +64,41 @@ python mcp_server.py
 
 Stdio transport. Register in your MCP host as:
 `{ "command": "python", "args": ["mcp_server.py"] }`.
+
+## Pushing changes to GitHub
+
+The repo is `https://github.com/codingwinterz/GitTrace` (public) and its default
+branch is **`main`**. Work locally on `main` so pushes land where visitors look.
+
+```bash
+git switch main              # create from your work if it does not exist yet
+git status                   # confirm only the files you meant to change
+python -m pytest test_app.py -q
+
+git add app.py seed_graph.py frontend test_app.py README.md RUN.md
+git commit -m "Describe the why, not the what"
+git push origin main
+```
+
+Then confirm it actually landed:
+
+```bash
+gh repo view codingwinterz/GitTrace --json defaultBranchRef,visibility
+git log --oneline -1 origin/main
+```
+
+### Before every push: no secrets
+
+`.env` is gitignored and must stay that way — it holds the FalkorDB password and the
+Gemini API key. Check the tracked tree, not just the working directory:
+
+```bash
+git ls-files | grep -i '\.env$'          # must print nothing
+git grep -nE 'AIza[0-9A-Za-z_-]{10,}|AQ\.[A-Za-z0-9_-]{10,}'   # must print nothing
+```
+
+If a key ever does get committed, rotate it in FalkorDB Cloud / AI Studio first — a
+force-push does not un-leak it — then rewrite history.
+
+Do not commit `*.log`, `debug/`, `.venv/`, `__pycache__/`, or `.pytest_cache/`; all are
+already in `.gitignore`.

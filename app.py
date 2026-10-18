@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -49,8 +50,11 @@ from utils import get_db, get_graph  # noqa: E402
 # ---------------------------------------------------------------------------
 
 class QueryRequest(BaseModel):
-    question: str = Field(
-        ..., min_length=1, max_length=4000,
+    # Deliberately not min_length=1: an empty/missing question is a client
+    # mistake we report as a clean 400 from the endpoint, not a raw 422 from
+    # Pydantic validation.
+    question: str | None = Field(
+        None, max_length=4000,
         description="Natural-language security question / CVE alert.",
     )
     model: str | None = Field(
@@ -411,23 +415,116 @@ def _extract_cve_id(text: str) -> str | None:
     return m.group(0).upper() if m else None
 
 
-def _extract_function_name(q: str) -> str | None:
-    candidates = [
-        "validate_token", "get_user_profile", "process_payment",
-        "handle_request", "issue_token", "send_email",
-        "submit_login", "render_login",
-    ]
-    for c in candidates:
-        if c in q:
+# Used only when the graph cannot be reached; the live names are read from
+# FalkorDB so questions about *any* function or service in the graph work,
+# not just the few that happened to be hardcoded here.
+_STATIC_FUNCTIONS = [
+    "validate_token", "get_user_profile", "process_payment",
+    "handle_request", "issue_token", "send_email",
+    "submit_login", "render_login",
+]
+_STATIC_SERVICES = ["api-gateway", "web-frontend", "auth-service"]
+
+_ENTITY_CACHE: dict[str, tuple[float, list[str]]] = {}
+_ENTITY_TTL_S = 60.0
+
+
+def _graph_names(label: str, prop: str = "name") -> list[str]:
+    """All values of a node property for a label, cached briefly.
+
+    Returns an empty list on any DB failure so callers can fall back to the
+    static lists (offline demos, unit tests without a graph).
+    """
+    now = time.monotonic()
+    cached = _ENTITY_CACHE.get(label)
+    if cached and now - cached[0] < _ENTITY_TTL_S:
+        return cached[1]
+    try:
+        rows = get_graph().query(f"MATCH (n:{label}) RETURN n.{prop}").result_set
+        names = sorted({str(r[0]).lower() for r in rows if r and r[0]})
+    except Exception:  # noqa: BLE001 - degrade to the static candidate lists
+        names = []
+    _ENTITY_CACHE[label] = (now, names)
+    return names
+
+
+def _first_named(text: str, candidates: list[str]) -> str | None:
+    """Longest candidate appearing in `text` (so 'refresh_token' beats 'token')."""
+    for c in sorted(set(candidates), key=len, reverse=True):
+        if c and c in text:
             return c
     return None
 
 
+def _extract_function_name(q: str) -> str | None:
+    return _first_named(q, _graph_names("Function") or _STATIC_FUNCTIONS)
+
+
 def _extract_public_service(q: str) -> str | None:
-    candidates = ["api-gateway", "web-frontend", "auth-service"]
-    for c in candidates:
-        if c in q:
-            return c
+    return _first_named(q, _graph_names("Service") or _STATIC_SERVICES)
+
+
+def _function_for_cve(cve_id: str) -> str | None:
+    """Resolve the Function a CVE affects.
+
+    Lets questions that name only the CVE ("who owns the vulnerable function
+    in CVE-2026-4421?") reach the same target the blast-radius tool reports.
+    """
+    try:
+        rows = get_graph().query(
+            "MATCH (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function) "
+            "RETURN f.name LIMIT 1",
+            params={"cve_id": cve_id},
+        ).result_set
+    except Exception:  # noqa: BLE001 - no CVE context is better than a crash
+        return None
+    return str(rows[0][0]) if rows and rows[0] and rows[0][0] else None
+
+
+_GREETINGS = {"hello", "hi", "hey", "yo", "hola", "namaste", "greetings"}
+_THANKS = ("thanks", "thank you", "thx", "appreciate")
+_FAREWELLS = ("bye", "goodbye", "see you", "cya", "good night")
+_HOW_ARE_YOU = ("how are you", "how's it going", "how are things", "how do you feel")
+_IDENTITY = (
+    "who are you", "what are you", "what can you do", "what do you do",
+    "what can i ask", "capabilities",
+)
+
+
+def _conversational_reply(question: str) -> str | None:
+    """Friendly reply for small talk, so the chat stays conversational even
+    when no LLM is reachable. Returns None for non-small-talk messages."""
+    q = re.sub(r"\s+", " ", question.lower()).strip()
+    if not q:
+        return None
+    words = re.sub(r"[^a-z0-9' ]+", " ", q).split()
+
+    if any(p in q for p in _IDENTITY) or q in {"help", "?"}:
+        return (
+            "I'm GitTrace, a CVE blast-radius agent over FalkorDB. I can answer "
+            "three kinds of questions:\n"
+            "- Blast radius: \"What's the blast radius of CVE-2026-4421?\"\n"
+            "- Attack path: \"What's the shortest path from api-gateway to validate_token?\"\n"
+            "- Code owner: \"Who owns validate_token?\""
+        )
+    if any(p in q for p in _HOW_ARE_YOU):
+        return (
+            "Doing well, thanks for asking. The graph is loaded and ready. "
+            "Ask me about a CVE, an attack path, or who owns a function."
+        )
+    if any(p in q for p in _THANKS):
+        return "Anytime. Throw another CVE or function name at me whenever you're ready."
+    if any(p in q for p in _FAREWELLS):
+        return "See you. Ping me when the next CVE lands."
+    if (words and words[0] in _GREETINGS) or q.startswith(
+        ("good morning", "good afternoon", "good evening")
+    ):
+        return (
+            "Hey, GitTrace here, ready to dig into your dependency graph. "
+            "Try \"What's the blast radius of CVE-2026-4421?\", "
+            "\"What's the shortest path from api-gateway to validate_token?\", "
+            "or \"Who owns validate_token?\""
+        )
     return None
 
 
@@ -527,18 +624,25 @@ def run_agent(question: str) -> AgentResponse:
     target = _extract_function_name(q)
     start = _extract_public_service(q)
 
-    if cve_id or any(k in q for k in ("blast", "impact", "break", "affected")):
-        if cve_id:
-            wanted.append("get_blast_radius")
-    if any(k in q for k in ("path", "shortest", "attack", "entry", "reach", "how does")):
-        if target and start:
-            wanted.append("find_shortest_dependency_path")
-    if any(k in q for k in ("owner", "notify", "contact", "who", "slack", "email")):
-        if target:
-            wanted.append("find_code_owner")
+    wants_owner = any(
+        k in q for k in ("owner", "notify", "contact", "who", "slack", "email")
+    )
+    wants_path = any(
+        k in q for k in ("path", "shortest", "attack", "entry", "reach", "how does")
+    )
 
-    if not wanted and cve_id:
-        wanted = ["get_blast_radius"]
+    # A question can name the CVE but not the function. Resolve the target
+    # through the CVE's AFFECTS edge so it still reaches the right tool.
+    if target is None and cve_id and (wants_owner or wants_path):
+        target = _function_for_cve(cve_id)
+
+    # Blast radius is CVE-driven; other tools fall back to graph defaults.
+    if cve_id:
+        wanted.append("get_blast_radius")
+    if wants_path and target:
+        wanted.append("find_shortest_dependency_path")
+    if wants_owner and target:
+        wanted.append("find_code_owner")
 
     tool_results: list[dict[str, Any]] = []
     tool_calls: list[ToolCall] = []
@@ -571,6 +675,10 @@ def run_agent(question: str) -> AgentResponse:
         tool_results.append({"name": name, "result": result})
 
     answer = _synthesize_answer(question, tool_calls, tool_results, cve_id)
+    if not tool_calls:
+        small_talk = _conversational_reply(question)
+        if small_talk:
+            answer = small_talk
     return AgentResponse(
         answer=answer,
         tool_calls=tool_calls,
@@ -579,26 +687,63 @@ def run_agent(question: str) -> AgentResponse:
     )
 
 
+# When the LLM rejects our credentials, every subsequent message would pay
+# another failed round-trip before falling back. Remember the failure briefly
+# so the chat stays snappy, and retry automatically once the window expires
+# (e.g. after the operator fixes the key).
+_LLM_AUTH_COOLDOWN_S = 120.0
+_llm_auth_cooldown_until = 0.0
+
+
+def _is_auth_error(exc: BaseException) -> bool:
+    return "authentic" in type(exc).__name__.lower()
+
+
+def _llm_auth_cooldown_active() -> bool:
+    return time.monotonic() < _llm_auth_cooldown_until
+
+
+def _trip_llm_auth_cooldown() -> None:
+    global _llm_auth_cooldown_until
+    _llm_auth_cooldown_until = time.monotonic() + _LLM_AUTH_COOLDOWN_S
+
+
 def run_agent_with_litellm(question: str, model: str) -> AgentResponse:
     """Use LiteLLM function calling when the model supports it. Falls back
     to run_agent (keyword classifier) on any failure."""
+    if _llm_auth_cooldown_active():
+        return run_agent(question)
+
     try:
         import litellm
     except ImportError:
         return run_agent(question)
 
-    messages = [{"role": "user", "content": question}]
+    # Determinism comes from the system instruction, not from sampling
+    # parameters: Gemini 3+/Flash deprecate temperature/top_p/top_k, so none
+    # of them are sent here.
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a deterministic security triage agent. Always select "
+                "the appropriate tool for the question and never invent data."
+            ),
+        },
+        {"role": "user", "content": question},
+    ]
     try:
         response = litellm.completion(
             model=model,
             messages=messages,
             tools=tool_schemas(),
             tool_choice="auto",
-            temperature=0.0,
             timeout=30.0,
         )
     except Exception as exc:  # noqa: BLE001
         import sys as _sys
+        if _is_auth_error(exc):
+            _trip_llm_auth_cooldown()
         print(f"[agent] first-turn LLM failed: {type(exc).__name__}: {exc}", file=_sys.stderr, flush=True)
         return run_agent(question)
 
@@ -689,6 +834,8 @@ def run_agent_with_litellm(question: str, model: str) -> AgentResponse:
                                  cve_id=_extract_cve_id(question))
     except Exception as exc:  # noqa: BLE001
         import sys as _sys
+        if _is_auth_error(exc):
+            _trip_llm_auth_cooldown()
         print(f"[agent] second-turn LLM failed: {type(exc).__name__}: {exc}", file=_sys.stderr, flush=True)
 
     # Return the LLM answer if we got meaningful content; otherwise fall back to synthesized
@@ -733,6 +880,13 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    """Root liveness probe so browser pings and platform health checks
+    don't land on a 404."""
+    return {"status": "ok", "app": "GitTrace"}
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -740,8 +894,11 @@ def health() -> dict[str, str]:
 
 @app.post("/query", response_model=AgentResponse)
 def query(req: QueryRequest) -> AgentResponse:
-    if not req.question.strip():
-        raise HTTPException(status_code=400, detail="question is required")
+    if not req.question or not req.question.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="question is required and cannot be empty or whitespace-only",
+        )
 
     model = req.model or os.environ.get("LITELLM_MODEL", "gemini/gemini-flash-lite-latest")
     try:
