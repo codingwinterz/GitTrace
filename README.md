@@ -16,6 +16,12 @@ traversal to answer three questions:
 **Hackathon:** Graph Hacks — Track 01 (Agents That Act on Connected Data).
 Team: **SUDO SAIYAN** (Avaneesh S, solo). Team code: `5S3M9E`.
 
+**Current status (Oct 19, 2026):** the local stack is verified end to end. The seeded
+graph answers all three demo questions against live FalkorDB Cloud, the frontend renders
+the attack path as SVG with no console errors, and `test_app.py` passes 53/53 offline.
+Without a working LLM key the agent answers through the graph-driven classifier; the
+three tools and the UI are identical either way.
+
 ---
 
 ## Why FalkorDB (Rule 3)
@@ -36,7 +42,7 @@ Removing FalkorDB breaks the product. This is the core of the submission.
 ```
 .
   .env.example  Template for credentials (copy to .env; never commit .env)
-  .github/README.md  Repo landing copy for the GitHub web view
+  .github/README.md  Placeholder for GitHub-specific files (not a landing page)
   .gitignore  Keeps .env, .venv, caches, logs, debug/ out of the repo
   LICENSE  MIT license
   README.md  This file: setup, graph model, Cypher, demo, winning-criteria coverage
@@ -111,8 +117,8 @@ python -m pytest test_app.py test_integration.py -v
 2. Create a **FalkorDB Free** deployment instance (Google Cloud, `us-central1` is fine).
 3. Open the instance → **Connectivity** → **Connect** and copy the host, port, user, and
    password (or connection string).
-4. Open FalkorDB Browser from the Connect panel and keep the tab open — the frontend
-   embeds it.
+4. Copy the graph tab URL from the Connect panel. The frontend's **Open FalkorDB Browser**
+   button deep-links to it; the URL lives in `frontend/app.js` as `BROWSER_URL`.
 
 ### 2. Install dependencies
 
@@ -136,7 +142,7 @@ Edit `.env`:
 ```
 FALKORDB_HOST=<host from Connect panel>
 FALKORDB_PORT=<port from Connect panel>
-FALKORDB_USER=falkordb
+FALKORDB_USER=FalkorDB
 FALKORDB_PASSWORD=<password from Connect panel>
 
 # Google AI (Gemini) via LiteLLM
@@ -231,9 +237,11 @@ Open `http://localhost:5500` (or whatever the frontend server reports). The app 
 the backend at `localhost:8000` when served from `localhost:5500`; see `frontend/app.js`
 for the `API_BASE` knob if your setup differs.
 
-The frontend embeds FalkorDB Browser via iframe at the graph tab URL from your Connect
-panel; set that URL in `.env` (`GITTRACE_FRONTEND_ORIGIN` is mainly for CORS on the
-_API_, not the iframe).
+`API_BASE` is auto-detected: served from `localhost:5500` the frontend calls
+`localhost:8000`, otherwise it calls the origin it was served from. The **Open FalkorDB
+Browser** button opens the hosted graph tab in a new tab using `BROWSER_URL` in
+`frontend/app.js` — update that constant for your own instance, and set
+`GITTRACE_FRONTEND_ORIGIN` in `.env` so the API's CORS allows a deployed frontend.
 
 ---
 
@@ -265,25 +273,6 @@ python -m http.server 5500 --directory frontend
 
 If you don't have a FalkorDB instance yet, the backend still starts; only the graph-
 dependent endpoints (`/query`, `/demo`) will fail until the instance is wired up.
-
----
-
-## Graph model
-
-```bash
-# Python
-python -m http.server 5500 --directory frontend
-
-# or VS Code Live Server on port 5500
-```
-
-Open `http://localhost:5500` (or whatever the frontend server reports). The app expects
-the backend at `localhost:8000` when served from `localhost:5500`; see `frontend/app.js`
-for the `API_BASE` knob if your setup differs.
-
-The frontend embeds FalkorDB Browser via iframe at the graph tab URL from your Connect
-panel. If the embed is blocked by cross-origin policy, the UI shows a fallback link to
-open the browser in a new tab.
 
 ---
 
@@ -435,7 +424,7 @@ The backend supports two paths:
 | MCP or GraphRAG-SDK used | **Real MCP server** (`mcp_server.py`) exposing all 3 graph tools over the Model Context Protocol — runnable via `python mcp_server.py` |
 | At least 2 native graph algorithms | shortestPath + multi-hop traversal |
 | Explainable results | Demo shows exact path from entry point to vulnerability |
-| Visual graph proof | FalkorDB Browser embed + screenshot in demo video |
+| Visual graph proof | Live FalkorDB Browser deep link + in-app SVG attack-surface graph |
 | Live deployment | Frontend static; backend + graph on FalkorDB Cloud |
 
 ---
@@ -450,4 +439,4 @@ The backend supports two paths:
 
 ---
 
-*Last updated: Oct 17, 2026*
+*Last updated: Oct 19, 2026*
