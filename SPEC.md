@@ -55,19 +55,23 @@
 
 ### Tool 1: get_blast_radius(cve_id)
 
-**Purpose:** Find all services and functions impacted by a CVE, showing the propagation path.
+**Purpose:** Find every function that calls the vulnerable function (directly or transitively, up to 5 hops) and the services they live in. The blast radius is upstream: these are the callers that break, or carry the attack, when the vulnerable code does.
 
 **Cypher Query:**
 ```cypher
-MATCH path = (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)
-OPTIONAL MATCH affected = (f)-[:CALLS*1..5]->(downstream:Function)
-OPTIONAL MATCH downstream_service = (downstream)<-[:DEFINES]-(f2:File)<-[:CONTAINS]-(s:Service)
+MATCH (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)<-[:DEFINES]-(file:File)
+OPTIONAL MATCH (caller:Function)-[:CALLS*1..5]->(f)
+WHERE caller <> f
+OPTIONAL MATCH (caller)<-[:DEFINES]-(caller_file:File)
+OPTIONAL MATCH (caller_file)<-[:CONTAINS]-(s:Service)
 RETURN 
     c.id AS cve_id,
     c.severity AS severity,
     collect(DISTINCT s.name) AS impacted_services,
-    collect(DISTINCT downstream.name) AS impacted_functions,
-    count(DISTINCT s) AS service_count
+    collect(DISTINCT caller.name) AS impacted_functions,
+    count(DISTINCT s) AS service_count,
+    collect(DISTINCT file.path + '::' + f.name) AS affected_function_ids,
+    collect(DISTINCT caller_file.path + '::' + caller.name) AS impacted_function_ids
 ```
 
 **Returns:** List of impacted services, functions, and count.
@@ -76,7 +80,7 @@ RETURN
 
 ### Tool 2: find_shortest_dependency_path(start_service, target_function, *, cve_id=None, target_file_path=None)
 
-**Purpose:** Use FalkorDB's native shortestPath algorithm to trace how an attacker reaches a specific vulnerable function node from a public-facing service. The target is scoped to a single Function *instance* (not any function sharing its name): when `cve_id` is supplied the tool derives the target node from the CVE's AFFECTS edge (the same source `get_blast_radius` uses), and when `target_file_path` is supplied it matches the exact Function defined by that file. Without either, it falls back to a name-only match for functions that only exist in one place.
+**Purpose:** Use FalkorDB's native shortestPath algorithm to trace how an attacker reaches a specific vulnerable function node from a public-facing service. The target is scoped to a single Function *instance* (not any function sharing its name): when `cve_id` is supplied the tool derives the target node from the CVE's AFFECTS edge (the same source `get_blast_radius` uses), and when `target_file_path` is supplied it matches the exact Function defined by that file. Without either, the name must be defined in exactly one file; a name defined in several files is returned as an ambiguity error listing the candidates.
 
 **Cypher Query (CVE-scoped):**
 ```cypher
@@ -94,23 +98,28 @@ LIMIT 1
 
 ---
 
-### Tool 3: find_code_owner(function_name)
+### Tool 3: find_code_owner(function_name, *, file_path=None, cve_id=None)
 
-**Purpose:** Find the developer who owns/authorized the vulnerable code for alerting.
+**Purpose:** Find the developer who owns/authored the vulnerable code for alerting. The function is resolved through the CVE's AFFECTS edge, by (file_path, name), or by a name defined in exactly one file; an ambiguous name is reported, never guessed.
 
 **Cypher Query:**
 ```cypher
-MATCH (f:Function {name: $function_name})<-[:DEFINES]-(file:File)<-[:AUTHORED]-(dev:Developer)
+MATCH (:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)<-[:DEFINES]-(file:File)
+// or, by file:  MATCH (file:File {path: $file_path})-[:DEFINES]->(f:Function {name: $function_name})
+// or, by name:  MATCH (file:File)-[:DEFINES]->(f:Function {name: $function_name})
+OPTIONAL MATCH (file)<-[:AUTHORED]-(dev:Developer)
 OPTIONAL MATCH (dev)-[:OWNS]->(s:Service)
-RETURN 
+RETURN
+    file.path AS file_path,
+    f.name AS function_name, 
     dev.name AS developer_name,
     dev.email AS email,
     dev.slack_handle AS slack,
     collect(DISTINCT s.name) AS owned_services
-LIMIT 1
+ORDER BY file_path, function_name, developer_name
 ```
 
-**Returns:** Developer contact info and owned services.
+**Returns:** The resolved file and function, developer contact info and owned services.
 
 ---
 

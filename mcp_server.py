@@ -1,38 +1,33 @@
 """
 mcp_server.py — GitTrace MCP server.
 
-Exposes the three FalkorDB graph tools over the Model Context Protocol (MCP)
-so any MCP-capable agent host (Claude Desktop, custom agents, etc.) can query
-the codebase dependency graph. This satisfies the Track 01 requirement
-"MCP or GraphRAG-SDK used" with a real, runnable integration (not just a
-name-drop in the README).
+Exposes the FalkorDB graph tools over the Model Context Protocol (MCP) so any
+MCP-capable agent host (Claude Desktop, custom agents, etc.) can query the
+codebase dependency graph.
 
-Tools exposed:
-  - get_blast_radius(cve_id)
-  - find_shortest_dependency_path(start_service, target_function,
-                                  *, target_file_path=None, cve_id=None)
-  - find_code_owner(function_name)
+Tools are generated from app.TOOL_REGISTRY, one MCP tool per entry, named
+"<tool>_tool" (e.g. get_blast_radius_tool). Each tool's input schema comes from
+the graph function's own signature and its description from the registry, so
+registering a tool in app.py is all it takes to expose it here.
 
 Run (stdio transport, the standard for local MCP servers):
     python mcp_server.py
 
 Then register this server in your MCP host with:
     { "command": "python", "args": ["mcp_server.py"] }
+
+stdout is the protocol channel under stdio: nothing else may be printed to it.
 """
 
 from __future__ import annotations
 
+import inspect
 import json
+from typing import Any, Callable
 
 from mcp.server.mcpserver import MCPServer
 
-from app import (
-    find_code_owner,
-    find_shortest_dependency_path,
-    get_blast_radius,
-)
-
-server = MCPServer("gittrace")
+from app import TOOL_REGISTRY, GraphTool
 
 
 def _fmt(result: dict) -> str:
@@ -40,40 +35,42 @@ def _fmt(result: dict) -> str:
     return json.dumps(result, indent=2)
 
 
-@server.tool()
-def get_blast_radius_tool(cve_id: str) -> str:
-    """Find all services and functions impacted by a CVE, showing the
-    propagation path. Use when asked about blast radius, impact, or what
-    breaks if a vulnerable function is taken offline."""
-    return _fmt(get_blast_radius(cve_id))
+def mcp_tool_name(tool: GraphTool) -> str:
+    return f"{tool.name}_tool"
 
 
-@server.tool()
-def find_shortest_dependency_path_tool(start_service: str, target_function: str, *, cve_id: str | None = None, target_file_path: str | None = None) -> str:
-    """Use FalkorDB's native shortestPath to trace the attack path to a specific
-    vulnerable function from a public-facing service.
+def _handler(tool: GraphTool) -> Callable[..., str]:
+    """Wrap a graph tool so it returns JSON text, keeping its signature.
 
-    The target is scoped by the CVE's AFFECTS edge when cve_id is supplied
-    (recommended for CVE-driven questions), or by target_file_path when the
-    exact instance is known. Without either, the tool falls back to a name-only
-    match for functions that exist in a single place only."""
-    return _fmt(find_shortest_dependency_path(
-        start_service, target_function, cve_id=cve_id, target_file_path=target_file_path
-    ))
+    MCPServer builds the input schema from the handler's signature, so the
+    wrapper advertises the graph function's parameters (with annotations
+    evaluated, since app.py uses postponed annotations).
+    """
+    def handler(**kwargs: Any) -> str:
+        return _fmt(tool.func(**kwargs))
+
+    signature = inspect.signature(tool.func, eval_str=True)
+    handler.__signature__ = signature.replace(return_annotation=str)  # type: ignore[attr-defined]
+    handler.__name__ = mcp_tool_name(tool)
+    handler.__doc__ = tool.description
+    return handler
 
 
-@server.tool()
-def find_code_owner_tool(function_name: str) -> str:
-    """Find the developer who owns/authored the vulnerable code for alerting.
-    Use when asked who owns the code, who to notify, or the contact info for
-    a function."""
-    return _fmt(find_code_owner(function_name))
+def build_server() -> MCPServer:
+    server = MCPServer("gittrace")
+    for tool in TOOL_REGISTRY.values():
+        server.add_tool(
+            _handler(tool),
+            name=mcp_tool_name(tool),
+            description=tool.description,
+        )
+    return server
+
+
+server = build_server()
 
 
 def main() -> None:
-    print("GitTrace MCP server starting (stdio transport)...", flush=True)
-    print("Tools: get_blast_radius, find_shortest_dependency_path, find_code_owner",
-          flush=True)
     server.run()
 
 

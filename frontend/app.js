@@ -26,7 +26,9 @@ const DEMO = {
   attackPath: {
     question: "What's the shortest path from api-gateway to validate_token for CVE-2026-4421?",
   },
-  codeOwner: { question: "Who owns validate_token?" },
+  // validate_token is defined in two services, so the owner question is
+  // scoped by the CVE too.
+  codeOwner: { question: "Who owns validate_token for CVE-2026-4421?" },
 };
 
 const state = { busy: false, lastResults: [] };
@@ -191,14 +193,22 @@ function renderGraphViz(toolResults) {
     const cveId = "CVE:" + blast.cve_id;
     if (!nodes.has(cveId)) nodes.set(cveId, { label: blast.cve_id, type: "CVE", active: true });
     else nodes.get(cveId).active = true;
+    const addFunction = (name) => {
+      const fid = "Function:" + name;
+      if (nodes.has(fid)) nodes.get(fid).active = true;
+      else nodes.set(fid, { label: name, type: "Function", active: true });
+      return fid;
+    };
+    // The CVE affects one function; the blast radius is its upstream callers,
+    // which reach it through one or more CALLS hops.
+    const affected = (blast.affected_function_ids || []).map((id) => addFunction(id.split("::").pop()));
+    for (const vid of affected) {
+      edges.push({ from: cveId, to: vid, label: "AFFECTS", active: true });
+    }
     for (const f of blast.impacted_functions || []) {
-      const fid = "Function:" + f;
-      if (nodes.has(fid)) {
-        nodes.get(fid).active = true;
-        edges.push({ from: cveId, to: fid, label: "AFFECTS", active: true });
-      } else {
-        nodes.set(fid, { label: f, type: "Function", active: true });
-        edges.push({ from: cveId, to: fid, label: "AFFECTS", active: true });
+      const fid = addFunction(f);
+      for (const vid of affected) {
+        edges.push({ from: fid, to: vid, label: "CALLS*", active: true });
       }
     }
   }

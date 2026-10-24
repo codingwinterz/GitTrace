@@ -18,7 +18,7 @@
 
 A scanner reports `CVE-2026-4421` in `validate_token`. Three things decide what you do next:
 
-1. **What is in the blast radius?** Which services and downstream functions are reachable from the vulnerable code?
+1. **What is in the blast radius?** Which functions call into the vulnerable code, directly or transitively, and which services are they in?
 2. **How does an attacker actually get there?** Which public entry point reaches it, and through what path?
 3. **Who do you wake up?** Who owns the affected code?
 
@@ -34,9 +34,9 @@ Tested against the seeded graph — the exact JSON from `GET /demo`:
 
 | Question | Answer returned |
 |---|---|
-| Blast radius of `CVE-2026-4421` | `CRITICAL`, 1 service (`token-service`), downstream function `parse_claims` |
+| Blast radius of `CVE-2026-4421` | `CRITICAL`, 1 service (`token-service`), upstream callers `refresh_token`, `rotate_key` |
 | Shortest path `api-gateway` → `validate_token` | `api-gateway → token-service → token-service/token.py → validate_token`, **3 hops** |
-| Owner of `validate_token` | Sarah Chen · `sarah.chen@acme.com` · `@sarahc` (also owns `auth-service`, `token-service`) |
+| Owner of `validate_token` (scoped by the CVE) | Sarah Chen · `sarah.chen@acme.com` · `@sarahc` (also owns `auth-service`, `token-service`) |
 
 ---
 
@@ -46,7 +46,7 @@ The answer *is* a path and a neighbourhood. A vector index can say which code ch
 
 Two native capabilities do all the work:
 
-- **Variable-length traversal** — `(f)-[:CALLS*1..5]->(downstream)` walks the call graph to whatever depth the bug actually propagates.
+- **Variable-length traversal** — `(caller)-[:CALLS*1..5]->(f)` walks the call graph upstream from the vulnerable function to every caller that would break or carry the attack.
 - **`shortestPath()`** — resolves the exact route across five different relationship types (`CONTAINS`, `DEFINES`, `CALLS`, `DEPENDS_ON`, `EXPOSES`) in a single query.
 
 Remove FalkorDB and the product still starts, but it can no longer answer any of the three questions — which is the test for "graph is essential" rather than decoration.
@@ -100,7 +100,7 @@ Open `http://localhost:5500` and press **Run demo**. The Gemini key is optional 
 
 ## Graph data model
 
-The seeded graph is a small but complete microservice estate: **7 services, 7 files, 22 functions, 4 developers, 2 CVEs, 5 API endpoints, 73 edges**.
+The seeded graph is a small but complete microservice estate: **7 services, 7 files, 23 functions, 4 developers, 2 CVEs, 5 API endpoints, 75 edges**.
 
 | Node | Properties |
 |---|---|
@@ -127,15 +127,19 @@ The seeded graph is a small but complete microservice estate: **7 services, 7 fi
 ### Blast radius — `get_blast_radius(cve_id)`
 
 ```cypher
-MATCH path = (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)
-OPTIONAL MATCH affected = (f)-[:CALLS*1..5]->(downstream:Function)
-OPTIONAL MATCH downstream_service = (downstream)<-[:DEFINES]-(f2:File)<-[:CONTAINS]-(s:Service)
+MATCH (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)<-[:DEFINES]-(file:File)
+OPTIONAL MATCH (caller:Function)-[:CALLS*1..5]->(f)
+WHERE caller <> f
+OPTIONAL MATCH (caller)<-[:DEFINES]-(caller_file:File)
+OPTIONAL MATCH (caller_file)<-[:CONTAINS]-(s:Service)
 RETURN
     c.id AS cve_id,
     c.severity AS severity,
     collect(DISTINCT s.name) AS impacted_services,
-    collect(DISTINCT downstream.name) AS impacted_functions,
-    count(DISTINCT s) AS service_count
+    collect(DISTINCT caller.name) AS impacted_functions,
+    count(DISTINCT s) AS service_count,
+    collect(DISTINCT file.path + '::' + f.name) AS affected_function_ids,
+    collect(DISTINCT caller_file.path + '::' + caller.name) AS impacted_function_ids
 ```
 
 ### Shortest attack path — `find_shortest_dependency_path(start_service, target_function, *, cve_id=None, target_file_path=None)`
@@ -151,20 +155,29 @@ ORDER BY hop_count ASC, path_trace ASC
 LIMIT 1
 ```
 
-### Code owner — `find_code_owner(function_name)`
+Without `cve_id` or `target_file_path`, the name must be defined in exactly one file; otherwise the tool returns an error listing the candidates (`file_path::name`).
+
+### Code owner — `find_code_owner(function_name, *, file_path=None, cve_id=None)`
 
 ```cypher
-MATCH (f:Function {name: $function_name})<-[:DEFINES]-(file:File)<-[:AUTHORED]-(dev:Developer)
+MATCH (:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)<-[:DEFINES]-(file:File)
+// or, by file:  MATCH (file:File {path: $file_path})-[:DEFINES]->(f:Function {name: $function_name})
+// or, by name:  MATCH (file:File)-[:DEFINES]->(f:Function {name: $function_name})
+OPTIONAL MATCH (file)<-[:AUTHORED]-(dev:Developer)
 OPTIONAL MATCH (dev)-[:OWNS]->(s:Service)
 RETURN
+    file.path AS file_path,
+    f.name AS function_name,
     dev.name AS developer_name,
     dev.email AS email,
     dev.slack_handle AS slack,
     collect(DISTINCT s.name) AS owned_services
-LIMIT 1
+ORDER BY file_path, function_name, developer_name
 ```
 
-`/tools` returns the same three as OpenAI-format schemas, so any model can call them.
+Every row is checked: if the function resolves to more than one file, the tool reports the ambiguity instead of picking one.
+
+All tools are declared once, in `TOOL_REGISTRY` in `app.py`. `/tools` returns them as OpenAI-format schemas, so any model can call them, and the MCP server is generated from the same registry.
 
 ## API
 
@@ -195,15 +208,19 @@ Exposes `get_blast_radius_tool`, `find_shortest_dependency_path_tool`, `find_cod
 ## Tests
 
 ```bash
-python -m pytest test_app.py -q        # 53 passed — no DB, no API key
-python -m pytest test_integration.py -q  # 8 live tests — needs FalkorDB + Gemini
+python -m pytest test_app.py -q        # no DB, no API key
+
+docker compose up -d falkordb            # real FalkorDB for the integration suite
+FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest test_integration.py -q
 ```
 
-The offline suite covers helpers, all three graph tools against a mocked FalkorDB layer, the agent loop against a mocked LLM, and every FastAPI endpoint. It runs on a clean clone before `.env` exists, and in CI on Python 3.11–3.13 (`.github/workflows/tests.yml`). The live suite skips itself when FalkorDB is unreachable.
+The offline suite covers helpers, all graph tools against a mocked FalkorDB layer, the agent loop against a mocked LLM, the tool registry, the MCP server, and every FastAPI endpoint. It runs on a clean clone before `.env` exists, and in CI on Python 3.11–3.13 (`.github/workflows/tests.yml`).
+
+The integration suite runs every Cypher query unmocked: it seeds its own uniquely named graph, runs against it, and drops it. CI runs it against a FalkorDB service container; locally it skips itself when FalkorDB is unreachable.
 
 ## Design decisions worth knowing
 
-- **CVE-scoped disambiguation.** `validate_token` exists in both `auth-service` and `token-service`; matching by name alone can resolve the wrong instance. Path queries accept `cve_id` (resolve the target through `AFFECTS`) or `target_file_path`, so the path and the blast radius always point at the same node.
+- **No bare-name lookups.** `validate_token` and `refresh_token` exist in two services each; matching by name alone can resolve the wrong instance. The path and owner tools accept `cve_id` (resolve the target through `AFFECTS`) or a file path, and a bare name that matches more than one file is reported as ambiguous rather than guessed.
 - **Native `shortestPath` instead of application-side BFS** — the graph engine does the traversal, so the code only formats the result.
 - **Deterministic fallback** — a dead API key or exhausted quota degrades the prose, not the product.
 

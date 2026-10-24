@@ -28,8 +28,11 @@ Or use VS Code Live Server on port 5500.
 
 - Open http://localhost:5500 and click **Run demo**, or ask:
   - "What's the blast radius of CVE-2026-4421?"
-  - "What's the shortest path from api-gateway to validate_token?"
-  - "Who owns validate_token?"
+  - "What's the shortest path from api-gateway to validate_token for CVE-2026-4421?"
+  - "Who owns validate_token for CVE-2026-4421?"
+
+  `validate_token` is defined in two services, so without the CVE (or a file
+  path) the tools answer that the name is ambiguous and list both candidates.
 - Backend API: `python app.py` → `http://localhost:8000`
   - `GET  /`        (root health check)
   - `GET  /health`
@@ -50,10 +53,22 @@ python -m pytest test_app.py test_integration.py -v
 ```
 
 `test_app.py` is fully mocked (no live DB, no API key needed). `test_integration.py`
-hits the live FalkorDB + Gemini + MCP setup, so it needs `.env`.
+runs every Cypher query against a real FalkorDB: it seeds its own uniquely named graph
+(`gittrace_test_<random>`), tests against it and drops it, so it never touches the demo
+graph. Start a local FalkorDB with Docker and point the tests at it:
 
-Run only the offline suite before pushing — this is exactly what CI runs on every push
-(`.github/workflows/tests.yml`), on Python 3.11–3.13:
+```bash
+docker compose up -d falkordb
+FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest test_integration.py -v
+```
+
+(Environment variables win over `.env`, so this works even with cloud settings in `.env`.)
+Without a reachable FalkorDB the integration tests skip. CI runs them against a FalkorDB
+service container and sets `GITTRACE_REQUIRE_FALKORDB=1`, which turns that skip into a
+failure. The live-LLM test also needs a Gemini key and skips without one.
+
+Run at least the offline suite before pushing. CI (`.github/workflows/tests.yml`) runs
+it on Python 3.11–3.13, plus the integration suite against FalkorDB in Docker:
 
 ```bash
 python -m pytest test_app.py -q

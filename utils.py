@@ -35,7 +35,9 @@ FALKORDB_PORT = int(_env("FALKORDB_PORT", required=False) or "6379")
 FALKORDB_USER = _env("FALKORDB_USER", required=False) or "default"
 FALKORDB_PASSWORD = _env("FALKORDB_PASSWORD", required=False) or ""
 
-GRAPH_NAME = "gittrace"
+# Overridable so the integration suite can seed an isolated graph instead of
+# touching the demo graph on a shared instance.
+GRAPH_NAME = _env("GITTRACE_GRAPH", required=False) or "gittrace"
 
 _db = None
 
@@ -53,12 +55,12 @@ def get_db():
             "falkordb not installed. Run: pip install -r requirements.txt"
         ) from exc
 
-    kwargs: dict = {
-        "host": FALKORDB_HOST,
-        "port": FALKORDB_PORT,
-        "username": FALKORDB_USER or None,
-    }
+    kwargs: dict = {"host": FALKORDB_HOST, "port": FALKORDB_PORT}
+    # Credentials go together or not at all: redis-py sends AUTH whenever a
+    # username is set, and AUTH with a username but no password fails to
+    # encode, so an unauthenticated server (local Docker, CI) was unreachable.
     if FALKORDB_PASSWORD:
+        kwargs["username"] = FALKORDB_USER
         kwargs["password"] = FALKORDB_PASSWORD
 
     _db = None
@@ -76,14 +78,18 @@ def get_db():
         ) from first_err
 
 
-def get_graph(db=None, name: str = GRAPH_NAME):
-    """Get (or lazily create) the named graph handle."""
+def get_graph(db=None, name: str | None = None):
+    """Get (or lazily create) the named graph handle.
+
+    The default is read at call time, not bound at import, so tests can point
+    every tool at a different graph by patching GRAPH_NAME.
+    """
     if db is None:
         db = get_db()
-    return db.select_graph(name)
+    return db.select_graph(name or GRAPH_NAME)
 
 
-def query(cypher: str, params: dict | None = None, name: str = GRAPH_NAME):
+def query(cypher: str, params: dict | None = None, name: str | None = None):
     """Run a Cypher query against the graph; return the QueryResult."""
     g = get_graph(None, name)
     return g.query(cypher, params=params)

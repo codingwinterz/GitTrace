@@ -1,0 +1,17 @@
+# Local FalkorDB for development and the integration suite.
+#
+#   docker compose up -d falkordb
+#   FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= pytest test_integration.py -v
+#
+# Same image tag as the CI service in .github/workflows/tests.yml; bump both together.
+services:
+  falkordb:
+    image: falkordb/falkordb:v4.22.1
+    ports:
+      - "6379:6379"   # Redis protocol (what the app and tests use)
+      - "3000:3000"   # FalkorDB Browser UI
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

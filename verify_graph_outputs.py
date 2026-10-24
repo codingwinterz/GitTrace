@@ -49,8 +49,10 @@ def main() -> None:
     # Blast radius must come from the graph, not a canned string.
     assert blast["cve_id"] == "CVE-2026-4421", blast
     assert blast["severity"] == "CRITICAL", blast
+    assert blast["affected_function_ids"] == ["/token-service/token.py::validate_token"], blast
     assert blast["impacted_services"] == ["token-service"], blast
-    assert blast["impacted_functions"] == ["parse_claims"], blast
+    # Upstream callers of the vulnerable function, not what it calls.
+    assert blast["impacted_functions"] == ["refresh_token", "rotate_key"], blast
     assert blast["service_count"] == 1, blast
     assert "error" not in blast, blast
 
@@ -73,6 +75,7 @@ def main() -> None:
 
     # Code owner must come from the graph via AUTHORED/OWNS traversal.
     assert owner["function_name"] == "validate_token", owner
+    assert owner["file_path"] == "/token-service/token.py", owner
     assert owner["developer_name"] == "Sarah Chen", owner
     assert owner["email"] == "sarah.chen@acme.com", owner
     assert owner["slack"] == "@sarahc", owner
@@ -104,7 +107,7 @@ def main() -> None:
 
     print("3) Native graph algorithms actually used (source check)")
     print("   - shortestPath() is in app.py and mcp_server.py: YES")
-    print("   - multi-hop [:CALLS*1..5] traversal is in get_blast_radius: YES")
+    print("   - multi-hop upstream [:CALLS*1..5] traversal is in get_blast_radius: YES")
     print()
 
     print("OK — FalkorDB is doing real graph work here, not just storing nodes.")

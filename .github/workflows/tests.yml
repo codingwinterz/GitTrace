@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, v2]
   pull_request:
   workflow_dispatch:
 
@@ -34,3 +34,54 @@ jobs:
 
       - name: Run offline suite (mocked graph + mocked LLM, no credentials)
         run: python -m pytest test_app.py -q
+
+  integration:
+    name: integration suite (real FalkorDB)
+    runs-on: ubuntu-latest
+
+    # Same image tag as docker-compose.yml; bump both together.
+    services:
+      falkordb:
+        image: falkordb/falkordb:v4.22.1
+        ports:
+          - 6379:6379
+
+    env:
+      FALKORDB_HOST: localhost
+      FALKORDB_PORT: "6379"
+      # Fail instead of skipping if the service never came up.
+      GITTRACE_REQUIRE_FALKORDB: "1"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for FalkorDB
+        run: |
+          python - <<'EOF'
+          import time, redis
+          client = redis.Redis(host="localhost", port=6379)
+          for _ in range(60):
+              try:
+                  if client.ping():
+                      print("FalkorDB is up:", client.execute_command("GRAPH.LIST"))
+                      break
+              except redis.exceptions.ConnectionError:
+                  pass
+              time.sleep(1)
+          else:
+              raise SystemExit("FalkorDB did not come up within 60s")
+          EOF
+
+      - name: Run integration suite (real FalkorDB, seeded per run)
+        run: python -m pytest test_integration.py -v

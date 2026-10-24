@@ -13,9 +13,13 @@ Run:  pytest test_app.py -v
 
 from __future__ import annotations
 
+import inspect
 import json
+import os
+import subprocess
 import sys
 import types
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -23,8 +27,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app as gittrace_app
+import mcp_server
+import seed_graph
 from app import (
+    TOOL_REGISTRY,
     AgentResponse,
+    GraphTool,
     QueryRequest,
     ToolCall,
     _extract_cve_id,
@@ -60,6 +68,26 @@ def mock_graph() -> MagicMock:
 def _fake_query_result(result_set):
     """Wrap a result_set in the shape returned by FalkorDB's graph.query()."""
     return SimpleNamespace(result_set=result_set)
+
+
+# get_blast_radius row: cve, severity, services, caller names, service count,
+# affected function ids, caller ids. The callers are the functions that CALL
+# token-service.validate_token, not what it calls (parse_claims).
+BLAST_ROW = [
+    "CVE-2026-4421", "CRITICAL", ["token-service"],
+    ["rotate_key", "refresh_token"], 1,
+    ["/token-service/token.py::validate_token"],
+    ["/token-service/token.py::rotate_key", "/token-service/token.py::refresh_token"],
+]
+
+# find_code_owner row: file path, function, developer, email, slack, owned services.
+OWNER_ROW = [
+    "/token-service/token.py", "validate_token",
+    "Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service", "token-service"],
+]
+
+TOKEN_PY = "/token-service/token.py"
+AUTH_GO = "/auth-service/auth.go"
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +130,32 @@ class TestHelpers:
                 "path from billing-service to process_payment"
             ) == "billing-service"
 
+    def test_extract_matches_whole_words_only(self):
+        # The old lookup was a lowercased substring search: 'token' matched
+        # inside 'refresh_token', and 'validate_token' inside 'validate_token_v2'.
+        with patch.object(gittrace_app, "_graph_names",
+                          return_value=["token", "validate_token", "refresh_token"]):
+            assert _extract_function_name("who owns refresh_token?") == "refresh_token"
+            assert _extract_function_name("who owns validate_token_v2?") is None
+            assert _extract_function_name("path to validate_token.") == "validate_token"
+
+    def test_extract_preserves_case(self):
+        # Names are returned exactly as stored, so they still match when
+        # handed to a tool; a lowercased mention is not the same identifier.
+        with patch.object(gittrace_app, "_graph_names",
+                          return_value=["Repo.get_user"]):
+            assert _extract_function_name("who owns Repo.get_user?") == "Repo.get_user"
+            assert _extract_function_name("who owns repo.get_user?") is None
+
+    def test_graph_names_are_not_lowercased(self, mock_graph, monkeypatch):
+        monkeypatch.setattr(gittrace_app, "_ENTITY_CACHE", {})
+        mock_graph.query.return_value = _fake_query_result(
+            [["Repo.get_user"], ["validate_token"]]
+        )
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            names = gittrace_app._graph_names("Function")
+        assert names == ["Repo.get_user", "validate_token"]
+
     def test_extract_falls_back_when_graph_unavailable(self):
         with patch.object(gittrace_app, "_graph_names", return_value=[]):
             assert _extract_function_name("who owns validate_token?") == "validate_token"
@@ -115,13 +169,22 @@ class TestHelpers:
         calls = [ToolCall(name="get_blast_radius", arguments={"cve_id": "CVE-2026-4421"})]
         results = [{"name": "get_blast_radius", "result": {
             "cve_id": "CVE-2026-4421", "severity": "CRITICAL",
+            "affected_function_ids": [f"{TOKEN_PY}::validate_token"],
             "impacted_services": ["token-service"],
-            "impacted_functions": ["parse_claims"], "service_count": 1,
+            "impacted_functions": ["refresh_token", "rotate_key"],
+            "service_count": 1,
         }}]
         out = _synthesize_answer("q", calls, results, "CVE-2026-4421")
         assert "CVE-2026-4421" in out
         assert "CRITICAL" in out
         assert "token-service" in out
+        assert f"{TOKEN_PY}::validate_token" in out
+        assert "Upstream callers: refresh_token, rotate_key" in out
+
+    def test_synthesize_reports_tool_errors(self):
+        calls = [ToolCall(name="find_code_owner", arguments={"function_name": "validate_token"})]
+        results = [{"name": "find_code_owner", "result": {"error": "ambiguous"}}]
+        assert _synthesize_answer("q", calls, results, None) == "[code owner] ambiguous"
 
     def test_synthesize_attack_path(self):
         calls = [ToolCall(name="find_shortest_dependency_path",
@@ -152,24 +215,39 @@ class TestHelpers:
 class TestGraphTools:
     def test_tool_schemas_shape(self):
         schemas = tool_schemas()
-        assert len(schemas) == 3
-        names = {s["function"]["name"] for s in schemas}
-        assert names == {"get_blast_radius",
-                         "find_shortest_dependency_path",
-                         "find_code_owner"}
+        assert [s["function"]["name"] for s in schemas] == list(TOOL_REGISTRY)
+        assert {"get_blast_radius", "find_shortest_dependency_path",
+                "find_code_owner"} <= set(TOOL_REGISTRY)
         for s in schemas:
             assert s["type"] == "function"
             assert "parameters" in s["function"]
 
+    def test_get_blast_radius_walks_callers_not_callees(self, mock_graph):
+        # Regression: the blast radius used to follow CALLS *out* of the
+        # vulnerable function, reporting what it calls (parse_claims) instead
+        # of the code that breaks when it does.
+        mock_graph.query.return_value = _fake_query_result([BLAST_ROW])
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            get_blast_radius("CVE-2026-4421")
+        cypher_sent = mock_graph.query.call_args[0][0]
+        assert "(caller:Function)-[:CALLS*1..5]->(f)" in cypher_sent, cypher_sent
+        assert "(f)-[:CALLS" not in cypher_sent, cypher_sent
+
     def test_get_blast_radius(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             out = get_blast_radius("CVE-2026-4421")
         assert out["cve_id"] == "CVE-2026-4421"
         assert out["severity"] == "CRITICAL"
+        assert out["affected_function_ids"] == [f"{TOKEN_PY}::validate_token"]
         assert out["impacted_services"] == ["token-service"]
+        # Sorted, regardless of the order collect() produced.
+        assert out["impacted_functions"] == ["refresh_token", "rotate_key"]
+        assert out["impacted_function_ids"] == [
+            f"{TOKEN_PY}::refresh_token", f"{TOKEN_PY}::rotate_key",
+        ]
         assert out["service_count"] == 1
 
     def test_get_blast_radius_not_found(self, mock_graph):
@@ -180,20 +258,40 @@ class TestGraphTools:
         assert out["service_count"] == 0
 
     def test_find_shortest_dependency_path(self, mock_graph):
-        mock_graph.query.return_value = _fake_query_result(
-            [[["Service:api-gateway", "Function:validate_token"], 1]]
-        )
+        # A name defined in exactly one file resolves to that file, then the
+        # path query is scoped by (file path, name).
+        mock_graph.query.side_effect = [
+            _fake_query_result([[TOKEN_PY]]),
+            _fake_query_result([[["Service:api-gateway", "Function:parse_claims"], 1,
+                                 TOKEN_PY]]),
+        ]
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
-            out = find_shortest_dependency_path("api-gateway", "validate_token")
+            out = find_shortest_dependency_path("api-gateway", "parse_claims")
         assert out["hop_count"] == 1
         assert "Service:api-gateway" in out["path_trace"]
-        assert out["target_function"] == "validate_token"
+        assert out["target_function"] == "parse_claims"
+        assert out["target_file_path"] == TOKEN_PY
         assert out["cve_id"] is None
+        params_sent = mock_graph.query.call_args[1]["params"]
+        assert params_sent["target_file_path"] == TOKEN_PY
+
+    def test_find_shortest_dependency_path_ambiguous_name(self, mock_graph):
+        # Regression: a bare name defined in two files used to resolve to
+        # whichever copy was closest. Now it is reported, with candidates.
+        mock_graph.query.return_value = _fake_query_result([[AUTH_GO], [TOKEN_PY]])
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            out = find_shortest_dependency_path("api-gateway", "validate_token")
+        assert "2 files" in out["error"], out
+        assert out["candidates"] == [
+            f"{AUTH_GO}::validate_token", f"{TOKEN_PY}::validate_token",
+        ]
+        assert out["path_trace"] == []
+        assert mock_graph.query.call_count == 1  # no path query was attempted
 
     def test_find_shortest_dependency_path_cve_scoped(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
             [[["Service:api-gateway", "Service:token-service",
-               "File:/token-service/token.py", "Function:validate_token"], 3]]
+               "File:/token-service/token.py", "Function:validate_token"], 3, TOKEN_PY]]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             out = find_shortest_dependency_path(
@@ -221,7 +319,8 @@ class TestGraphTools:
         # target_function == "validate_token", which is internally inconsistent.
         mock_graph.query.return_value = _fake_query_result(
             [[["Service:api-gateway", "Service:profile-service",
-               "File:/profile-service/profile.py", "Function:get_user_profile"], 3]]
+               "File:/profile-service/profile.py", "Function:get_user_profile"], 3,
+              "/profile-service/profile.py"]]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             out = find_shortest_dependency_path(
@@ -238,7 +337,7 @@ class TestGraphTools:
     def test_find_shortest_dependency_path_file_scoped(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
             [[["Service:api-gateway", "Service:auth-service",
-               "File:/auth-service/auth.go", "Function:validate_token"], 3]]
+               "File:/auth-service/auth.go", "Function:validate_token"], 3, AUTH_GO]]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             out = find_shortest_dependency_path(
@@ -257,12 +356,67 @@ class TestGraphTools:
 
     def test_find_code_owner(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service"]]]
+            [OWNER_ROW]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             out = find_code_owner("validate_token")
         assert out["developer_name"] == "Sarah Chen"
         assert out["slack"] == "@sarahc"
+        assert out["file_path"] == TOKEN_PY
+        assert out["owned_services"] == ["auth-service", "token-service"]
+        assert [o["developer_name"] for o in out["owners"]] == ["Sarah Chen"]
+        cypher_sent = mock_graph.query.call_args[0][0]
+        assert "LIMIT" not in cypher_sent, cypher_sent
+        assert "ORDER BY" in cypher_sent, cypher_sent
+
+    def test_find_code_owner_ambiguous_name(self, mock_graph):
+        # Regression: LIMIT 1 with no ORDER BY used to answer with whichever
+        # validate_token row the graph returned first.
+        mock_graph.query.return_value = _fake_query_result([
+            [AUTH_GO, "validate_token", "Sarah Chen", "sarah.chen@acme.com", "@sarahc", []],
+            [TOKEN_PY, "validate_token", "Sarah Chen", "sarah.chen@acme.com", "@sarahc", []],
+        ])
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            out = find_code_owner("validate_token")
+        assert "2 files" in out["error"], out
+        assert out["developer_name"] is None
+        assert out["candidates"] == [
+            f"{AUTH_GO}::validate_token", f"{TOKEN_PY}::validate_token",
+        ]
+
+    def test_find_code_owner_cve_scoped(self, mock_graph):
+        mock_graph.query.return_value = _fake_query_result([OWNER_ROW])
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            out = find_code_owner("anything", cve_id="CVE-2026-4421")
+        cypher_sent = mock_graph.query.call_args[0][0]
+        params_sent = mock_graph.query.call_args[1]["params"]
+        assert ")-[:AFFECTS]->(f:Function)" in cypher_sent, cypher_sent
+        assert params_sent["cve_id"] == "CVE-2026-4421"
+        # The resolved function is reported, not the name passed in.
+        assert out["function_name"] == "validate_token"
+        assert out["file_path"] == TOKEN_PY
+
+    def test_find_code_owner_file_scoped(self, mock_graph):
+        mock_graph.query.return_value = _fake_query_result([
+            [AUTH_GO, "validate_token", "Sarah Chen", "sarah.chen@acme.com", "@sarahc",
+             ["auth-service", "token-service"]],
+        ])
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            out = find_code_owner("validate_token", file_path=AUTH_GO)
+        cypher_sent = mock_graph.query.call_args[0][0]
+        params_sent = mock_graph.query.call_args[1]["params"]
+        assert "(file:File {path: $file_path})" in cypher_sent, cypher_sent
+        assert params_sent["file_path"] == AUTH_GO
+        assert out["file_path"] == AUTH_GO
+
+    def test_find_code_owner_file_without_author(self, mock_graph):
+        mock_graph.query.return_value = _fake_query_result(
+            [[TOKEN_PY, "parse_claims", None, None, None, []]]
+        )
+        with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            out = find_code_owner("parse_claims")
+        assert "No owner found" in out["error"]
+        assert out["file_path"] == TOKEN_PY
 
     def test_find_code_owner_none(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result([])
@@ -278,7 +432,7 @@ class TestGraphTools:
 class TestRunAgent:
     def test_cve_question_calls_blast_radius(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             resp = run_agent("What's the blast radius of CVE-2026-4421?")
@@ -289,7 +443,7 @@ class TestRunAgent:
 
     def test_owner_question_calls_code_owner(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service"]]]
+            [OWNER_ROW]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             resp = run_agent("Who owns validate_token?")
@@ -299,7 +453,7 @@ class TestRunAgent:
     def test_auth_failure_short_circuits_later_calls(self, mock_graph):
         # A rejected API key must not cost a failed round-trip on every message.
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
 
         class AuthenticationError(Exception):
@@ -360,7 +514,8 @@ class TestRunAgent:
 
     def test_owner_for_function_outside_static_list(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["Devon Park", "devon.park@acme.com", "@devonp", ["billing-service"]]]
+            [["/user-service/users.js", "delete_user",
+              "Priya Nair", "priya.nair@acme.com", "@priyan", ["user-service"]]]
         )
         with patch.object(gittrace_app, "_graph_names",
                           return_value=["delete_user", "process_payment"]) as names, \
@@ -368,24 +523,31 @@ class TestRunAgent:
             # _graph_names is patched for both labels; the owner query still runs.
             resp = run_agent("who owns delete_user?")
         assert any(tc.name == "find_code_owner" for tc in resp.tool_calls)
-        assert "Devon Park" in resp.answer
+        assert "Priya Nair" in resp.answer
 
     def test_owner_question_naming_only_the_cve(self, mock_graph):
-        mock_graph.query.return_value = _fake_query_result(
-            [["Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service"]]]
-        )
+        mock_graph.query.side_effect = [
+            _fake_query_result([BLAST_ROW]),
+            _fake_query_result([OWNER_ROW]),
+        ]
         with patch.object(gittrace_app, "_graph_names", return_value=[]), \
              patch.object(gittrace_app, "_function_for_cve",
                           return_value="validate_token"), \
              patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             resp = run_agent("who owns the vulnerable function in CVE-2026-4421?")
-        assert any(tc.name == "find_code_owner" for tc in resp.tool_calls)
+        call = next(tc for tc in resp.tool_calls if tc.name == "find_code_owner")
+        # Scoped by the CVE, so the owner lookup can't land on the other
+        # validate_token.
+        assert call.arguments == {"function_name": "validate_token",
+                                  "cve_id": "CVE-2026-4421"}
         assert "Sarah Chen" in resp.answer
 
     def test_attack_path_without_start_defaults_to_gateway(self, mock_graph):
-        mock_graph.query.return_value = _fake_query_result(
-            [[["Service:api-gateway", "Function:validate_token"], 1]]
-        )
+        mock_graph.query.side_effect = [
+            _fake_query_result([[TOKEN_PY]]),
+            _fake_query_result([[["Service:api-gateway", "Function:validate_token"], 1,
+                                 TOKEN_PY]]),
+        ]
         with patch.object(gittrace_app, "_graph_names", return_value=[]), \
              patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             resp = run_agent("shortest path to validate_token")
@@ -397,7 +559,7 @@ class TestRunAgent:
     def test_greeting_does_not_skip_real_questions(self, mock_graph):
         # A greeting inside a real question must still dispatch tools.
         mock_graph.query.return_value = _fake_query_result(
-            [["Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service"]]]
+            [OWNER_ROW]
         )
         with patch.object(gittrace_app, "get_graph", return_value=mock_graph):
             resp = run_agent("hi, who owns validate_token?")
@@ -441,7 +603,7 @@ def _text_response(text: str):
 class TestAgentLoop:
     def test_first_turn_failure_falls_back_to_classifier(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         failing = MagicMock()
         failing.completion.side_effect = RuntimeError("quota exceeded")
@@ -454,7 +616,7 @@ class TestAgentLoop:
 
     def test_second_turn_success_returns_llm_answer(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         first = _tool_call_response("get_blast_radius", {"cve_id": "CVE-2026-4421"})
         second = _text_response("CVE-2026-4421 is CRITICAL; token-service is impacted. Contact the owning team immediately.")
@@ -468,7 +630,7 @@ class TestAgentLoop:
 
     def test_second_turn_failure_falls_back_to_synthesized(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         first = _tool_call_response("get_blast_radius", {"cve_id": "CVE-2026-4421"})
         second = MagicMock()
@@ -482,7 +644,7 @@ class TestAgentLoop:
 
     def test_second_turn_short_content_falls_back(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         first = _tool_call_response("get_blast_radius", {"cve_id": "CVE-2026-4421"})
         second = _text_response("ok")  # shorter than 40 chars -> must fall back
@@ -513,7 +675,7 @@ class TestAgentLoop:
 
     def test_malformed_tool_args_do_not_crash(self, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         tc = SimpleNamespace(
             id="call_1",
@@ -529,6 +691,35 @@ class TestAgentLoop:
                                           "gemini/gemini-3.8-flash")
         assert isinstance(resp, AgentResponse)
 
+    @pytest.mark.parametrize("raw, reason", [
+        ('["CVE-2026-4421"]', "must be a JSON object, got list"),
+        ('"CVE-2026-4421"', "must be a JSON object, got str"),
+        ("null", "must be a JSON object, got NoneType"),
+        ("{not json", "not valid JSON"),
+        (["CVE-2026-4421"], "must be a JSON object, got list"),
+    ])
+    def test_non_object_tool_args_become_an_error(self, mock_graph, raw, reason):
+        # Regression: a JSON array or string as arguments used to crash the
+        # request (ToolCall validation / **args), and malformed JSON silently
+        # turned into an empty argument dict.
+        tc = SimpleNamespace(
+            id="call_1",
+            function=SimpleNamespace(name="get_blast_radius", arguments=raw),
+        )
+        first = SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content=None, tool_calls=[tc]))])
+        fake = _make_litellm_mock(first, _text_response("ok"))
+        with patch.dict(sys.modules, {"litellm": fake}), \
+             patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            resp = run_agent_with_litellm("blast radius of CVE-2026-4421",
+                                          "gemini/gemini-3.8-flash")
+        mock_graph.query.assert_not_called()
+        assert resp.tool_calls[0].name == "get_blast_radius"
+        assert resp.tool_calls[0].arguments == {}
+        error = resp.tool_results[0].result["error"]
+        assert "was not called" in error and reason in error, error
+        assert error in resp.answer
+
     def test_llm_missing_cve_id_is_scoped_by_backend(self, mock_graph):
         # Regression guard for the duplicate-function-name bug: even when the
         # LLM calls find_shortest_dependency_path with name-only args, a CVE in
@@ -536,7 +727,7 @@ class TestAgentLoop:
         # (token-service), not the auth-service copy.
         mock_graph.query.return_value = _fake_query_result(
             [[["Service:api-gateway", "Service:token-service",
-               "File:/token-service/token.py", "Function:validate_token"], 3]]
+               "File:/token-service/token.py", "Function:validate_token"], 3, TOKEN_PY]]
         )
         first = _tool_call_response(
             "find_shortest_dependency_path",
@@ -560,6 +751,22 @@ class TestAgentLoop:
                   if tr.name == "find_shortest_dependency_path"][0].result
         assert "Service:token-service" in result["path_trace"], result
         assert result["cve_id"] == "CVE-2026-4421", result
+
+    def test_llm_owner_call_is_cve_scoped_by_backend(self, mock_graph):
+        # Same guard for the owner tool: every tool flagged cve_scoped in the
+        # registry gets the question's CVE when the LLM leaves it out.
+        mock_graph.query.return_value = _fake_query_result([OWNER_ROW])
+        first = _tool_call_response("find_code_owner", {"function_name": "validate_token"})
+        second = _text_response("Sarah Chen owns the affected validate_token in token-service.")
+        fake = _make_litellm_mock(first, second)
+        with patch.dict(sys.modules, {"litellm": fake}), \
+             patch.object(gittrace_app, "get_graph", return_value=mock_graph):
+            resp = run_agent_with_litellm(
+                "Who should I notify about CVE-2026-4421?", "gemini/gemini-3.8-flash"
+            )
+        call = resp.tool_calls[0]
+        assert call.arguments == {"function_name": "validate_token",
+                                  "cve_id": "CVE-2026-4421"}
 
 
 # ---------------------------------------------------------------------------
@@ -593,15 +800,16 @@ class TestEndpoints:
     def test_tools(self, client):
         r = client.get("/tools")
         assert r.status_code == 200
-        assert len(r.json()["tools"]) == 3
+        assert [t["function"]["name"] for t in r.json()["tools"]] == list(TOOL_REGISTRY)
 
     def test_demo(self, client):
         with patch.object(gittrace_app, "get_graph") as gg:
             g = MagicMock()
             g.query.side_effect = [
-                _fake_query_result([["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]),
-                _fake_query_result([[["Service:api-gateway", "Function:validate_token"], 1]]),
-                _fake_query_result([["Sarah Chen", "sarah.chen@acme.com", "@sarahc", ["auth-service"]]]),
+                _fake_query_result([BLAST_ROW]),
+                _fake_query_result([[["Service:api-gateway", "Function:validate_token"], 1,
+                                     TOKEN_PY]]),
+                _fake_query_result([OWNER_ROW]),
             ]
             gg.return_value = g
             r = client.get("/demo")
@@ -610,6 +818,9 @@ class TestEndpoints:
         assert d["blast_radius"]["severity"] == "CRITICAL"
         assert d["attack_path"]["hop_count"] == 1
         assert d["code_owner"]["developer_name"] == "Sarah Chen"
+        assert d["code_owner"]["file_path"] == TOKEN_PY
+        # The demo's owner lookup is CVE-scoped, like its attack path.
+        assert g.query.call_args_list[2][1]["params"]["cve_id"] == "CVE-2026-4421"
 
     def test_query_empty_question_400(self, client):
         r = client.post("/query", json={"question": ""})
@@ -628,7 +839,7 @@ class TestEndpoints:
 
     def test_query_classifier_path(self, client, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         failing = MagicMock()
         failing.completion.side_effect = RuntimeError("quota exceeded")
@@ -642,7 +853,7 @@ class TestEndpoints:
 
     def test_query_llm_path(self, client, mock_graph):
         mock_graph.query.return_value = _fake_query_result(
-            [["CVE-2026-4421", "CRITICAL", ["token-service"], ["parse_claims"], 1]]
+            [BLAST_ROW]
         )
         first = _tool_call_response("get_blast_radius", {"cve_id": "CVE-2026-4421"})
         second = _text_response("CVE-2026-4421 is CRITICAL; token-service is at risk and needs immediate attention.")
@@ -657,3 +868,157 @@ class TestEndpoints:
         assert len(d.get("tool_results", [])) == 1
         assert d["tool_results"][0]["name"] == "get_blast_radius"
         assert d["tool_results"][0]["result"]["cve_id"] == "CVE-2026-4421"
+
+
+# ---------------------------------------------------------------------------
+# 6. Tool registry: one entry drives every surface
+# ---------------------------------------------------------------------------
+
+def count_functions(service: str) -> dict:
+    """A throwaway tool used to prove registration is a one-place change."""
+    return {"service": service, "count": 3}
+
+
+@pytest.fixture
+def extra_tool(monkeypatch):
+    tool = GraphTool(
+        name="count_functions",
+        func=count_functions,
+        description="Count the functions a service defines.",
+        parameters={
+            "type": "object",
+            "properties": {"service": {"type": "string"}},
+            "required": ["service"],
+            "additionalProperties": False,
+        },
+        label="function count",
+        summarize=lambda d: f"{d['service']} defines {d['count']} functions.",
+        plan=lambda ctx: ({"service": ctx.service_name}
+                          if ctx.service_name and ctx.mentions(("how many",))
+                          else None),
+    )
+    monkeypatch.setitem(TOOL_REGISTRY, tool.name, tool)
+    return tool
+
+
+class TestToolRegistry:
+    def test_parameters_match_function_signatures(self):
+        # The LLM schema is hand-written and the MCP schema is derived from the
+        # function signature; keep the two in step.
+        for name, tool in TOOL_REGISTRY.items():
+            sig = inspect.signature(tool.func)
+            params = tool.parameters
+            assert set(params["properties"]) == set(sig.parameters), name
+            required = {p.name for p in sig.parameters.values()
+                        if p.default is inspect.Parameter.empty}
+            assert set(params["required"]) == required, name
+
+    def test_new_tool_reaches_schemas_and_tools_endpoint(self, extra_tool, client):
+        assert "count_functions" in [s["function"]["name"] for s in tool_schemas()]
+        names = [t["function"]["name"] for t in client.get("/tools").json()["tools"]]
+        assert "count_functions" in names
+
+    def test_new_tool_reaches_keyword_dispatch_and_synthesis(self, extra_tool):
+        with patch.object(gittrace_app, "_graph_names", return_value=["api-gateway"]):
+            resp = run_agent("how many functions are in api-gateway?")
+        assert [tc.name for tc in resp.tool_calls] == ["count_functions"]
+        assert resp.tool_calls[0].arguments == {"service": "api-gateway"}
+        assert resp.answer == "[function count] api-gateway defines 3 functions."
+
+    def test_new_tool_reaches_llm_dispatch(self, extra_tool):
+        first = _tool_call_response("count_functions", {"service": "api-gateway"})
+        fake = _make_litellm_mock(first, _text_response("ok"))
+        with patch.dict(sys.modules, {"litellm": fake}):
+            resp = run_agent_with_litellm("count", "gemini/gemini-3.8-flash")
+        assert resp.tool_results[0].result == {"service": "api-gateway", "count": 3}
+        assert "api-gateway defines 3 functions" in resp.answer
+
+    def test_new_tool_reaches_mcp(self, extra_tool):
+        import asyncio
+
+        server = mcp_server.build_server()
+        tools = {t.name: t for t in asyncio.run(server.list_tools())}
+        assert set(tools) == {f"{n}_tool" for n in TOOL_REGISTRY}
+        assert tools["count_functions_tool"].input_schema["required"] == ["service"]
+        result = asyncio.run(server.call_tool("count_functions_tool", {"service": "x"}))
+        assert result.is_error is False
+        assert json.loads(result.content[0].text) == {"service": "x", "count": 3}
+
+
+# ---------------------------------------------------------------------------
+# 7. MCP server
+# ---------------------------------------------------------------------------
+
+class TestMCPServer:
+    def test_tools_mirror_registry(self):
+        import asyncio
+
+        tools = asyncio.run(mcp_server.server.list_tools())
+        assert [t.name for t in tools] == [f"{n}_tool" for n in TOOL_REGISTRY]
+        owner = next(t for t in tools if t.name == "find_code_owner_tool")
+        assert {"function_name", "file_path", "cve_id"} <= set(owner.input_schema["properties"])
+
+    def test_nothing_is_written_to_stdout(self):
+        # Under the stdio transport stdout *is* the protocol stream; a banner
+        # printed before server.run() corrupts the first message.
+        env = {**os.environ, "FALKORDB_HOST": os.environ.get("FALKORDB_HOST", "localhost")}
+        code = (
+            "import mcp_server\n"
+            "mcp_server.server.run = lambda *a, **k: None\n"
+            "mcp_server.main()\n"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=Path(__file__).resolve().parent,
+            env=env, capture_output=True, text=True, timeout=120,
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout == ""
+
+
+# ---------------------------------------------------------------------------
+# 8. Seed data integrity (no DB needed)
+# ---------------------------------------------------------------------------
+
+class TestSeedData:
+    defined = {
+        (path, name)
+        for path, funcs in seed_graph.SERVICE_FILES.values()
+        for name, _line, _entry in funcs
+    }
+
+    def test_function_definitions_are_unique_per_file(self):
+        pairs = [(path, name) for path, funcs in seed_graph.SERVICE_FILES.values()
+                 for name, _line, _entry in funcs]
+        assert len(pairs) == len(set(pairs))
+
+    def test_every_call_edge_targets_defined_functions(self):
+        # Regression: calls(tp, "refresh_token", ...) named a function
+        # token-service did not define, so MATCH ... CREATE silently made
+        # no edge.
+        for src_path, src, dst_path, dst in seed_graph.CALL_EDGES:
+            assert (src_path, src) in self.defined, (src_path, src)
+            assert (dst_path, dst) in self.defined, (dst_path, dst)
+        assert ("/token-service/token.py", "refresh_token",
+                "/token-service/token.py", "validate_token") in seed_graph.CALL_EDGES
+
+    def test_cves_and_endpoints_target_defined_functions(self):
+        for cve_id, _sev, _desc, path, name in seed_graph.CVES:
+            assert (path, name) in self.defined, cve_id
+        for method, route, path, name in seed_graph.ENDPOINTS:
+            assert (path, name) in self.defined, (method, route)
+
+    def test_people_and_services_exist(self):
+        services = {name for name, *_ in seed_graph.SERVICES}
+        developers = {name for name, *_ in seed_graph.DEVELOPERS}
+        assert set(seed_graph.SERVICE_FILES) == services
+        for dev, svc in seed_graph.OWNERSHIP + seed_graph.AUTHORED:
+            assert dev in developers and svc in services
+        for child, parent in seed_graph.DEPENDS:
+            assert child in services and parent in services
+
+    def test_link_rejects_an_edge_that_matched_nothing(self):
+        g = MagicMock()
+        g.query.return_value = SimpleNamespace(relationships_created=0)
+        with pytest.raises(RuntimeError, match="expected 1 relationship"):
+            seed_graph.link(g, "MATCH (a), (b) CREATE (a)-[:CALLS]->(b)", {})
