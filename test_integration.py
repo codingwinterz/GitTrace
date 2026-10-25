@@ -204,6 +204,7 @@ class TestCodeOwner:
         assert "error" not in out, out.get("error")
         assert out["file_path"] == TOKEN_PY
         assert out["developer_name"] == "Sarah Chen"
+        assert out["email"] == "sarah.chen@acme.com"
         assert out["slack"] == "@sarahc"
         assert out["owned_services"] == ["auth-service", "token-service"]
 

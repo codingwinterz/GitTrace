@@ -30,13 +30,14 @@ GitTrace answers all three from one graph, and returns the query that produced e
 
 ![Attack surface graph: api-gateway → token-service → token.py → validate_token, with the CVE and its owner](docs/screenshots/attack-path.png)
 
-Tested against the seeded graph — the exact JSON from `GET /demo`:
+Every value below is asserted by the integration suite (`test_integration.py`), which runs the queries unmocked against a real FalkorDB seeded with `seed_graph.py`, in CI on every push:
 
 | Question | Answer returned |
 |---|---|
-| Blast radius of `CVE-2026-4421` | `CRITICAL`, 1 service (`token-service`), upstream callers `refresh_token`, `rotate_key` |
-| Shortest path `api-gateway` → `validate_token` | `api-gateway → token-service → token-service/token.py → validate_token`, **3 hops** |
-| Owner of `validate_token` (scoped by the CVE) | Sarah Chen · `sarah.chen@acme.com` · `@sarahc` (also owns `auth-service`, `token-service`) |
+| Blast radius of `CVE-2026-4421` | `CRITICAL`, affects `/token-service/token.py::validate_token`; 1 service (`token-service`), upstream callers `refresh_token`, `rotate_key` (not `parse_claims`, which it calls) |
+| Shortest path `api-gateway` → `validate_token` (scoped by the CVE) | `Service:api-gateway → Service:token-service → File:/token-service/token.py → Function:validate_token`, **3 hops** |
+| Owner of `validate_token` (scoped by the CVE) | Sarah Chen · `sarah.chen@acme.com` · `@sarahc`, file `/token-service/token.py` (also owns `auth-service`, `token-service`) |
+| Shortest path to `validate_token` with no CVE or file | Error: defined in 2 files, candidates `/auth-service/auth.go::validate_token`, `/token-service/token.py::validate_token` |
 
 ---
 
