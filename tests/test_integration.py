@@ -21,7 +21,6 @@ import uuid
 
 import pytest
 
-import app as gittrace_app
 from gittrace.core import agent, question, tools
 from gittrace.graph import connection, seed
 
@@ -246,15 +245,6 @@ class TestAgent:
         assert names == ["get_blast_radius", "find_code_owner"]
         assert "Sarah Chen" in resp.answer
         assert TOKEN_PY in resp.answer
-
-    def test_demo_scenario_end_to_end(self):
-        demo = gittrace_app.demo_scenario()
-        assert demo["blast_radius"]["impacted_functions"] == ["refresh_token", "rotate_key"]
-        assert f"File:{TOKEN_PY}" in demo["attack_path"]["path_trace"]
-        assert demo["attack_path"]["hop_count"] == 3
-        assert demo["attack_path"]["cve_id"] == "CVE-2026-4421"
-        assert demo["code_owner"]["developer_name"] == "Sarah Chen"
-        assert demo["code_owner"]["file_path"] == TOKEN_PY
 
 
 @pytest.mark.skipif(

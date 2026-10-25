@@ -1,14 +1,15 @@
 """
-test_app.py — automated test suite for GitTrace.
+test_core.py — offline test suite for gittrace.core (no database, no API key).
 
 Covers:
   1. Pure helper functions (CVE / function / service extraction, answer synthesis)
   2. Graph tools with a mocked FalkorDB layer (no live DB required)
-  3. FastAPI endpoints via TestClient
+  3. The keyword classifier agent
   4. The LiteLLM agent loop with a fully mocked LLM, so tests never hit the
      Gemini API or depend on its quota.
+  5. The tool registry, 6. the MCP server, 7. seed data integrity
 
-Run:  pytest test_app.py -v
+Run:  pytest tests/test_core.py -v
 """
 
 from __future__ import annotations
@@ -24,9 +25,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app import app
 from gittrace import mcp_server
 from gittrace.core import agent, question
 from gittrace.core.agent import _synthesize_answer, run_agent, run_agent_with_litellm
@@ -50,11 +49,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
-
 
 @pytest.fixture
 def mock_graph() -> MagicMock:
@@ -768,108 +762,7 @@ class TestAgentLoop:
 
 
 # ---------------------------------------------------------------------------
-# 5. FastAPI endpoints
-# ---------------------------------------------------------------------------
-
-def _assert_ascii_safe(text: str) -> None:
-    """Ensure an answer is safe to log to cp1252/conservative consoles.
-
-    Gemini/LLM answers can contain Unicode arrows (U+2192) etc. that fail to
-    encode under non-UTF-8 consoles. This check mirrors the old limitation so
-    we keep it in guard only while accepting Unicode in the frontend (UTF-8).
-    """
-    # We no longer require ASCII — the frontend is UTF-8 and answers can
-    # contain arrows from the model. Keep the check disabled but documented
-    # so reviewers understand the tradeoff.
-    pass
-
-
-class TestEndpoints:
-    def test_health(self, client):
-        r = client.get("/health")
-        assert r.status_code == 200
-        assert r.json() == {"status": "ok"}
-
-    def test_root_health(self, client):
-        r = client.get("/")
-        assert r.status_code == 200
-        assert r.json() == {"status": "ok", "app": "GitTrace"}
-
-    def test_tools(self, client):
-        r = client.get("/tools")
-        assert r.status_code == 200
-        assert [t["function"]["name"] for t in r.json()["tools"]] == list(TOOL_REGISTRY)
-
-    def test_demo(self, client):
-        with patch.object(connection, "get_graph") as gg:
-            g = MagicMock()
-            g.query.side_effect = [
-                _fake_query_result([BLAST_ROW]),
-                _fake_query_result([[["Service:api-gateway", "Function:validate_token"], 1,
-                                     TOKEN_PY]]),
-                _fake_query_result([OWNER_ROW]),
-            ]
-            gg.return_value = g
-            r = client.get("/demo")
-        assert r.status_code == 200
-        d = r.json()
-        assert d["blast_radius"]["severity"] == "CRITICAL"
-        assert d["attack_path"]["hop_count"] == 1
-        assert d["code_owner"]["developer_name"] == "Sarah Chen"
-        assert d["code_owner"]["file_path"] == TOKEN_PY
-        # The demo's owner lookup is CVE-scoped, like its attack path.
-        assert g.query.call_args_list[2][1]["params"]["cve_id"] == "CVE-2026-4421"
-
-    def test_query_empty_question_400(self, client):
-        r = client.post("/query", json={"question": ""})
-        assert r.status_code == 400
-        assert "question is required" in r.json()["detail"]
-
-    def test_query_whitespace_question_400(self, client):
-        r = client.post("/query", json={"question": "   \n\t "})
-        assert r.status_code == 400
-        assert "question is required" in r.json()["detail"]
-
-    def test_query_missing_question_400(self, client):
-        r = client.post("/query", json={})
-        assert r.status_code == 400
-        assert "question is required" in r.json()["detail"]
-
-    def test_query_classifier_path(self, client, mock_graph):
-        mock_graph.query.return_value = _fake_query_result(
-            [BLAST_ROW]
-        )
-        failing = MagicMock()
-        failing.completion.side_effect = RuntimeError("quota exceeded")
-        with patch.dict(sys.modules, {"litellm": failing}), \
-             patch.object(connection, "get_graph", return_value=mock_graph):
-            r = client.post("/query", json={"question": "blast radius of CVE-2026-4421"})
-        assert r.status_code == 200
-        d = r.json()
-        assert d["cve_id"] == "CVE-2026-4421"
-        assert "token-service" in d["answer"]
-
-    def test_query_llm_path(self, client, mock_graph):
-        mock_graph.query.return_value = _fake_query_result(
-            [BLAST_ROW]
-        )
-        first = _tool_call_response("get_blast_radius", {"cve_id": "CVE-2026-4421"})
-        second = _text_response("CVE-2026-4421 is CRITICAL; token-service is at risk and needs immediate attention.")
-        fake = _make_litellm_mock(first, second)
-        with patch.dict(sys.modules, {"litellm": fake}), \
-             patch.object(connection, "get_graph", return_value=mock_graph):
-            r = client.post("/query", json={"question": "blast radius of CVE-2026-4421"})
-        assert r.status_code == 200
-        d = r.json()
-        assert "token-service is at risk" in d["answer"]
-        assert d["tool_calls"][0]["name"] == "get_blast_radius"
-        assert len(d.get("tool_results", [])) == 1
-        assert d["tool_results"][0]["name"] == "get_blast_radius"
-        assert d["tool_results"][0]["result"]["cve_id"] == "CVE-2026-4421"
-
-
-# ---------------------------------------------------------------------------
-# 6. Tool registry: one entry drives every surface
+# 5. Tool registry: one entry drives every surface
 # ---------------------------------------------------------------------------
 
 def count_functions(service: str) -> dict:
@@ -911,10 +804,8 @@ class TestToolRegistry:
                         if p.default is inspect.Parameter.empty}
             assert set(params["required"]) == required, name
 
-    def test_new_tool_reaches_schemas_and_tools_endpoint(self, extra_tool, client):
+    def test_new_tool_reaches_schemas(self, extra_tool):
         assert "count_functions" in [s["function"]["name"] for s in tool_schemas()]
-        names = [t["function"]["name"] for t in client.get("/tools").json()["tools"]]
-        assert "count_functions" in names
 
     def test_new_tool_reaches_keyword_dispatch_and_synthesis(self, extra_tool):
         with patch.object(question, "graph_names", return_value=["api-gateway"]):
@@ -944,7 +835,7 @@ class TestToolRegistry:
 
 
 # ---------------------------------------------------------------------------
-# 7. MCP server
+# 6. MCP server
 # ---------------------------------------------------------------------------
 
 class TestMCPServer:
@@ -978,7 +869,7 @@ class TestMCPServer:
 
 
 # ---------------------------------------------------------------------------
-# 8. Seed data integrity (no DB needed)
+# 7. Seed data integrity (no DB needed)
 # ---------------------------------------------------------------------------
 
 class TestSeedData:

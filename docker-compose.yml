@@ -1,7 +1,7 @@
 # Local FalkorDB for development and the integration suite.
 #
 #   docker compose up -d falkordb
-#   FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= pytest test_integration.py -v
+#   FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= pytest tests/test_integration.py -v
 #
 # Same image tag as the CI service in .github/workflows/tests.yml; bump both together.
 services:

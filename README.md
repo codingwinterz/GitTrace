@@ -12,6 +12,8 @@
 
 [![Watch the GitTrace demo](https://i.ytimg.com/vi/xwo16Zesdus/hqdefault.jpg)](https://youtu.be/xwo16Zesdus)
 
+> **This branch (`v2`) is being rebuilt as a command-line scanner** — see `CLAUDE.md` for the plan. The web UI and HTTP API shown in the demo video have been removed here (they remain on `main`). The graph tools are available through the MCP server and the `gittrace` Python package.
+
 ---
 
 ## The question it answers
@@ -26,11 +28,7 @@ GitTrace answers all three from one graph, and returns the query that produced e
 
 ## See it work
 
-![GitTrace after running the scripted demo: chat on the left, attack surface on the right](docs/screenshots/demo-graph.png)
-
-![Attack surface graph: api-gateway → token-service → token.py → validate_token, with the CVE and its owner](docs/screenshots/attack-path.png)
-
-Every value below is asserted by the integration suite (`test_integration.py`), which runs the queries unmocked against a real FalkorDB seeded with `seed_graph.py`, in CI on every push:
+Every value below is asserted by the integration suite (`tests/test_integration.py`), which runs the queries unmocked against a real FalkorDB seeded by `gittrace.graph.seed`, in CI on every push:
 
 | Question | Answer returned |
 |---|---|
@@ -56,17 +54,25 @@ Remove FalkorDB and the product still starts, but it can no longer answer any of
 
 ```mermaid
 flowchart LR
-  UI["Static frontend<br/>chat + SVG attack surface"] -->|"POST /query"| API["FastAPI agent<br/>app.py"]
-  API -->|tool call| TOOLS["Graph tools<br/>blast radius · shortest path · owner"]
-  TOOLS -->|Cypher| DB[("FalkorDB Cloud<br/>gittrace")]
-  API -.->|"when a key is set"| LLM["LiteLLM → Gemini<br/>function calling"]
-  MCP["Any MCP host"] -->|stdio| SRV["mcp_server.py"] --> TOOLS
+  MCP["Any MCP host"] -->|stdio| SRV["gittrace.mcp_server"]
+  SRV --> REG["Tool registry<br/>gittrace.core.registry"]
+  AGENT["Agent<br/>gittrace.core.agent"] --> REG
+  REG --> TOOLS["Graph tools<br/>blast radius · shortest path · owner"]
+  TOOLS -->|Cypher| DB[("FalkorDB<br/>gittrace")]
+  AGENT -.->|"when a key is set"| LLM["LiteLLM → Gemini<br/>function calling"]
 ```
 
-Two execution paths, same tools:
+| Package | Contents |
+|---|---|
+| `gittrace/core` | The three graph tools, the tool registry, question parsing and the agent loop. No web framework. |
+| `gittrace/graph` | FalkorDB connection and the demo-graph seed |
+| `gittrace/mcp_server.py` | MCP server generated from the tool registry |
+| `gittrace/languages/python`, `rules`, `llm`, `cli` | Empty placeholders for the CLI scanner (later phases) |
 
-1. **LLM function calling** — Gemini picks a tool, the backend runs the Cypher, the model writes the answer.
-2. **Deterministic classifier** — if no key is configured or the model fails, keyword heuristics call the same tools. The demo works either way; only the prose changes.
+The agent (`gittrace.core.agent`) has two execution paths over the same tools:
+
+1. **LLM function calling** — Gemini picks a tool, the agent runs the Cypher, the model writes the answer.
+2. **Deterministic classifier** — if no key is configured or the model fails, keyword heuristics call the same tools. Only the prose changes.
 
 ---
 
@@ -77,25 +83,23 @@ git clone https://github.com/codingwinterz/GitTrace && cd GitTrace
 cp .env.example .env          # fill in FalkorDB host/port/user/password
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python seed_graph.py          # one-time: create the gittrace graph
-python app.py                 # API on http://localhost:8000
-python -m http.server 5500 --directory frontend     # UI on http://localhost:5500
+python -m gittrace.graph.seed # one-time: create the gittrace graph
+python -m gittrace.mcp_server # MCP server on stdio
 ```
 
-Open `http://localhost:5500` and press **Run demo**. The Gemini key is optional — without it the classifier path answers instead.
+Run the commands from the repository root. For a local FalkorDB instead of the cloud, `docker compose up -d falkordb` and set `FALKORDB_HOST=localhost`, `FALKORDB_PORT=6379` and an empty `FALKORDB_PASSWORD`.
 
 ### Environment
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `FALKORDB_HOST` / `FALKORDB_PORT` | yes | Cloud instance from **Connectivity → Connect** |
-| `FALKORDB_USER` / `FALKORDB_PASSWORD` | yes | Instance credentials |
-| `Gemini_API_Key` | no | Enables the LLM function-calling path |
-| `LITELLM_MODEL` | no | Defaults to `gemini/gemini-flash-lite-latest` |
-| `GITTRACE_PORT` | no | Backend port (default `8000`) |
-| `GITTRACE_FRONTEND_ORIGIN` | no | Extra CORS origin for a deployed frontend |
+| `FALKORDB_HOST` / `FALKORDB_PORT` | yes | FalkorDB instance (cloud: **Connectivity → Connect**) |
+| `FALKORDB_USER` / `FALKORDB_PASSWORD` | cloud only | Instance credentials |
+| `GITTRACE_GRAPH` | no | Graph name (default `gittrace`) |
+| `Gemini_API_Key` | no | Enables the agent's LLM function-calling path |
+| `LITELLM_MODEL` | no | Model for the agent, e.g. `gemini/gemini-flash-lite-latest` |
 
-`.env` is gitignored. The **Open FalkorDB Browser** button deep-links to the hosted graph tab; the URL is the `BROWSER_URL` constant in `frontend/app.js`.
+`.env` is gitignored.
 
 ---
 
@@ -178,28 +182,20 @@ ORDER BY file_path, function_name, developer_name
 
 Every row is checked: if the function resolves to more than one file, the tool reports the ambiguity instead of picking one.
 
-All tools are declared once, in `TOOL_REGISTRY` in `app.py`. `/tools` returns them as OpenAI-format schemas, so any model can call them, and the MCP server is generated from the same registry.
-
-## API
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/` | Root check — `{"status":"ok","app":"GitTrace"}` |
-| `GET` | `/health` | Health check |
-| `POST` | `/query` | Natural-language question → answer + tool calls |
-| `GET` | `/tools` | Tool schemas |
-| `GET` | `/demo` | Scripted three-question scenario, one JSON payload |
-
-`POST /query` rejects missing, empty, or whitespace-only questions with `400` and a readable `detail`.
+All tools are declared once, in `TOOL_REGISTRY` in `gittrace/core/registry.py`. `tool_schemas()` returns them as OpenAI-format schemas, so any model can call them, and the MCP server is generated from the same registry.
 
 ## MCP server (Track 01)
 
 ```bash
-python mcp_server.py      # stdio transport
+python -m gittrace.mcp_server      # stdio transport, from the repository root
 ```
 
 ```json
-{ "command": "python", "args": ["mcp_server.py"] }
+{
+  "command": "python",
+  "args": ["-m", "gittrace.mcp_server"],
+  "env": { "PYTHONPATH": "/path/to/GitTrace" }
+}
 ```
 
 Exposes `get_blast_radius_tool`, `find_shortest_dependency_path_tool`, `find_code_owner_tool` over the Model Context Protocol, so Claude Desktop or any MCP host can query the same graph.
@@ -209,13 +205,13 @@ Exposes `get_blast_radius_tool`, `find_shortest_dependency_path_tool`, `find_cod
 ## Tests
 
 ```bash
-python -m pytest test_app.py -q        # no DB, no API key
+python -m pytest tests/test_core.py -q   # no DB, no API key
 
-docker compose up -d falkordb            # real FalkorDB for the integration suite
-FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest test_integration.py -q
+docker compose up -d falkordb              # real FalkorDB for the integration suite
+FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_integration.py -q
 ```
 
-The offline suite covers helpers, all graph tools against a mocked FalkorDB layer, the agent loop against a mocked LLM, the tool registry, the MCP server, and every FastAPI endpoint. It runs on a clean clone before `.env` exists, and in CI on Python 3.11–3.13 (`.github/workflows/tests.yml`).
+The offline suite covers helpers, all graph tools against a mocked FalkorDB layer, the agent loop against a mocked LLM, the tool registry, the MCP server (including that it starts without importing a web framework), and seed-data integrity. It runs on a clean clone before `.env` exists, and in CI on Python 3.11–3.13 (`.github/workflows/tests.yml`).
 
 The integration suite runs every Cypher query unmocked: it seeds its own uniquely named graph, runs against it, and drops it. CI runs it against a FalkorDB service container; locally it skips itself when FalkorDB is unreachable.
 
@@ -243,7 +239,6 @@ The integration suite runs every Cypher query unmocked: it seeds its own uniquel
 - **Seed data is synthetic.** The graph models a representative microservice estate; it is not trained or evaluated on a real organisation's codebase.
 - **The LLM is optional, not required.** With a valid Gemini key the agent chooses tools via function calling; without one, the keyword classifier picks them. Same tools, less flexible phrasing.
 - **No public deployment.** Rule 10 accepts complete local setup, and that is what is documented and verified here.
-- **The frontend is a single-page demo**, not a hardened multi-tenant product: no auth, no persistence, no rate limiting.
 
 ## AI assistance disclosure (Rule 11)
 
