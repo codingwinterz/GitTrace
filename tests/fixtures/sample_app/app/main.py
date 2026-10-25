@@ -3,7 +3,7 @@ from fastapi import Depends, FastAPI
 
 from app import Repo
 from app.auth import get_current_user
-from app.routers import admin, users
+from app.routers import admin, reports, users
 
 app = FastAPI(title="sample")
 app.include_router(users.router, prefix="/api")
@@ -19,3 +19,6 @@ def health():
 def me(user=Depends(get_current_user)):
     repo = Repo()
     return repo.get_user(user["name"])
+
+
+app.include_router(reports.router, prefix="/api")

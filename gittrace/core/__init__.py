@@ -1,1 +1,1 @@
-"""Graph tools, the tool registry and the question-answering agent. No web framework."""
+"""Scanning (pipeline, rules runner, reachability, severity, owner), the graph tools, their registry and the agent. No web framework."""

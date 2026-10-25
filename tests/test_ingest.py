@@ -7,7 +7,7 @@ Covers:
      (expected values in tests/expected_sample_app.py)
   3. tests/fixtures/flask_app: Flask routes, blueprint prefixes, auth decorators
   4. Resolver edge cases: scoping, shadowing, duplicates, cycles, layouts
-  5. Graph naming and the `python -m gittrace.ingest` entry point
+  5. Graph naming and the `python -m gittrace scan` entry point
 
 Run:  pytest tests/test_ingest.py -v
 """
@@ -15,6 +15,7 @@ Run:  pytest tests/test_ingest.py -v
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 import sys
 import textwrap
@@ -168,15 +169,15 @@ class TestSampleApp:
 
     def test_counts(self, sample):
         counts = sample.counts()
-        assert counts["files"] == 10
+        assert counts["files"] == 13
         assert counts["parse_failures"] == 1
-        assert counts["functions"] == 21
-        assert counts["module_scopes"] == 5
-        assert counts["endpoints"] == 10
-        assert counts["calls"] == 50
-        assert counts["resolved_calls"] == 15
-        assert counts["unresolved_calls"] == 35
-        assert counts["external_callees"] == 25
+        assert counts["functions"] == 34
+        assert counts["module_scopes"] == 7
+        assert counts["endpoints"] == 16
+        assert counts["calls"] == 82
+        assert counts["resolved_calls"] == 20
+        assert counts["unresolved_calls"] == 62
+        assert counts["external_callees"] == 35
 
 
 # ---------------------------------------------------------------------------
@@ -475,26 +476,24 @@ class TestEntryPoint:
         assert a.startswith("gittrace_sample_app_")
         assert a != graph_name_for(FLASK_ROOT)
 
-    def test_dry_run_prints_counts(self):
-        out = subprocess.run(
-            [sys.executable, "-m", "gittrace.ingest", str(expected.ROOT), "--dry-run"],
-            cwd=REPO_ROOT, capture_output=True, text=True, timeout=120,
+    def _scan(self, path) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, "-m", "gittrace", "scan", str(path), "--offline", "--no-blame",
+             "--format", "json", "--fail-on", "none"],
+            cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", timeout=120,
         )
+
+    def test_scan_reports_what_was_ingested(self):
+        out = self._scan(expected.ROOT)
         assert out.returncode == 0, out.stderr
-        assert "files:            10" in out.stdout
-        assert "parse failures:   1" in out.stdout
-        assert "functions:        21 (+5 module scopes)" in out.stdout
-        assert "endpoints:        10" in out.stdout
-        assert "calls:            50" in out.stdout
-        assert "resolved:       15 (30%)" in out.stdout
-        assert "unresolved:     35" in out.stdout
-        assert "failed: scripts/half_merged.py: syntax error at line 3" in out.stdout
+        data = json.loads(out.stdout)
+        assert data["scanned"] == {"files": 13, "parse_failures": 1, "functions": 34,
+                                   "endpoints": 16, "calls": 82}
+        assert data["parse_failures"] == [
+            {"file": "scripts/half_merged.py", "reason": "syntax error at line 3"}]
         assert "half_merged.py" in out.stderr     # logged as a warning too
 
     def test_missing_path_is_an_error(self, tmp_path):
-        out = subprocess.run(
-            [sys.executable, "-m", "gittrace.ingest", str(tmp_path / "nope"), "--dry-run"],
-            cwd=REPO_ROOT, capture_output=True, text=True, timeout=120,
-        )
-        assert out.returncode == 1
+        out = self._scan(tmp_path / "nope")
+        assert out.returncode == 2
         assert "not a directory" in out.stderr

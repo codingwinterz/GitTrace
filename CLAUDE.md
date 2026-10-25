@@ -75,6 +75,23 @@ findings and code in plain language using a local LLM.
 - A scan rebuilds the project's own graph (`gittrace_<folder>_<hash8>`):
   MERGE everything stamped with a scan_id, then delete what an older scan
   wrote. tree-sitter accepts most Python 2 syntax, so Python 2 files parse.
+- A file's `<module>` node is also created when a finding sits at module
+  level (e.g. a secret in a constants-only file), so the Sink has a function
+  to hang from.
+- One Sink per dangerous call site or secret assignment, id
+  `path.py::line::col` (1-based column), linked
+  (Function)-[:REACHES_SINK]->(Sink). Findings come from Sinks only.
+- Hardcoded secret values are masked in every report and Sink snippet
+  (first 3 characters kept, the rest `*`).
+- `--depth` (default 10, max 50) is the maximum number of CALLS hops from a
+  route handler to the vulnerable function; the blast radius counts callers
+  within the same depth.
+- A SQL query passed in unchanged as a parameter is not a finding; values
+  are not followed across function calls (SQL built in one function and
+  executed in another is a known false negative).
+- `scan --offline` computes reachability in memory and writes no graph;
+  `--no-blame` skips git blame. Severity is the fixed points table in
+  gittrace/core/severity.py and the README; change both together.
 
 ## Phases (stop and report after each; do not start the next without approval)
 - Phase 1: Fix existing bugs in the current code.

@@ -32,8 +32,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run offline suite (mocked graph + mocked LLM, no credentials)
-        run: python -m pytest tests/test_core.py tests/test_ingest.py -q
+      - name: Run offline suites (no database, mocked LLM, no credentials)
+        run: python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py -q
 
   integration:
     name: integration suite (real FalkorDB)
@@ -84,4 +84,4 @@ jobs:
           EOF
 
       - name: Run integration suites (real FalkorDB, a fresh graph per run)
-        run: python -m pytest tests/test_integration.py tests/test_ingest_integration.py -v
+        run: python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -v

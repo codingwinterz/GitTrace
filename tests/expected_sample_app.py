@@ -18,7 +18,10 @@ FILES = [
     "app/routers/__init__.py",
     "app/routers/admin.py",
     "app/routers/debug.py",
+    "app/routers/reports.py",
     "app/routers/users.py",
+    "app/services/__init__.py",
+    "app/services/maintenance.py",
     "app/utils/__init__.py",
     "app/utils/shell.py",
 ]
@@ -36,7 +39,7 @@ FUNCTIONS = {
     "app/db.py::Repo.delete_user.build_query": ("nested", 21, 22, False),
     "app/db.py::Repo._log": ("method", 27, 28, False),
     "app/db.py::AuditRepo.get_user": ("method", 32, 34, False),
-    "app/main.py::<module>": ("module", 1, 21, False),
+    "app/main.py::<module>": ("module", 1, 24, False),
     "app/main.py::health": ("function", 13, 15, False),
     "app/main.py::me": ("function", 18, 21, False),
     "app/routers/admin.py::<module>": ("module", 1, 23, False),
@@ -44,8 +47,15 @@ FUNCTIONS = {
     "app/routers/admin.py::report": ("function", 14, 19, False),
     "app/routers/admin.py::report.render": ("nested", 16, 17, False),
     "app/routers/admin.py::load_rows": ("function", 22, 23, False),
-    "app/routers/debug.py::<module>": ("module", 1, 11, False),
+    "app/routers/debug.py::<module>": ("module", 1, 16, False),
     "app/routers/debug.py::dump_env": ("function", 9, 11, False),
+    "app/routers/debug.py::run": ("function", 14, 16, False),
+    "app/routers/reports.py::<module>": ("module", 1, 38, False),
+    "app/routers/reports.py::by_user": ("function", 11, 16, False),
+    "app/routers/reports.py::count": ("function", 19, 22, False),
+    "app/routers/reports.py::safe": ("function", 25, 28, False),
+    "app/routers/reports.py::import_report": ("function", 31, 33, False),
+    "app/routers/reports.py::version": ("function", 36, 38, False),
     "app/routers/users.py::<module>": ("module", 1, 33, False),
     "app/routers/users.py::read_user": ("function", 12, 15, False),
     "app/routers/users.py::remove_user": ("function", 18, 22, False),
@@ -53,6 +63,14 @@ FUNCTIONS = {
     "app/routers/users.py::list_files": ("function", 31, 33, False),
     "app/utils/shell.py::run_command": ("function", 6, 11, False),
     "app/utils/shell.py::run_command.log": ("nested", 7, 8, False),
+    "app/services/maintenance.py::<module>": ("module", 1, 42, False),
+    "app/services/maintenance.py::count_users": ("function", 13, 14, False),
+    "app/services/maintenance.py::purge": ("function", 17, 19, False),
+    "app/services/maintenance.py::nightly": ("function", 22, 24, False),
+    "app/services/maintenance.py::load_cache": ("function", 27, 29, False),
+    "app/services/maintenance.py::load_config": ("function", 32, 33, False),
+    "app/services/maintenance.py::check": ("function", 36, 37, False),
+    "app/services/maintenance.py::Mailer.__init__": ("method", 41, 42, False),
 }
 
 # (caller, callee, line) — calls that resolve to project functions.
@@ -79,6 +97,13 @@ RESOLVED = {
     # `from ..utils.shell import run_command`
     ("app/routers/users.py::list_files", "app/utils/shell.py::run_command", 33),
     ("app/utils/shell.py::run_command", "app/utils/shell.py::run_command.log", 10),
+    # from ..db import connect
+    ("app/routers/reports.py::by_user", "app/db.py::connect", 13),
+    ("app/routers/reports.py::count", "app/db.py::connect", 21),
+    ("app/routers/reports.py::safe", "app/db.py::connect", 27),
+    # same-file functions, in a module no route reaches
+    ("app/services/maintenance.py::nightly", "app/services/maintenance.py::purge", 23),
+    ("app/services/maintenance.py::nightly", "app/services/maintenance.py::count_users", 24),
 }
 
 # (caller, full dotted name, origin, line) — calls left unresolved.
@@ -120,6 +145,34 @@ UNRESOLVED = {
     ("app/utils/shell.py::run_command.log", "os.system", "import", 8),
     # `from subprocess import run`
     ("app/utils/shell.py::run_command", "subprocess.run", "import", 11),
+    ("app/main.py::<module>", "app.include_router", "unknown", 24),
+    ("app/routers/debug.py::<module>", "router.get", "unknown", 14),
+    ("app/routers/debug.py::run", "os.popen", "import", 16),
+    # a method called on a call's result keeps the call in its name
+    ("app/routers/debug.py::run", "os.popen().read", "unknown", 16),
+    ("app/routers/reports.py::<module>", "fastapi.APIRouter", "import", 7),
+    ("app/routers/reports.py::<module>", "router.get", "unknown", 11),
+    ("app/routers/reports.py::<module>", "router.get", "unknown", 19),
+    ("app/routers/reports.py::<module>", "router.get", "unknown", 25),
+    ("app/routers/reports.py::<module>", "router.post", "unknown", 31),
+    ("app/routers/reports.py::<module>", "router.get", "unknown", 36),
+    ("app/routers/reports.py::by_user", "conn.execute", "unknown", 16),
+    ("app/routers/reports.py::by_user", "conn.execute().fetchall", "unknown", 16),
+    ("app/routers/reports.py::count", "conn.execute", "unknown", 22),
+    ("app/routers/reports.py::count", "conn.execute().fetchone", "unknown", 22),
+    ("app/routers/reports.py::safe", "conn.execute", "unknown", 28),
+    ("app/routers/reports.py::safe", "conn.execute().fetchall", "unknown", 28),
+    ("app/routers/reports.py::import_report", "yaml.load", "import", 33),
+    ("app/routers/reports.py::version", "eval", "builtin", 38),
+    ("app/services/maintenance.py::<module>", "os.environ.get", "import", 7),
+    ("app/services/maintenance.py::<module>", "os.getenv", "import", 8),
+    ("app/services/maintenance.py::count_users", "conn.execute", "unknown", 14),
+    ("app/services/maintenance.py::count_users", "conn.execute().fetchone", "unknown", 14),
+    ("app/services/maintenance.py::purge", "conn.execute", "unknown", 19),
+    ("app/services/maintenance.py::load_cache", "open", "builtin", 28),
+    ("app/services/maintenance.py::load_cache", "pickle.load", "import", 29),
+    ("app/services/maintenance.py::load_config", "yaml.load", "import", 33),
+    ("app/services/maintenance.py::check", "eval", "builtin", 37),
 }
 
 # id -> (method, path, handler, line, auth_required, auth_evidence, prefix_resolved)
@@ -146,6 +199,18 @@ ENDPOINTS = {
     # debug.router is never included: its own prefix only, flagged unresolved.
     "GET /debug/env -> app/routers/debug.py::dump_env":
         ("GET", "/debug/env", "app/routers/debug.py::dump_env", 9, False, (), False),
+    "GET /debug/run -> app/routers/debug.py::run":
+        ("GET", "/debug/run", "app/routers/debug.py::run", 14, False, (), False),
+    "GET /api/reports/by-user -> app/routers/reports.py::by_user":
+        ("GET", "/api/reports/by-user", "app/routers/reports.py::by_user", 11, False, (), True),
+    "GET /api/reports/count -> app/routers/reports.py::count":
+        ("GET", "/api/reports/count", "app/routers/reports.py::count", 19, False, (), True),
+    "GET /api/reports/safe/{user_id} -> app/routers/reports.py::safe":
+        ("GET", "/api/reports/safe/{user_id}", "app/routers/reports.py::safe", 25, False, (), True),
+    "POST /api/reports/import -> app/routers/reports.py::import_report":
+        ("POST", "/api/reports/import", "app/routers/reports.py::import_report", 31, False, (), True),
+    "GET /api/reports/version -> app/routers/reports.py::version":
+        ("GET", "/api/reports/version", "app/routers/reports.py::version", 36, False, (), True),
 }
 
 

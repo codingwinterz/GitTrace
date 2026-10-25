@@ -70,6 +70,59 @@ class FunctionDef:
 
 
 @dataclass(frozen=True)
+class ArgFact:
+    """What a rule needs to know about one argument (or assigned value).
+
+    kind:
+      literal — a constant (string, number, bool, None, or an expression or
+                variable built only from constants)
+      built   — a string built at run time: f-string, `+`, `%`, `.format()`,
+                `.join()`, or a variable assigned from one of those
+      param   — a bare function parameter, passed through unchanged
+      other   — anything else (a call result, an attribute, an unknown name)
+    how:    for `built`, the construction (fstring | concat | percent | format | join)
+    via:    the local variable the value came through, if any
+    params: function parameters the value derives from (through local
+            assignments, and enclosing functions' parameters for closures)
+    value:  the constant, for a literal
+    ref:    the dotted name, for a name or attribute (e.g. `yaml.SafeLoader`)
+    """
+
+    kind: str
+    text: str
+    how: str | None = None
+    via: str | None = None
+    params: tuple[str, ...] = ()
+    value: object | None = None
+    ref: str | None = None
+
+    @property
+    def is_literal(self) -> bool:
+        return self.kind == "literal"
+
+
+@dataclass(frozen=True)
+class SiteFacts:
+    """Where a call or assignment is, and what its source looks like."""
+
+    file: str
+    line: int
+    column: int          # 1-based
+    end_line: int
+    snippet: str         # the whole source lines line..end_line
+
+
+@dataclass(frozen=True)
+class AssignFact:
+    """A string constant bound to a name: `NAME = "..."`, `self.name = "..."`."""
+
+    function_id: str     # the function (or <module>) the assignment runs in
+    target: str          # the bound name; for an attribute, the attribute name
+    value: ArgFact
+    site: SiteFacts
+
+
+@dataclass(frozen=True)
 class CallSite:
     """One call expression.
 
@@ -89,10 +142,29 @@ class CallSite:
     dotted: str
     origin: str
     callee_id: str | None = None
+    site: SiteFacts | None = None
+    args: tuple[ArgFact, ...] = ()
+    kwargs: tuple[tuple[str, ArgFact], ...] = ()
 
     @property
     def resolved(self) -> bool:
         return self.callee_id is not None
+
+    def kwarg(self, name: str) -> ArgFact | None:
+        for key, value in self.kwargs:
+            if key == name:
+                return value
+        return None
+
+    def argument(self, position: int, *names: str) -> ArgFact | None:
+        """The argument at `position`, or the first of `names` passed by keyword."""
+        if position < len(self.args):
+            return self.args[position]
+        for name in names:
+            found = self.kwarg(name)
+            if found is not None:
+                return found
+        return None
 
 
 @dataclass(frozen=True)
@@ -123,11 +195,17 @@ class ParsedProject:
     files: list[FileRecord] = field(default_factory=list)
     functions: list[FunctionDef] = field(default_factory=list)
     failures: list[ParseFailure] = field(default_factory=list)
+    assignments: list[AssignFact] = field(default_factory=list)
+    # Every file's <module> record, by id. Only files that call at import
+    # time have theirs in `functions`; a finding at module level adds it.
+    module_scopes: dict[str, FunctionDef] = field(default_factory=dict)
 
 
 class LanguagePlugin(ABC):
-    """One language: a parser, a call resolver, a route detector and (from
-    Phase 4) a rule set, all working on the plug-in's own ParsedProject."""
+    """One language: a parser, a call resolver, a route detector and a rule
+    set, all working on the plug-in's own ParsedProject. The parser turns
+    calls and assignments into the language-neutral CallSite / AssignFact
+    records; rules (gittrace.rules) only ever see those."""
 
     name: str
     extensions: tuple[str, ...]
@@ -146,5 +224,7 @@ class LanguagePlugin(ABC):
         """Public HTTP routes and the functions that handle them."""
 
     def rules(self) -> Sequence[object]:
-        """Vulnerability rules for this language (Phase 4)."""
-        return ()
+        """The vulnerability rules (gittrace.rules.base.Rule) for this language."""
+        from gittrace.rules import rules_for
+
+        return rules_for(self.name)

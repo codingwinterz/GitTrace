@@ -10,7 +10,12 @@ The parser records facts and resolves nothing across files:
   - every call expression, attributed to the scope it runs in. Decorators,
     default arguments, annotations and class bodies run in the enclosing
     scope, so their calls belong to the enclosing function, or to the
-    `<module>` pseudo-function at import time.
+    `<module>` pseudo-function at import time;
+  - for the rules: where each call is (line, column, source lines) and what
+    each argument is (ArgFact: constant, built string, parameter, other, and
+    which parameters it derives from), plus every string constant bound to a
+    name (AssignFact). This runs once the whole file has been walked, so a
+    variable's assignments are all known when a call using it is classified.
 
 Only the expression traversal inside a scope is iterative; recursion happens
 per def/class, so a deeply nested expression cannot hit the recursion limit.
@@ -27,8 +32,11 @@ from tree_sitter import Language, Node, Parser
 
 from gittrace.languages.base import (
     MODULE_SCOPE,
+    ArgFact,
+    AssignFact,
     FileRecord,
     FunctionDef,
+    SiteFacts,
     function_id,
 )
 
@@ -39,6 +47,11 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 _KEEP_ARGS = frozenset({"include_router", "register_blueprint", "mount"})
 _DEPENDENCY_CALLS = frozenset({"Depends", "Security"})
 _TEXT_LIMIT = 200
+_SNIPPET_LINES = 20
+_MAX_DEPTH = 50
+_LITERAL_TYPES = frozenset({"integer", "float", "true", "false", "none"})
+_PATTERN_TYPES = ("pattern_list", "tuple_pattern", "list_pattern", "tuple", "list",
+                  "parenthesized_expression", "list_splat_pattern", "as_pattern_target")
 
 
 class ParseError(Exception):
@@ -87,6 +100,7 @@ class Scope:
     dependency_aliases: dict[str, tuple[Value, ...]] = field(default_factory=dict)
     locals: set[str] = field(default_factory=set)
     globals: set[str] = field(default_factory=set)
+    params: tuple[str, ...] = ()          # function scopes: parameter names, in order
     # Methods only: the first parameter (self/cls) and the owning class.
     self_name: str | None = None
     self_class: str | None = None
@@ -111,11 +125,14 @@ class PyClass:
     bases: tuple[Value, ...]
 
 
-@dataclass(frozen=True)
+@dataclass(eq=False)
 class RawCall:
     caller_id: str
     scope: Scope
     call: Value
+    site: SiteFacts | None = None
+    args: tuple[ArgFact, ...] = ()
+    kwargs: tuple[tuple[str, ArgFact], ...] = ()
 
 
 @dataclass(eq=False)
@@ -129,7 +146,9 @@ class PyModule:
     functions: list[PyFunction]
     classes: dict[str, PyClass]
     calls: list[RawCall]
-    module_function: FunctionDef | None
+    module_function: FunctionDef | None    # the <module> node, if the file calls at import time
+    assignments: list[AssignFact] = field(default_factory=list)
+    module_scope: FunctionDef | None = None   # the <module> record, always (a finding may need it)
 
 
 def module_name(path: str) -> str:
@@ -186,9 +205,16 @@ class _Builder:
         self.calls: list[RawCall] = []
         self.seen: dict[str, int] = {}
         self.module_calls = False
+        # Only alive while the tree is: the nodes each fact is computed from.
+        # (id(scope), name) -> [(how it was bound, value node)]
+        self._flows: dict[tuple[int, str], list[tuple[str, Node]]] = {}
+        self._pending_calls: list[tuple[RawCall, Node]] = []
+        self._pending_assigns: list[tuple[Scope, str, Node, Node]] = []
+        self._line_starts = [0] + [i + 1 for i, b in enumerate(self.data) if b == 0x0A]
 
     def build(self, root: Node) -> PyModule:
         self._walk(root, self.module_scope)
+        assignments = self._complete_facts()
         lines = self.data.count(b"\n") + (0 if self.data.endswith(b"\n") or not self.data else 1)
         record = FileRecord(
             path=self.path,
@@ -196,23 +222,22 @@ class _Builder:
             sha256=hashlib.sha256(self.data).hexdigest(),
             lines=lines,
         )
-        module_function = None
-        if self.module_calls:
-            module_function = FunctionDef(
-                id=function_id(self.path, MODULE_SCOPE),
-                file=self.path,
-                name=MODULE_SCOPE,
-                qualified_name=MODULE_SCOPE,
-                kind="module",
-                start_line=1,
-                end_line=max(lines, 1),
-                source=_source(self.data),
-            )
+        module_scope = FunctionDef(
+            id=function_id(self.path, MODULE_SCOPE),
+            file=self.path,
+            name=MODULE_SCOPE,
+            qualified_name=MODULE_SCOPE,
+            kind="module",
+            start_line=1,
+            end_line=max(lines, 1),
+            source=_source(self.data),
+        )
         return PyModule(
             path=self.path, name=self.name, is_package=self.is_package,
             record=record, scope=self.module_scope, scopes=self.scopes,
             functions=self.functions, classes=self.classes, calls=self.calls,
-            module_function=module_function,
+            module_function=module_scope if self.module_calls else None,
+            assignments=assignments, module_scope=module_scope,
         )
 
     # -- traversal ---------------------------------------------------------
@@ -243,10 +268,20 @@ class _Builder:
                 self._call(n, scope)
             elif t == "assignment":
                 self._assignment(n, scope)
-            elif t in ("augmented_assignment", "for_statement"):
-                self._bind(n.child_by_field_name("left"), scope)
+            elif t == "augmented_assignment":
+                left = n.child_by_field_name("left")
+                self._bind(left, scope)
+                op = n.child_by_field_name("operator")
+                self._flow(scope, left, f"aug{_text(op)}", n.child_by_field_name("right"))
+            elif t == "for_statement":
+                left = n.child_by_field_name("left")
+                self._bind(left, scope)
+                self._flow(scope, left, "flow", n.child_by_field_name("right"))
             elif t == "as_pattern_target":
                 self._bind(n, scope)
+                source = n.parent.named_children[0] if n.parent is not None else None
+                if source is not None and source != n:
+                    self._flow(scope, n, "flow", source)
             elif t == "named_expression":
                 self._bind(n.child_by_field_name("name"), scope)
             elif t in ("global_statement", "nonlocal_statement"):
@@ -323,6 +358,7 @@ class _Builder:
         params = node.child_by_field_name("parameters")
         param_names = _parameter_names(params)
         scope.locals.update(param_names)
+        scope.params = tuple(param_names)
         if outer.kind == "class":
             is_static = any(d.kind == "ref" and d.parts == ("staticmethod",) for d in decorators)
             if param_names and not is_static:
@@ -441,18 +477,38 @@ class _Builder:
     # -- calls and assignments ---------------------------------------------
 
     def _caller(self, scope: Scope) -> str:
+        fid = self._runs_in(scope)
+        if fid.endswith(f"::{MODULE_SCOPE}"):
+            self.module_calls = True
+        return fid
+
+    def _runs_in(self, scope: Scope) -> str:
+        """The function (or <module>) whose code `scope` runs as part of."""
         s: Scope | None = scope
         while s is not None:
             if s.kind == "function":
                 return s.func_id  # type: ignore[return-value]
             s = s.parent
-        self.module_calls = True
         return function_id(self.path, MODULE_SCOPE)
 
     def _call(self, node: Node, scope: Scope) -> None:
         parts = self._chain(node.child_by_field_name("function"))
         value = self._value(node, with_args=parts[-1] in _KEEP_ARGS, parts=parts)
-        self.calls.append(RawCall(self._caller(scope), scope, value))
+        raw = RawCall(self._caller(scope), scope, value)
+        self.calls.append(raw)
+        self._pending_calls.append((raw, node))
+
+    def _flow(self, scope: Scope, target: Node | None, how: str, value: Node | None) -> None:
+        """Remember that the names in `target` take their value from `value`."""
+        if target is None or value is None:
+            return
+        stack = [target]
+        while stack:
+            n = stack.pop()
+            if n.type == "identifier":
+                self._flows.setdefault((id(scope), _text(n)), []).append((how, value))
+            elif n.type in _PATTERN_TYPES:
+                stack.extend(n.named_children)
 
     def _assignment(self, node: Node, scope: Scope) -> None:
         left = node.child_by_field_name("left")
@@ -460,13 +516,213 @@ class _Builder:
         right = node.child_by_field_name("right")
         while right is not None and right.type == "assignment":   # a = b = X()
             right = right.child_by_field_name("right")
-        if left is None or left.type != "identifier" or right is None:
+        if left is None or right is None:
             return
+        if left.type in ("pattern_list", "tuple_pattern", "tuple"):
+            self._flow(scope, left, "flow", right)
+            return
+        target = left
+        if left.type == "attribute":                      # self.api_key = "..."
+            target = left.child_by_field_name("attribute")
+        if target is not None and target.type == "identifier" and right.type in (
+                "string", "concatenated_string"):
+            self._pending_assigns.append((scope, _text(target), right, node))
+        if left.type != "identifier":
+            return
+        self._flow(scope, left, "assign", right)
         name = _text(left)
         scope.assigns.setdefault(name, []).append(self._value(right, with_args=True))
         deps = self._dependency_calls(right)
         if deps:
             scope.dependency_aliases[name] = tuple(deps)
+
+    # -- facts for the rules -----------------------------------------------
+
+    def _complete_facts(self) -> list[AssignFact]:
+        for raw, node in self._pending_calls:
+            raw.site = self._site(node)
+            args: list[ArgFact] = []
+            kwargs: list[tuple[str, ArgFact]] = []
+            arguments = node.child_by_field_name("arguments")
+            if arguments is not None and arguments.type == "argument_list":
+                for arg in arguments.named_children:
+                    if arg.type == "keyword_argument":
+                        val = arg.child_by_field_name("value")
+                        if val is not None:
+                            kwargs.append((_text(arg.child_by_field_name("name")),
+                                           self._fact(val, raw.scope)))
+                    elif arg.type not in ("list_splat", "dictionary_splat", "comment"):
+                        args.append(self._fact(arg, raw.scope))
+            elif arguments is not None:                    # f(x for x in y)
+                args.append(self._fact(arguments, raw.scope))
+            raw.args, raw.kwargs = tuple(args), tuple(kwargs)
+
+        assignments = [
+            AssignFact(self._runs_in(scope), name, self._fact(value, scope), self._site(stmt))
+            for scope, name, value, stmt in self._pending_assigns
+        ]
+        self._flows.clear()
+        self._pending_calls.clear()
+        self._pending_assigns.clear()
+        return assignments
+
+    def _site(self, node: Node) -> SiteFacts:
+        line = node.start_point[0] + 1
+        end_line = node.end_point[0] + 1
+        last = min(end_line, line + _SNIPPET_LINES - 1)
+        start = self._line_starts[line - 1]
+        stop = self._line_starts[last] - 1 if last < len(self._line_starts) else len(self.data)
+        prefix = self.data[start:start + node.start_point[1]].decode("utf-8", "replace")
+        return SiteFacts(
+            file=self.path, line=line, column=len(prefix) + 1, end_line=end_line,
+            snippet=_source(self.data[start:stop]).rstrip("\r\n"),
+        )
+
+    def _fact(self, node: Node, scope: Scope) -> ArgFact:
+        kind, how, via, value = self._kind(node, scope, frozenset(), 0)
+        ref = ".".join(self._chain(node)) if node.type in ("identifier", "attribute") else None
+        return ArgFact(kind=kind, text=node.text[:_TEXT_LIMIT].decode("utf-8", "replace"),
+                       how=how, via=via, params=tuple(sorted(self._params(node, scope))),
+                       value=value, ref=ref)
+
+    @staticmethod
+    def _binding_scopes(scope: Scope):
+        """The scopes a name used in `scope` can be bound in, innermost first:
+        the scope itself, enclosing functions, then the module."""
+        s: Scope | None = scope
+        first = True
+        while s is not None:
+            if first or s.kind != "class":
+                yield s
+            first = False
+            s = s.parent
+
+    def _kind(self, node: Node, scope: Scope, seen: frozenset, depth: int):
+        """(kind, how, via, constant value) of an expression; see ArgFact."""
+        t = node.type
+        if depth > _MAX_DEPTH:
+            return "other", None, None, None
+        if t in ("string", "concatenated_string"):
+            parts = node.named_children if t == "concatenated_string" else [node]
+            pieces = [_string_literal(p) for p in parts]
+            if all(p is not None for p in pieces):
+                return "literal", None, None, "".join(pieces)  # type: ignore[arg-type]
+            # An f-string is only built at run time if a placeholder is: one
+            # that interpolates constants (f"{SCHEMA}", SCHEMA = "core") is not.
+            holes = [c.child_by_field_name("expression") for p in parts
+                     for c in p.named_children if c.type == "interpolation"]
+            if all(h is not None and self._kind(h, scope, seen, depth + 1)[0] == "literal" for h in holes):
+                return "literal", None, None, None
+            return "built", "fstring", None, None
+        if t in _LITERAL_TYPES:
+            return "literal", None, None, {"true": True, "false": False, "none": None}.get(t, _text(node))
+        if t == "parenthesized_expression" and node.named_children:
+            return self._kind(node.named_children[0], scope, seen, depth + 1)
+        if t in ("list", "tuple", "set"):
+            kinds = [self._kind(c, scope, seen, depth + 1)[0] for c in node.named_children]
+            return ("literal" if all(k == "literal" for k in kinds) else "other"), None, None, None
+        if t == "binary_operator":
+            operands = [node.child_by_field_name("left"), node.child_by_field_name("right")]
+            kinds = [self._kind(o, scope, seen, depth + 1)[0] for o in operands if o is not None]
+            if all(k == "literal" for k in kinds):
+                return "literal", None, None, None
+            how = {"+": "concat", "%": "percent"}.get(_text(node.child_by_field_name("operator")))
+            return ("built", how, None, None) if how else ("other", None, None, None)
+        if t == "conditional_expression":
+            kinds = [self._kind(c, scope, seen, depth + 1) for c in node.named_children]
+            built = next((k for k in kinds if k[0] == "built"), None)
+            if built is not None:
+                return built
+            if all(k[0] == "literal" for k in kinds):
+                return "literal", None, None, None
+            return "other", None, None, None
+        if t == "call":
+            func = node.child_by_field_name("function")
+            if func is not None and func.type == "attribute":
+                method = _text(func.child_by_field_name("attribute"))
+                if method in ("format", "join"):
+                    inputs = [func.child_by_field_name("object")]
+                    arguments = node.child_by_field_name("arguments")
+                    if arguments is not None:
+                        inputs += [a.child_by_field_name("value") if a.type == "keyword_argument" else a
+                                   for a in arguments.named_children if a.type != "comment"]
+                    kinds = [self._kind(i, scope, seen, depth + 1)[0] for i in inputs if i is not None]
+                    if all(k == "literal" for k in kinds):
+                        return "literal", None, None, None
+                    return "built", method, None, None
+            return "other", None, None, None
+        if t == "identifier":
+            return self._name_kind(_text(node), scope, seen, depth)
+        return "other", None, None, None
+
+    def _name_kind(self, name: str, scope: Scope, seen: frozenset, depth: int):
+        for s in self._binding_scopes(scope):
+            key = (id(s), name)
+            if key in seen:
+                return "other", None, None, None
+            flows = self._flows.get(key)
+            if flows:
+                results = []
+                for how, value in flows:
+                    if how == "flow":                      # for x in ..., with ... as x
+                        results.append(("other", None))
+                        continue
+                    kind, built_how, _, _ = self._kind(value, s, seen | {key}, depth + 1)
+                    if how.startswith("aug") and kind != "literal":
+                        built_how = {"aug+=": "concat", "aug%=": "percent"}.get(how)
+                        kind = "built" if built_how else "other"
+                    results.append((kind, built_how))
+                built = next((r for r in results if r[0] == "built"), None)
+                if built is not None:
+                    return "built", built[1], name, None
+                if all(r[0] == "literal" for r in results):
+                    return "literal", None, name, None
+                if all(r[0] in ("param", "literal") for r in results):
+                    return "param", None, name, None
+                return "other", None, name, None
+            if s.kind == "function":
+                if name in s.params:
+                    return "param", None, None, None
+                if name in s.locals and name not in s.globals:
+                    return "other", None, None, None
+        return "other", None, None, None
+
+    def _params(self, node: Node, scope: Scope) -> set[str]:
+        """Parameters (of this function or an enclosing one) that the value of
+        `node` derives from, following local assignments."""
+        found: set[str] = set()
+        seen: set[tuple[int, str]] = set()
+        work: list[tuple[Node, Scope]] = [(node, scope)]
+        while work:
+            n, sc = work.pop()
+            stack = [n]
+            while stack:
+                cur = stack.pop()
+                if cur.type in ("lambda", "function_definition", "class_definition"):
+                    continue
+                if cur.type != "identifier":
+                    stack.extend(cur.named_children)
+                    continue
+                parent = cur.parent
+                if parent is not None and (
+                        (parent.type == "attribute" and parent.child_by_field_name("attribute") == cur)
+                        or (parent.type == "keyword_argument" and parent.child_by_field_name("name") == cur)):
+                    continue
+                name = _text(cur)
+                for s in self._binding_scopes(sc):
+                    key = (id(s), name)
+                    flows = self._flows.get(key)
+                    if flows:
+                        if key not in seen:
+                            seen.add(key)
+                            work.extend((value, s) for _, value in flows)
+                        break
+                    if s.kind == "function" and name in s.params:
+                        found.add(name)
+                        break
+                    if s.kind == "function" and name in s.locals:
+                        break
+        return found
 
     # -- expressions -------------------------------------------------------
 

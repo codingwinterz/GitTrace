@@ -1,1 +1,1 @@
-"""FalkorDB connection and graph seeding."""
+"""FalkorDB connection and the per-project graph store."""

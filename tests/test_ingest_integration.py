@@ -246,9 +246,15 @@ class TestRescan:
         assert _rows(g, "MATCH (f:File {path: 'app/routers/debug.py'}) RETURN count(f)") == [[0]]
         assert _rows(g, "MATCH (f:Function) WHERE f.file = 'app/routers/debug.py' RETURN count(f)") == [[0]]
         assert _rows(g, "MATCH (e:Endpoint {path: '/debug/env'}) RETURN count(e)") == [[0]]
-        assert _rows(g, "MATCH (f:Function {id: 'external::eval'}) RETURN count(f)") == [[0]]
-        # dict() was only called from debug.py; os.system is still called elsewhere.
+        # The handler no longer calls eval; other files still do, so the
+        # shared eval node stays.
+        assert _rows(g, (
+            "MATCH (:Function {id: 'app/routers/admin.py::run_expression'})"
+            "-[c:CALLS]->(:Function {id: 'external::eval'}) RETURN count(c)")) == [[0]]
+        assert _rows(g, "MATCH (f:Function {id: 'external::eval'}) RETURN count(f)") == [[1]]
+        # dict() and os.popen() were only called from debug.py; os.system still is elsewhere.
         assert _rows(g, "MATCH (f:Function {id: 'external::dict'}) RETURN count(f)") == [[0]]
+        assert _rows(g, "MATCH (f:Function {id: 'external::os.popen'}) RETURN count(f)") == [[0]]
         assert _rows(g, "MATCH (f:Function {id: 'external::os.system'}) RETURN count(f)") == [[1]]
         # The handler survives, with its new source.
         src = _rows(g, "MATCH (f:Function {id: 'app/routers/admin.py::run_expression'}) RETURN f.source")

@@ -17,6 +17,7 @@ from pathlib import Path
 from gittrace.core.discover import discover
 from gittrace.languages import plugins
 from gittrace.languages.base import (
+    AssignFact,
     CallSite,
     EndpointDef,
     FileRecord,
@@ -36,6 +37,9 @@ class Analysis:
     calls: list[CallSite] = field(default_factory=list)
     endpoints: list[EndpointDef] = field(default_factory=list)
     failures: list[ParseFailure] = field(default_factory=list)
+    assignments: list[AssignFact] = field(default_factory=list)
+    module_scopes: dict[str, FunctionDef] = field(default_factory=dict)
+    rules: list = field(default_factory=list)
 
     def counts(self) -> dict[str, int]:
         origins = Counter(c.origin for c in self.calls if not c.resolved)
@@ -75,6 +79,9 @@ def analyze(root: str | os.PathLike) -> Analysis:
         result.files.extend(parsed.files)
         result.functions.extend(parsed.functions)
         result.failures.extend(parsed.failures)
+        result.assignments.extend(parsed.assignments)
+        result.module_scopes.update(parsed.module_scopes)
+        result.rules.extend(r for r in plugin.rules() if r not in result.rules)
         result.calls.extend(plugin.resolve_calls(parsed))
         result.endpoints.extend(plugin.detect_routes(parsed))
     return result

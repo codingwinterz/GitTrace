@@ -21,9 +21,21 @@ Schema (language-neutral):
               origin, resolved: false})          -- unresolved callees
   (:Endpoint {id, framework, method, path, handler, file, line,
               auth_required, auth_evidence, prefix_resolved})
+  (:Sink {id: "path.py::line::col", rule_id, category, title, base_severity,
+          file, line, column, end_line, snippet, function, callee, message,
+          evidence, param_derived, params, flow_sensitive,
+          -- set once reachability is known (write_findings):
+          severity, score, reasons, reachable, unauthenticated, uncertain,
+          endpoints, endpoint_count, caller_count, blast_radius,
+          owner_status, owner_author, owner_email, owner_commit, owner_date})
   (File)-[:DECLARES]->(Function|Endpoint)
   (Endpoint)-[:HANDLED_BY]->(Function)
   (Function)-[:CALLS {lines}]->(Function)
+  (Function)-[:REACHES_SINK]->(Sink)
+
+One Sink per dangerous call site (or hardcoded-secret assignment), linked from
+the function it is in. Findings come from Sink nodes, never from the shared
+`external::` callee nodes.
 """
 
 from __future__ import annotations
@@ -39,7 +51,7 @@ from typing import Iterable
 
 from gittrace.languages.base import external_id
 
-INDEXES = (("Function", "id"), ("File", "path"), ("Endpoint", "id"))
+INDEXES = (("Function", "id"), ("File", "path"), ("Endpoint", "id"), ("Sink", "id"))
 BATCH = 500
 
 
@@ -70,9 +82,9 @@ def _write(graph, cypher: str, rows: list, scan_id: str) -> None:
         graph.query(cypher, params={"rows": chunk, "scan": scan_id})
 
 
-def write_analysis(graph, analysis, graph_name: str) -> str:
-    """Rebuild `graph` from `analysis` (a gittrace.core.pipeline.Analysis).
-    Returns the scan_id."""
+def write_analysis(graph, analysis, graph_name: str, sinks=()) -> str:
+    """Rebuild `graph` from `analysis` (a gittrace.core.pipeline.Analysis) and
+    the rule matches in `sinks` (gittrace.rules.base.Match). Returns the scan_id."""
     scan_id = uuid.uuid4().hex
     ensure_indexes(graph)
 
@@ -157,6 +169,26 @@ def write_analysis(graph, analysis, graph_name: str) -> str:
         "MERGE (e)-[h:HANDLED_BY]->(fn) SET h.scan_id = $scan"
     ), endpoints, scan_id)
 
+    sink_rows = [{
+        "id": m.sink_id,
+        "function": m.function_id,
+        "props": {
+            "rule_id": m.rule_id, "category": m.category, "title": m.title,
+            "base_severity": m.base_severity, "file": m.site.file, "line": m.site.line,
+            "column": m.site.column, "end_line": m.site.end_line, "snippet": m.site.snippet,
+            "function": m.function_id, "callee": m.callee or "", "message": m.message,
+            "evidence": list(m.evidence), "param_derived": m.param_derived,
+            "params": list(m.params), "flow_sensitive": m.flow_sensitive,
+        },
+    } for m in sinks]
+    _write(graph, (
+        "UNWIND $rows AS r MERGE (s:Sink {id: r.id}) SET s += r.props, s.scan_id = $scan"
+    ), sink_rows, scan_id)
+    _write(graph, (
+        "UNWIND $rows AS r MATCH (fn:Function {id: r.function}) MATCH (s:Sink {id: r.id}) "
+        "MERGE (fn)-[e:REACHES_SINK]->(s) SET e.scan_id = $scan"
+    ), sink_rows, scan_id)
+
     # Drop what this scan did not write: edges first (between surviving
     # nodes), then nodes, which takes their remaining edges with them.
     graph.query("MATCH ()-[r]->() WHERE r.scan_id IS NULL OR r.scan_id <> $scan DELETE r",
@@ -164,3 +196,34 @@ def write_analysis(graph, analysis, graph_name: str) -> str:
     graph.query("MATCH (n) WHERE n.scan_id IS NULL OR n.scan_id <> $scan DETACH DELETE n",
                 params={"scan": scan_id})
     return scan_id
+
+
+def write_findings(graph, graph_name: str, findings) -> None:
+    """Record the computed severity, reachability and owner on each Sink
+    (gittrace.core.scan.Finding), and the totals on the Project node."""
+    rows = []
+    for f in findings:
+        owner = f.owner
+        rows.append({"id": f.id, "props": {
+            "severity": f.severity, "score": f.score, "reasons": list(f.reasons),
+            "reachable": f.reachable, "unauthenticated": f.unauthenticated,
+            "uncertain": f.uncertain, "endpoints": [r.endpoint_id for r in f.routes],
+            "endpoint_count": len(f.routes), "caller_count": len(f.callers),
+            "blast_radius": f.blast_radius,
+            "owner_status": owner.status if owner else "unknown",
+            "owner_author": (owner.author if owner else None) or "",
+            "owner_email": (owner.email if owner else None) or "",
+            "owner_commit": (owner.commit if owner else None) or "",
+            "owner_date": (owner.date if owner else None) or "",
+        }})
+    for chunk in _batches(rows):
+        graph.query("UNWIND $rows AS r MATCH (s:Sink {id: r.id}) SET s += r.props",
+                    params={"rows": chunk})
+    by_level = {level: 0 for level in ("critical", "high", "medium", "low", "info")}
+    for f in findings:
+        by_level[f.severity] += 1
+    graph.query(
+        "MATCH (p:Project {id: $id}) SET p.findings = $total, p += $levels",
+        params={"id": graph_name, "total": len(findings),
+                "levels": {f"findings_{k}": v for k, v in by_level.items()}},
+    )

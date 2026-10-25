@@ -1,8 +1,9 @@
 """
 gittrace.graph.connection — the shared FalkorDB connection.
 
-Graph code reaches the database through `connection.get_graph()` (attribute
-access, not a from-import), so tests can swap in a mock graph in one place.
+Graph code reaches the database through `connection.get_db()` (attribute
+access, not a from-import), so tests can swap in a mock in one place. Each
+scanned project has its own graph; see gittrace.graph.store.graph_name_for.
 
 The installed falkordb 1.8.0 exposes:
     FalkorDB(host, port, username, password)   -> instance handle
@@ -38,10 +39,6 @@ FALKORDB_HOST = _env("FALKORDB_HOST")
 FALKORDB_PORT = int(_env("FALKORDB_PORT", required=False) or "6379")
 FALKORDB_USER = _env("FALKORDB_USER", required=False) or "default"
 FALKORDB_PASSWORD = _env("FALKORDB_PASSWORD", required=False) or ""
-
-# Overridable so the integration suite can seed an isolated graph instead of
-# touching the demo graph on a shared instance.
-GRAPH_NAME = _env("GITTRACE_GRAPH", required=False) or "gittrace"
 
 _db = None
 
@@ -82,18 +79,8 @@ def get_db():
         ) from first_err
 
 
-def get_graph(db=None, name: str | None = None):
-    """Get (or lazily create) the named graph handle.
-
-    The default is read at call time, not bound at import, so tests can point
-    every tool at a different graph by patching GRAPH_NAME.
-    """
+def get_graph(name: str, db=None):
+    """The named graph handle (FalkorDB creates the graph on first write)."""
     if db is None:
         db = get_db()
-    return db.select_graph(name or GRAPH_NAME)
-
-
-def query(cypher: str, params: dict | None = None, name: str | None = None):
-    """Run a Cypher query against the graph; return the QueryResult."""
-    g = get_graph(None, name)
-    return g.query(cypher, params=params)
+    return db.select_graph(name)

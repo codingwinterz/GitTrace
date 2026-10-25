@@ -55,6 +55,9 @@ class PythonPlugin(LanguagePlugin):
             if module.module_function is not None:
                 project.functions.append(module.module_function)
             project.functions.extend(f.record for f in module.functions)
+            project.assignments.extend(module.assignments)
+            if module.module_scope is not None:
+                project.module_scopes[module.module_scope.id] = module.module_scope
         return project
 
     def resolve_calls(self, parsed: ParsedProject) -> list[CallSite]:

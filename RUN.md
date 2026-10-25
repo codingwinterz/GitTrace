@@ -1,7 +1,7 @@
 # Run GitTrace locally
 
-One-page, clone-to-run companion to README.md. For a full description, architecture,
-Cypher queries, and the MCP server, see README.md. Demo video (of the `main` branch,
+One-page, clone-to-run companion to README.md. For the rules, severity model, graph
+model, Cypher queries, and the MCP server, see README.md. Demo video (of the `main` branch,
 which still has the web UI): <https://youtu.be/xwo16Zesdus>.
 
 ## Fastest start
@@ -9,39 +9,25 @@ which still has the web UI): <https://youtu.be/xwo16Zesdus>.
 Run every command from the repository root.
 
 ```bash
-cp .env.example .env
-# Edit .env: set FALKORDB_HOST/PORT/USER/PASSWORD (+ Gemini_API_Key, optional)
-
 pip install -r requirements.txt
-python -m gittrace.graph.seed     # one-time graph seed
-python -m gittrace.mcp_server     # MCP server on stdio
-python -m gittrace.ingest path/to/project   # scan a Python project into its own graph
-```
-
-For a local FalkorDB instead of the cloud:
-
-```bash
 docker compose up -d falkordb
+cp .env.example .env
 # .env: FALKORDB_HOST=localhost, FALKORDB_PORT=6379, FALKORDB_PASSWORD= (empty)
+
+python -m gittrace scan tests/fixtures/sample_app           # findings, attack paths, owner
+python -m gittrace scan path/to/project --format json       # for CI; exit 1 at --fail-on (default high)
+python -m gittrace trace app/db.py:17 -p tests/fixtures/sample_app
+python -m gittrace blast-radius app/db.py::Repo.get_user -p tests/fixtures/sample_app
+python -m gittrace scan path/to/project --offline           # no FalkorDB needed
 ```
 
-## What to try
-
-Call the tools from an MCP host, or from Python:
-
-```python
-from gittrace.core.agent import run_agent
-print(run_agent("What's the blast radius of CVE-2026-4421?").answer)
-print(run_agent("Who owns validate_token for CVE-2026-4421?").answer)
-```
-
-`validate_token` is defined in two services, so without the CVE (or a file path) the
-tools answer that the name is ambiguous and list both candidates.
+Severity, the rules and the graph model are documented in README.md.
 
 ## Env vars
 
-See `.env.example`. FalkorDB settings are required; `Gemini_API_Key` is optional —
-without it the agent falls back to its keyword classifier. Never commit `.env`.
+See `.env.example`. FalkorDB settings are required except for `scan --offline`;
+`Gemini_API_Key` / `LITELLM_MODEL` are only read by the experimental agent loop.
+Never commit `.env`.
 
 ## Tests
 
@@ -49,29 +35,26 @@ without it the agent falls back to its keyword classifier. Never commit `.env`.
 python -m pytest tests -v
 ```
 
-`tests/test_core.py` and `tests/test_ingest.py` are offline (no live DB, no API key needed).
-`tests/test_ingest_integration.py` scans `tests/fixtures/sample_app` into a throwaway graph
-and checks its exact contents.
-`tests/test_integration.py` runs every Cypher query against a real FalkorDB: it seeds
-its own uniquely named graph (`gittrace_test_<random>`), tests against it and drops it,
-so it never touches the demo graph. Start a local FalkorDB with Docker and point the
-tests at it:
+`tests/test_core.py`, `tests/test_ingest.py`, `tests/test_rules.py` and `tests/test_scan.py`
+are offline (no live DB, no API key). `tests/test_ingest_integration.py` and
+`tests/test_scan_integration.py` scan `tests/fixtures/sample_app` into a real FalkorDB and
+check the exact graph, findings and tool results; they create their graphs and drop them.
 
 ```bash
 docker compose up -d falkordb
-FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_integration.py tests/test_ingest_integration.py -v
+FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -v
 ```
 
 (Environment variables win over `.env`, so this works even with cloud settings in `.env`.)
 Without a reachable FalkorDB the integration tests skip. CI runs them against a FalkorDB
 service container and sets `GITTRACE_REQUIRE_FALKORDB=1`, which turns that skip into a
-failure. The live-LLM test also needs a Gemini key and skips without one.
+failure.
 
-Run at least the offline suite before pushing. CI (`.github/workflows/tests.yml`) runs
-it on Python 3.11–3.13, plus the integration suite against FalkorDB in Docker:
+Run at least the offline suites before pushing. CI (`.github/workflows/tests.yml`) runs
+them on Python 3.11–3.13, plus the integration suites against FalkorDB in Docker:
 
 ```bash
-python -m pytest tests/test_core.py tests/test_ingest.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py -q
 ```
 
 ## MCP server (Track 01)
@@ -90,7 +73,7 @@ is **`main`**; the CLI rebuild happens on **`v2`**.
 
 ```bash
 git status                   # confirm only the files you meant to change
-python -m pytest tests/test_core.py tests/test_ingest.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py -q
 
 git add gittrace tests README.md RUN.md
 git commit -m "Describe the why, not the what"

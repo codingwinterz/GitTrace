@@ -1,6 +1,6 @@
 # GitTrace
 
-**Turn a CVE alert into the blast radius, the shortest attack path, and the code owner — by traversing a service dependency graph in FalkorDB.**
+**Scan a Python project, find the vulnerabilities an HTTP route can actually reach, and see the attack path, the blast radius and the owner — from a code graph in FalkorDB.**
 
 [![tests](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml/badge.svg)](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)
@@ -8,72 +8,40 @@
 ![license MIT](https://img.shields.io/badge/license-MIT-green)
 
 **Hackathon:** Graph Hacks — Track 01 (Agents That Act on Connected Data) · **Team:** SUDO SAIYAN (Avaneesh S, solo) · Team code `5S3M9E`
-**Demo video:** [GIT TRACE's Working & Explanation](https://youtu.be/xwo16Zesdus) (3 min)
+**Demo video:** [GIT TRACE's Working & Explanation](https://youtu.be/xwo16Zesdus) (3 min, of the `main` branch)
 
-[![Watch the GitTrace demo](https://i.ytimg.com/vi/xwo16Zesdus/hqdefault.jpg)](https://youtu.be/xwo16Zesdus)
-
-> **This branch (`v2`) is being rebuilt as a command-line scanner** — see `CLAUDE.md` for the plan. The web UI and HTTP API shown in the demo video have been removed here (they remain on `main`). The graph tools are available through the MCP server and the `gittrace` Python package.
+> **This branch (`v2`) is the command-line rebuild** — see `CLAUDE.md` for the plan. The web UI, HTTP API and the synthetic CVE demo graph shown in the video are on `main` only. Python is the only language supported.
 
 ---
 
-## The question it answers
+## What it does
 
-A scanner reports `CVE-2026-4421` in `validate_token`. Three things decide what you do next:
+```bash
+python -m gittrace scan path/to/project
+```
 
-1. **What is in the blast radius?** Which functions call into the vulnerable code, directly or transitively, and which services are they in?
-2. **How does an attacker actually get there?** Which public entry point reaches it, and through what path?
-3. **Who do you wake up?** Who owns the affected code?
+1. **Reads the real code** with tree-sitter: every function, method and nested function, the calls between them, and the FastAPI / Flask routes with their auth dependencies.
+2. **Builds a graph** of it in FalkorDB, one graph per project.
+3. **Runs deterministic rules** for SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization and hardcoded secrets — one finding per dangerous call site.
+4. **Asks the graph who can reach each finding**: the shortest path from every endpoint (unauthenticated first), the upstream callers (blast radius), and `git blame` for the owner.
+5. **Scores severity deterministically** from the rule, the reachability and the blast radius, and prints it with Rich (or JSON for CI).
 
-GitTrace answers all three from one graph, and returns the query that produced each answer.
+Rules detect; nothing else decides what is a finding. The explanation and fix-suggestion layer (a local model through LiteLLM) is a later phase and is not in this branch yet.
 
 ## See it work
 
-Every value below is asserted by the integration suite (`tests/test_integration.py`), which runs the queries unmocked against a real FalkorDB seeded by `gittrace.graph.seed`, in CI on every push:
+`tests/fixtures/sample_app` is a small FastAPI app with planted vulnerabilities and planted non-findings. Every value below is asserted by the test suite, offline and against a real FalkorDB:
 
-| Question | Answer returned |
-|---|---|
-| Blast radius of `CVE-2026-4421` | `CRITICAL`, affects `/token-service/token.py::validate_token`; 1 service (`token-service`), upstream callers `refresh_token`, `rotate_key` (not `parse_claims`, which it calls) |
-| Shortest path `api-gateway` → `validate_token` (scoped by the CVE) | `Service:api-gateway → Service:token-service → File:/token-service/token.py → Function:validate_token`, **3 hops** |
-| Owner of `validate_token` (scoped by the CVE) | Sarah Chen · `sarah.chen@acme.com` · `@sarahc`, file `/token-service/token.py` (also owns `auth-service`, `token-service`) |
-| Shortest path to `validate_token` with no CVE or file | Error: defined in 2 files, candidates `/auth-service/auth.go::validate_token`, `/token-service/token.py::validate_token` |
+| Finding | Severity | Why |
+|---|---|---|
+| `cursor.execute(f"... '{name}'")` in `app/db.py:17` | **critical** (11) | reached from `GET /api/users/{name}` without auth (and from `GET /me` with auth); `name` is a parameter; blast radius 5 |
+| `os.system("logger " + msg)` in `app/utils/shell.py:8` | **critical** (10) | `GET /api/users/{name}/files` → `list_files` → `run_command` → `run_command.log`, no auth |
+| `os.popen(cmd)` in `app/routers/debug.py:16` | **critical** (10), *uncertain* | the debug router is never included, so its route prefix is not resolved |
+| `eval(expr)` in `app/routers/admin.py:11` | **high** (8) | reachable only through the admin router, which requires `Depends(get_current_user)` |
+| `"... %s" % days` → `conn.execute` in `app/services/maintenance.py:19` | **medium** (5) | no route reaches it (only the cron job `nightly`) |
+| `API_TOKEN = "s3c…"` in `app/auth.py:4` | **medium** (4) | hardcoded secret; not adjusted for reachability |
 
----
-
-## Why FalkorDB is load-bearing
-
-The answer *is* a path and a neighbourhood. A vector index can say which code chunks are semantically close to "authentication token"; it has no notion of an edge, so it cannot say that `validate_token` is three hops from a public gateway, or which functions a `CALLS` chain reaches.
-
-Two native capabilities do all the work:
-
-- **Variable-length traversal** — `(caller)-[:CALLS*1..5]->(f)` walks the call graph upstream from the vulnerable function to every caller that would break or carry the attack.
-- **`shortestPath()`** — resolves the exact route across five different relationship types (`CONTAINS`, `DEFINES`, `CALLS`, `DEPENDS_ON`, `EXPOSES`) in a single query.
-
-Remove FalkorDB and the product still starts, but it can no longer answer any of the three questions — which is the test for "graph is essential" rather than decoration.
-
-## Architecture
-
-```mermaid
-flowchart LR
-  MCP["Any MCP host"] -->|stdio| SRV["gittrace.mcp_server"]
-  SRV --> REG["Tool registry<br/>gittrace.core.registry"]
-  AGENT["Agent<br/>gittrace.core.agent"] --> REG
-  REG --> TOOLS["Graph tools<br/>blast radius · shortest path · owner"]
-  TOOLS -->|Cypher| DB[("FalkorDB<br/>gittrace")]
-  AGENT -.->|"when a key is set"| LLM["LiteLLM → Gemini<br/>function calling"]
-```
-
-| Package | Contents |
-|---|---|
-| `gittrace/core` | The three graph tools, the tool registry, question parsing and the agent loop; file discovery and the ingestion pipeline. No web framework. |
-| `gittrace/graph` | FalkorDB connection, the demo-graph seed, and `store` (writes a scanned project to its own graph) |
-| `gittrace/languages` | Language plug-in interface (`base`) and the Python plug-in: tree-sitter parser, call resolver, FastAPI/Flask route detector |
-| `gittrace/mcp_server.py` | MCP server generated from the tool registry |
-| `gittrace/rules`, `llm`, `cli` | Empty placeholders for the CLI scanner (later phases) |
-
-The agent (`gittrace.core.agent`) has two execution paths over the same tools:
-
-1. **LLM function calling** — Gemini picks a tool, the agent runs the Cypher, the model writes the answer.
-2. **Deterministic classifier** — if no key is configured or the model fails, keyword heuristics call the same tools. Only the prose changes.
+Not reported, on purpose: constant SQL, a parameterised query, `eval("1 + 1")`, `yaml.load(..., Loader=yaml.SafeLoader)`, secrets read with `os.environ`/`os.getenv`, a `PASSWORD_FIELD = "password"` name, a `"changeme"` placeholder.
 
 ---
 
@@ -81,200 +49,186 @@ The agent (`gittrace.core.agent`) has two execution paths over the same tools:
 
 ```bash
 git clone https://github.com/codingwinterz/GitTrace && cd GitTrace
-cp .env.example .env          # fill in FalkorDB host/port/user/password
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python -m gittrace.graph.seed # one-time: create the gittrace graph
-python -m gittrace.mcp_server # MCP server on stdio
+docker compose up -d falkordb                       # or a FalkorDB Cloud instance
+cp .env.example .env                                # FALKORDB_HOST=localhost, FALKORDB_PORT=6379, empty password
+python -m gittrace scan tests/fixtures/sample_app
 ```
 
-Run the commands from the repository root. For a local FalkorDB instead of the cloud, `docker compose up -d falkordb` and set `FALKORDB_HOST=localhost`, `FALKORDB_PORT=6379` and an empty `FALKORDB_PASSWORD`.
+Run from the repository root. Until the package is installed with its `gittrace` entry point (a later phase), the CLI is `python -m gittrace`.
+
+### Commands
+
+```bash
+python -m gittrace scan <path> [--format rich|json] [--min-severity LEVEL] [--depth N]
+                               [--fail-on LEVEL|none] [--offline] [--no-blame]
+python -m gittrace trace <file.py:line | finding-id> [--project PATH] [--depth N] [--format ...]
+python -m gittrace blast-radius <function-id> [--project PATH] [--depth N] [--format ...]
+```
+
+- `scan` writes the project's graph and prints a headline panel, a findings table (severity, rule, file:line, the endpoint that reaches it, whether that endpoint needs auth), then for each finding the code with the line highlighted, the attack paths as a tree, the blast radius, the owner and the severity reasons.
+- `--fail-on` (default `high`) sets the exit code: **1** if any finding is at or above it, so `scan` can gate CI; `none` never fails. `--min-severity` only filters what is shown.
+- `--depth` (default 10, max 50) bounds the CALLS hops followed from a route handler to the vulnerable function, and the upstream callers counted in the blast radius.
+- `--offline` computes reachability in memory and writes nothing to FalkorDB (same rules and scores); `trace` and `blast-radius` need the graph.
+- `--no-blame` skips `git blame`. Outside a git repository the owner lookup is skipped quietly.
+- Exit code **2** means an error: bad arguments, an unscanned project, FalkorDB unreachable.
 
 ### Environment
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `FALKORDB_HOST` / `FALKORDB_PORT` | yes | FalkorDB instance (cloud: **Connectivity → Connect**) |
+| `FALKORDB_HOST` / `FALKORDB_PORT` | yes (not with `--offline`) | FalkorDB instance |
 | `FALKORDB_USER` / `FALKORDB_PASSWORD` | cloud only | Instance credentials |
-| `GITTRACE_GRAPH` | no | Graph name (default `gittrace`) |
-| `Gemini_API_Key` | no | Enables the agent's LLM function-calling path |
-| `LITELLM_MODEL` | no | Model for the agent, e.g. `gemini/gemini-flash-lite-latest` |
+| `Gemini_API_Key`, `LITELLM_MODEL` | no | Only for the experimental agent loop (`gittrace.core.agent`) |
 
 `.env` is gitignored.
 
 ---
 
-## Graph data model
+## Rules
 
-The seeded graph is a small but complete microservice estate: **7 services, 7 files, 23 functions, 4 developers, 2 CVEs, 5 API endpoints, 75 edges**.
+Each rule is its own module under `gittrace/rules/`, with its id, what it matches and what it deliberately does not match in the module docstring. Rules see only language-neutral facts (a call's full callee name and a description of each argument), never a syntax tree, so another language plug-in can reuse them by producing the same facts.
 
-| Node | Properties |
+| Rule | Base | Matches | Does not match |
+|---|---|---|---|
+| `GT-SQLI-001` SQL built from strings | high | `execute`/`executemany`/`executescript`/`mogrify`/`raw`/`read_sql[_query]` on any receiver, `sqlalchemy.text`, Django `RawSQL`, when the query is an f-string with a non-constant placeholder, `+`, `%`, `.format()`, `.join()`, or a local variable assigned or `+=`-ed from one | constant SQL, bound parameters, a query passed in unchanged as a parameter, a query returned by another function |
+| `GT-EVAL-001` dynamic code evaluation | high | the builtins `eval`, `exec`, `compile` on a non-constant argument | constants; `re.compile` and other same-named functions |
+| `GT-CMDI-001` shell command injection | high | `subprocess.run/call/check_call/check_output/Popen` with `shell=True` and a non-constant command; `os.system`, `os.popen`, `subprocess.getoutput/getstatusoutput`, `asyncio.create_subprocess_shell` with a non-constant command | argument lists without `shell=True`; constant commands |
+| `GT-DESER-001` unsafe deserialization | high | `pickle`/`cPickle`/`dill`/`marshal` `load(s)`, `pandas.read_pickle`, `yaml.load[_all]` without `SafeLoader`/`CSafeLoader`, `yaml.unsafe_load` | `yaml.safe_load`, constant data |
+| `GT-SECRET-001` hardcoded secret | medium | a string constant bound to a name whose last word is key/secret/password/passwd/pwd/pass/token (or `apikey`, `accesstoken`, ...) | env/config lookups, descriptor names (`PASSWORD_FIELD`, `TOKEN_URL`, `API_KEY_HEADER`), non-secret keys (`primary_key`, `sort_key`, `public_key`, `next_token`, `ctx_key`), placeholders, values under 4 characters or with whitespace |
+
+Every finding records whether its dangerous value **derives from a function parameter**, following local assignments (`q = "..." + x`), augmented assignments, `for`/`with` bindings, and enclosing functions' parameters for closures. Values are not followed across function calls. Calls resolved to project code are never sinks: what is dangerous happens inside them, where the rules look. A hardcoded secret's value is masked in every report.
+
+## Severity
+
+Deterministic: the same code and graph always give the same severity, and each finding lists the reasons that produced its score (`gittrace/core/severity.py`).
+
+| Step | Points |
 |---|---|
-| `(:Service)` | `name, language, port, is_public` |
-| `(:File)` | `path` |
-| `(:Function)` | `name, line_number, is_entry_point` |
-| `(:Developer)` | `name, email, slack_handle` |
-| `(:CVE)` | `id, severity, description` |
-| `(:APIEndpoint)` | `path, method` |
+| Base severity of the rule | critical 8 · high 6 · medium 4 · low 2 · info 0 |
+| Reachable from an **unauthenticated** endpoint | +3 |
+| otherwise reachable only from **authenticated** endpoints | +1 |
+| otherwise **not reachable** from any endpoint | −2 |
+| The dangerous value derives from a function parameter | +1 |
+| Blast radius (upstream callers + endpoints that reach it) ≥ 5 | +1 |
 
-| Edge | From → To | Meaning |
-|---|---|---|
-| `CONTAINS` | Service → File | Service ships this file |
-| `DEFINES` | File → Function | File defines this function |
-| `CALLS` | Function → Function | Function calls another function |
-| `DEPENDS_ON` | Service → Service | Service calls another service |
-| `OWNS` | Developer → Service | Developer owns this service |
-| `AUTHORED` | Developer → File | Developer wrote this file |
-| `AFFECTS` | CVE → Function | CVE affects this function |
-| `EXPOSES` | APIEndpoint → Function | Endpoint reaches this function |
+**Level:** score ≥ 9 critical · 7–8 high · 4–6 medium · 2–3 low · ≤ 1 info.
 
-## Scanning a Python project (ingestion)
+The reachability and parameter steps apply to flow-sensitive rules only; a hardcoded secret is exposed by the repository, not by a route, so it keeps its base severity. Routes with `prefix_resolved: false` (a router that is never mounted, or a prefix built from a variable) count as reachable, and a finding is flagged **uncertain** when every endpoint that decided its reachability step is one of those.
 
-The CLI scanner's first stage reads a real project into its own FalkorDB graph. Until `gittrace scan` exists, a temporary entry point runs it:
+## Why a graph database?
 
-```bash
-python -m gittrace.ingest path/to/project            # writes graph gittrace_<folder>_<hash>
-python -m gittrace.ingest path/to/project --dry-run  # parse and resolve only, no database
+A scan could compute everything in memory (`--offline` does), so FalkorDB has to earn its place:
+
+- **Persistence across commands.** `scan` writes the project's graph once; `trace`, `blast-radius` and the MCP tools then answer from it without re-parsing the code, and a re-scan updates it in place.
+- **Querying from outside the CLI.** The findings, call graph and routes are plain nodes and edges, so they can be explored with Cypher (e.g. in the FalkorDB Browser) or by an agent over MCP, for questions the CLI does not ask.
+- **Scaling beyond memory.** Bounded variable-length traversal and native `shortestPath` run in the database, so the call graph of a large codebase does not have to fit in, or be walked by, the Python process.
+
+## Reachability and blast radius
+
+For the function F that contains a finding, with depth D:
+
+```cypher
+// upstream callers: the blast radius
+MATCH (c:Function)-[:CALLS*1..D]->(f:Function {id: $id})
+WHERE c.id <> $id
+RETURN DISTINCT c.id ORDER BY c.id
+
+// routes: endpoints whose handler is F or a caller, with one shortest path each
+MATCH (f:Function {id: $id})
+OPTIONAL MATCH (c:Function)-[:CALLS*1..D]->(f)
+WITH f, collect(DISTINCT c) + [f] AS handlers
+UNWIND handlers AS h
+MATCH (e:Endpoint)-[:HANDLED_BY]->(h)
+WITH DISTINCT e, f
+WITH e, shortestPath((e)-[:HANDLED_BY|CALLS*1..D+1]->(f)) AS p
+WHERE p IS NOT NULL
+RETURN e.id, e.method, e.path, e.auth_required, e.prefix_resolved, [n IN nodes(p) | n.id]
 ```
 
-It prints counts of files, parse failures, functions, endpoints, and calls (resolved to project code vs. unresolved, by origin).
+The first query narrows the candidate endpoints, so FalkorDB's native `shortestPath` only runs for endpoints that can reach F. Routes are reported unauthenticated first, then by hops. The same computation runs in memory for `--offline`; the test suites check both give identical findings.
 
-- **Files:** every `.py` file except `.git`, virtualenvs (`venv`, `.venv`, or any directory with a `pyvenv.cfg`), `node_modules`, `__pycache__`, `site-packages`, `build`, `dist`, tool caches, and whatever the project's `.gitignore` files exclude. A file with a syntax error is logged, counted and skipped.
-- **Functions:** module-level functions, methods and nested functions, with IDs like `app/db.py::Repo.get_user` and `app/db.py::Repo.delete_user.build_query`, their line span (decorators included) and source. Code that runs at import time (module-level calls, decorators, default arguments) belongs to a `path.py::<module>` node.
-- **Calls, best effort:** same-file functions, nested functions, `import x [as z]`, `from x import y [as z]`, relative imports, re-exports from a package `__init__`, star imports, `self.m()` / `cls.m()` / `super().m()` through project base classes, and variables assigned once from a project class (`repo = Repo(); repo.get()`). Everything else is kept as an unresolved node named by its full dotted name with aliases expanded (`sp.run` → `external::subprocess.run`, `cursor.execute` → `external::cursor.execute`). Those are the sink candidates. Return values, attributes (`self.db.execute`) and parameters are not type-inferred.
-- **Routes:** FastAPI (`@app.get/post/...`, `api_route`, `websocket`, `APIRouter`, `include_router` prefixes, nested routers, sub-apps attached with `app.mount("/api/v1", api)`) and Flask (`@app.route(methods=...)`, `@bp.get/...`, `Blueprint(url_prefix=...)`, `register_blueprint(url_prefix=...)`). A decorator counts only when its object resolves to a `FastAPI`/`APIRouter`/`Flask`/`Blueprint` instance. Literal prefixes only; a router that is never included, or a prefix built from a variable, gives `prefix_resolved: false`. `auth_required` is true only with obvious evidence, recorded in `auth_evidence`: an auth-named `Depends(...)` (directly, or through an alias like `CurrentUser = Annotated[User, Depends(get_current_user)]`), any `Security(...)`, or a decorator such as `@login_required`.
-- **Graph:** one graph per project. Every node and edge is written with `MERGE` on its stable ID and stamped with the scan; whatever an older scan wrote and this one did not is deleted, so re-scanning is idempotent and removes stale code. Indexes on `Function.id`, `File.path`, `Endpoint.id`.
+## Graph model
+
+One graph per project, `gittrace_<folder>_<8 hex of the absolute path>`, rebuilt by every scan: each node and edge is written with `MERGE` on a stable ID and stamped with the scan, and whatever an older scan wrote and this one did not is deleted. Re-scanning unchanged code leaves the graph identical.
 
 | Node | Key properties |
 |---|---|
-| `(:Project)` | `id` (graph name), `name`, `root`, `scanned_at`, counts |
+| `(:Project)` | `id` (graph name), `name`, `root`, `scanned_at`, counts, `findings`, `findings_<level>` |
 | `(:File)` | `path`, `language`, `sha256`, `lines` |
-| `(:Function {resolved: true})` | `id`, `name`, `qualified_name`, `file`, `kind` (`function`/`method`/`nested`/`module`), `start_line`, `end_line`, `source`, `is_async` |
-| `(:Function {resolved: false})` | `id` = `external::<dotted>`, `qualified_name`, `origin` (`builtin`/`import`/`project`/`unknown`) |
-| `(:Endpoint)` | `id`, `framework`, `method`, `path`, `handler`, `line`, `auth_required`, `auth_evidence`, `prefix_resolved` |
+| `(:Function {resolved: true})` | `id` = `relative/path.py::QualifiedName` (e.g. `app/db.py::Repo.get_user`), `kind` (`function`/`method`/`nested`/`module`), `start_line`, `end_line`, `source`, `is_async` |
+| `(:Function {resolved: false})` | `id` = `external::<dotted name>` (e.g. `external::subprocess.run`, aliases expanded), `origin` (`builtin`/`import`/`project`/`unknown`) — one node per name, shared by every call site |
+| `(:Endpoint)` | `id` = `METHOD path -> handler`, `framework`, `method`, `path`, `auth_required`, `auth_evidence`, `prefix_resolved` |
+| `(:Sink)` | `id` = `path.py::line::col` — one per finding: `rule_id`, `severity`, `score`, `reasons`, `snippet`, `callee`, `evidence`, `params`, `endpoints`, `blast_radius`, `uncertain`, `owner_*` |
 
-Edges: `(File)-[:DECLARES]->(Function|Endpoint)`, `(Endpoint)-[:HANDLED_BY]->(Function)`, `(Function)-[:CALLS {lines}]->(Function)`.
+Edges: `(File)-[:DECLARES]->(Function|Endpoint)`, `(Endpoint)-[:HANDLED_BY]->(Function)`, `(Function)-[:CALLS {lines}]->(Function)`, `(Function)-[:REACHES_SINK]->(Sink)`. Code that runs at import time (module-level calls, decorators, default arguments) belongs to a `path.py::<module>` function. Indexes on `Function.id`, `File.path`, `Endpoint.id`, `Sink.id`.
 
-The demo graph and the three tools below still use the older demo schema; the scanner replaces them in a later phase.
+### What ingestion resolves
 
-## The three tools
+- **Files:** every `.py` file except `.git`, virtualenvs (`venv`, `.venv`, or any directory with a `pyvenv.cfg`), `node_modules`, `__pycache__`, `site-packages`, `build`, `dist`, tool caches, and whatever the project's `.gitignore` files exclude. A file with a syntax error is logged, counted and skipped.
+- **Calls, best effort:** same-file and nested functions, `import x [as z]`, `from x import y [as z]`, relative imports, package re-exports, star imports, `self.m()` / `cls.m()` / `super().m()` through project base classes, `Cls().m()`, and variables assigned once from a project class (`repo = Repo(); repo.get()`). Never by bare name. Parameters, attributes (`self.db.execute`) and return values are not type-inferred.
+- **Routes:** FastAPI (`@app.get/post/...`, `api_route`, `websocket`, `APIRouter`, `include_router` prefixes, nested routers, `app.mount("/api/v1", api)`) and Flask (`@app.route(methods=...)`, `@bp.get/...`, `Blueprint(url_prefix=...)`, `register_blueprint(url_prefix=...)`). `auth_required` needs obvious evidence: an auth-named `Depends(...)` (also through an alias like `CurrentUser = Annotated[User, Depends(get_current_user)]`), any `Security(...)`, or a decorator such as `@login_required`.
 
-### Blast radius — `get_blast_radius(cve_id)`
+## Graph tools and the MCP server (Track 01)
 
-```cypher
-MATCH (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)<-[:DEFINES]-(file:File)
-OPTIONAL MATCH (caller:Function)-[:CALLS*1..5]->(f)
-WHERE caller <> f
-OPTIONAL MATCH (caller)<-[:DEFINES]-(caller_file:File)
-OPTIONAL MATCH (caller_file)<-[:CONTAINS]-(s:Service)
-RETURN
-    c.id AS cve_id,
-    c.severity AS severity,
-    collect(DISTINCT s.name) AS impacted_services,
-    collect(DISTINCT caller.name) AS impacted_functions,
-    count(DISTINCT s) AS service_count,
-    collect(DISTINCT file.path + '::' + f.name) AS affected_function_ids,
-    collect(DISTINCT caller_file.path + '::' + caller.name) AS impacted_function_ids
-```
+Four tools read a scanned project's graph; they are declared once in `TOOL_REGISTRY` (`gittrace/core/registry.py`), which drives both the MCP server and the agent loop:
 
-### Shortest attack path — `find_shortest_dependency_path(start_service, target_function, *, cve_id=None, target_file_path=None)`
-
-```cypher
-MATCH (c:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)
-MATCH (s:Service {name: $start_service, is_public: true})
-WITH s, f, shortestPath((s)-[:CONTAINS|DEFINES|DEPENDS_ON*1..10]->(f)) AS p
-RETURN
-    [n IN nodes(p) | labels(n)[0] + ':' + coalesce(n.name, n.path, n.id)] AS path_trace,
-    length(p) AS hop_count
-ORDER BY hop_count ASC, path_trace ASC
-LIMIT 1
-```
-
-Without `cve_id` or `target_file_path`, the name must be defined in exactly one file; otherwise the tool returns an error listing the candidates (`file_path::name`).
-
-### Code owner — `find_code_owner(function_name, *, file_path=None, cve_id=None)`
-
-```cypher
-MATCH (:CVE {id: $cve_id})-[:AFFECTS]->(f:Function)<-[:DEFINES]-(file:File)
-// or, by file:  MATCH (file:File {path: $file_path})-[:DEFINES]->(f:Function {name: $function_name})
-// or, by name:  MATCH (file:File)-[:DEFINES]->(f:Function {name: $function_name})
-OPTIONAL MATCH (file)<-[:AUTHORED]-(dev:Developer)
-OPTIONAL MATCH (dev)-[:OWNS]->(s:Service)
-RETURN
-    file.path AS file_path,
-    f.name AS function_name,
-    dev.name AS developer_name,
-    dev.email AS email,
-    dev.slack_handle AS slack,
-    collect(DISTINCT s.name) AS owned_services
-ORDER BY file_path, function_name, developer_name
-```
-
-Every row is checked: if the function resolves to more than one file, the tool reports the ambiguity instead of picking one.
-
-All tools are declared once, in `TOOL_REGISTRY` in `gittrace/core/registry.py`. `tool_schemas()` returns them as OpenAI-format schemas, so any model can call them, and the MCP server is generated from the same registry.
-
-## MCP server (Track 01)
+| Tool | Answers |
+|---|---|
+| `list_findings(project, min_severity, rule_id)` | the last scan's findings, most severe first |
+| `trace_attack_path(project, finding, depth)` | shortest routes from endpoints to a finding (`file.py:line` or `path.py::line::col`) |
+| `blast_radius(project, function_id, depth)` | callers of a function and the endpoints that reach it |
+| `finding_owner(project, finding)` | author, email and commit of the finding's line (`git blame`) |
 
 ```bash
 python -m gittrace.mcp_server      # stdio transport, from the repository root
 ```
 
 ```json
-{
-  "command": "python",
-  "args": ["-m", "gittrace.mcp_server"],
-  "env": { "PYTHONPATH": "/path/to/GitTrace" }
-}
+{ "command": "python", "args": ["-m", "gittrace.mcp_server"], "env": { "PYTHONPATH": "/path/to/GitTrace" } }
 ```
 
-Exposes `get_blast_radius_tool`, `find_shortest_dependency_path_tool`, `find_code_owner_tool` over the Model Context Protocol, so Claude Desktop or any MCP host can query the same graph.
+The MCP tools are named `list_findings_tool`, `trace_attack_path_tool`, `blast_radius_tool` and `finding_owner_tool`.
 
 ---
 
 ## Tests
 
 ```bash
-python -m pytest tests/test_core.py tests/test_ingest.py -q   # no DB, no API key
+python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py -q   # no DB
 
-docker compose up -d falkordb              # real FalkorDB for the integration suites
-FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_integration.py tests/test_ingest_integration.py -q
+docker compose up -d falkordb
+FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= \
+  python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -q
 ```
 
-`tests/fixtures/sample_app` (FastAPI) and `tests/fixtures/flask_app` are small projects the ingestion tests scan. The exact functions, calls and endpoints they must produce are written out by hand in `tests/expected_sample_app.py`. `test_ingest.py` checks the parser output against them, and `test_ingest_integration.py` checks the same facts in a real FalkorDB graph, together with idempotent re-scans, removal of deleted code, and one graph per project.
-
-The offline suite covers helpers, all graph tools against a mocked FalkorDB layer, the agent loop against a mocked LLM, the tool registry, the MCP server (including that it starts without importing a web framework), and seed-data integrity. It runs on a clean clone before `.env` exists, and in CI on Python 3.11–3.13 (`.github/workflows/tests.yml`).
-
-The integration suite runs every Cypher query unmocked: it seeds its own uniquely named graph, runs against it, and drops it. CI runs it against a FalkorDB service container; locally it skips itself when FalkorDB is unreachable.
-
-## Design decisions worth knowing
-
-- **No bare-name lookups.** `validate_token` and `refresh_token` exist in two services each; matching by name alone can resolve the wrong instance. The path and owner tools accept `cve_id` (resolve the target through `AFFECTS`) or a file path, and a bare name that matches more than one file is reported as ambiguous rather than guessed.
-- **Native `shortestPath` instead of application-side BFS** — the graph engine does the traversal, so the code only formats the result.
-- **Deterministic fallback** — a dead API key or exhausted quota degrades the prose, not the product.
-
-## Track 01 and the submission rules
-
-| Requirement | Where |
-|---|---|
-| Public repo + README with setup and graph model | this file |
-| Cypher queries the product depends on | [The three tools](#the-three-tools) |
-| Demo video | [YouTube, 3 min](https://youtu.be/xwo16Zesdus) |
-| Live deployment **or** complete local setup | [Quick start](#quick-start) — verified end to end |
-| Track named | Track 01 — Agents That Act on Connected Data |
-| FalkorDB is primary and essential | [Why FalkorDB is load-bearing](#why-falkordb-is-load-bearing) |
-| MCP / GraphRAG-SDK used | [MCP server](#mcp-server-track-01) |
-| AI assistance disclosed | below |
+- The expected functions, calls and endpoints of `tests/fixtures/sample_app` are written out by hand in `tests/expected_sample_app.py`, and its expected findings, severities, routes and blast radii in `tests/expected_findings.py`. The offline suites check the parser, the rules and the in-memory scan against them; the integration suites check the same facts in a real FalkorDB graph (Sink nodes, `REACHES_SINK` edges, stored severities, every tool's Cypher) and that both reachability backends agree.
+- `tests/snapshots/sample_app_scan.json` is a reviewed snapshot of `scan --format json`; a test also checks it against the hand-written expectations. Regenerate with `GITTRACE_UPDATE_SNAPSHOTS=1 pytest tests/test_scan.py -k snapshot` and review the diff.
+- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13 and the integration suites against a FalkorDB service container; locally the integration suites skip when FalkorDB is unreachable.
 
 ## Limitations
 
-- **Seed data is synthetic.** The graph models a representative microservice estate; it is not trained or evaluated on a real organisation's codebase.
-- **The LLM is optional, not required.** With a valid Gemini key the agent chooses tools via function calling; without one, the keyword classifier picks them. Same tools, less flexible phrasing.
-- **No public deployment.** Rule 10 accepts complete local setup, and that is what is documented and verified here.
+- **Python only**, and only FastAPI and Flask routes.
+- **Intraprocedural data flow.** A dangerous value is tracked through assignments inside one function (and closures), not across calls, and a query passed in unchanged as a parameter is not a finding.
+- **Known false negative: SQL built in another function.** When one function builds the SQL string and another executes it, nothing is reported:
+
+  ```python
+  def delete_user(self, user_id):
+      def build_query():
+          return "DELETE FROM users WHERE id = " + str(user_id)
+      self.conn.execute(build_query())   # not reported: the argument is a call result
+  ```
+
+  This exact case is in `tests/fixtures/sample_app/app/db.py:24`, and the tests assert that it is *not* reported, so a fix will show up as a deliberate test change.
+- **Call resolution is static and conservative.** Calls on parameters, attributes or return values (`db_session.query`, `self.repo.get`) stay unresolved, so paths through them are missed; dynamic dispatch (plugin registries, `getattr`) is invisible.
+- **Rules are pattern rules.** A finding means the dangerous pattern is there, not that it is exploitable: a query formatted from trusted schema names is still reported, with a lower severity when no route reaches it.
+- **Auth detection is name-based** and only sees obvious dependencies and decorators; checks inside the handler body (e.g. signature verification) are not recognised.
+- **The model layer is not built yet.** Explanations and fix diffs come in a later phase; the agent loop in `gittrace.core.agent` is a generic, experimental shell.
 
 ## AI assistance disclosure (Rule 11)
 
-This project was built with AI coding assistance. An AI coding agent (Codebuff) wrote and edited code, tests, and documentation in this repository under the author's direction; the author ran the application, verified the graph queries against the live FalkorDB instance, and validated the outputs quoted in this README. No result in this document is a model claim — each one was produced by executing the code in this repo.
+This project was built with AI coding assistance. An AI coding agent (Codebuff) wrote and edited code, tests, and documentation in this repository under the author's direction; the author ran the application, verified the graph queries against the live FalkorDB instance, and validated the outputs quoted in this README. No result in this document is a model claim — each one was produced by executing the code in this repo. The `v2` command-line rebuild is being written with Claude Code under the author's direction, phase by phase.
 
 ## License
 

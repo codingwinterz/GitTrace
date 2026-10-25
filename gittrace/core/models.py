@@ -22,4 +22,3 @@ class AgentResponse(BaseModel):
     answer: str
     tool_calls: list[ToolCall]
     tool_results: list[ToolResult] = Field(default_factory=list)
-    cve_id: str | None = None

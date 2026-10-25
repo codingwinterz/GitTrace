@@ -358,25 +358,30 @@ class Resolver:
     # -- calls ---------------------------------------------------------------
 
     def resolve_call(self, mod: PyModule, call: RawCall) -> CallSite:
+        dotted, origin, callee_id = self._target(mod, call)
+        return CallSite(call.caller_id, call.call.line, dotted, origin, callee_id,
+                        site=call.site, args=call.args, kwargs=call.kwargs)
+
+    def _target(self, mod: PyModule, call: RawCall) -> tuple[str, str, str | None]:
+        """(dotted name, origin, project function id or None) for a call."""
         r = self.resolve_ref(mod, call.scope, call.call.parts)
-        line = call.call.line
         sym = r.sym
         if isinstance(sym, VarSym):
             sym = self.deref(sym)
         if isinstance(sym, FuncSym):
-            return CallSite(call.caller_id, line, r.name, "project", sym.id)
+            return r.name, "project", sym.id
         if isinstance(sym, ClassSym):
             init = self.class_member(sym, "__init__")
             if isinstance(init, FuncSym):
-                return CallSite(call.caller_id, line, r.name, "project", init.id)
-            return CallSite(call.caller_id, line, r.name, "class")
+                return r.name, "project", init.id
+            return r.name, "class", None
         if isinstance(sym, InstSym):
             dunder = self.class_member(sym.cls, "__call__")
             if isinstance(dunder, FuncSym):
-                return CallSite(call.caller_id, line, r.name, "project", dunder.id)
+                return r.name, "project", dunder.id
         if isinstance(sym, ExtSym) and sym is not r.sym:      # run = subprocess.run; run()
-            return CallSite(call.caller_id, line, sym.dotted, sym.origin)
-        return CallSite(call.caller_id, line, r.name, r.origin)
+            return sym.dotted, sym.origin, None
+        return r.name, r.origin, None
 
 
 def _module_names(mod: PyModule, package_dirs: set[str]) -> list[str]:
