@@ -1,0 +1,44 @@
+{
+  "vulnerable": [
+    {
+      "name": "vulpy-bad",
+      "repo": "https://github.com/fportantier/vulpy",
+      "commit": "5249cc8b05a1c37f6b2f757b1cf16a509c327122",
+      "scan_path": "bad"
+    },
+    {
+      "name": "vulpy-good",
+      "repo": "https://github.com/fportantier/vulpy",
+      "commit": "5249cc8b05a1c37f6b2f757b1cf16a509c327122",
+      "scan_path": "good"
+    },
+    {
+      "name": "vulnerable-flask-app",
+      "repo": "https://github.com/we45/Vulnerable-Flask-App",
+      "commit": "b6a4f97afd466e83e1f60781494252dec1c37039",
+      "scan_path": "."
+    },
+    {
+      "name": "vulnpy",
+      "repo": "https://github.com/Contrast-Security-OSS/vulnpy",
+      "commit": "b81885e58283a3449b578d20c20557aff637e5ea",
+      "scan_path": "."
+    }
+  ],
+  "real_world": [
+    {
+      "name": "ctfd",
+      "repo": "https://github.com/CTFd/CTFd",
+      "commit": "738f1de09ac4a8ccbd65bf74577acdc1dbecd08e",
+      "scan_path": ".",
+      "framework": "flask"
+    },
+    {
+      "name": "mealie",
+      "repo": "https://github.com/mealie-recipes/mealie",
+      "commit": "c3893a3e64304e2b8cfe3d9b11362d1e0be08e3c",
+      "scan_path": ".",
+      "framework": "fastapi"
+    }
+  ]
+}

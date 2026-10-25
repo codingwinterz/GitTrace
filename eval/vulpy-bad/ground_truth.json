@@ -1,0 +1,54 @@
+{
+  "target": "vulpy-bad",
+  "written": "before running GitTrace or Bandit on this target",
+  "sources": [
+    "README.rst: the BAD version has XSS, SQL Injection, CSRF, Session Impersonation, Insecure Deserialization, Authentication Bruteforce and Bypass",
+    "reading of bad/*.py at the pinned commit"
+  ],
+  "notes": [
+    "The README's 'Insecure Deserialization' is the base64-encoded JSON session cookie in libsession.py (json.loads): forgeable, but not unsafe deserialization in GitTrace's sense (no pickle/yaml/marshal), so it is not listed.",
+    "Flask routes are plain blueprints with no auth decorators or dependencies; every route is unauthenticated as far as the code shows."
+  ],
+  "vulnerabilities": [
+    {
+      "id": "VB-1", "category": "sql-injection", "file": "libuser.py", "lines": [12],
+      "function": "login",
+      "detail": "\"SELECT ... username = '{}' and password = '{}'\".format(username, password)",
+      "reachable": {"unauthenticated": true, "routes": ["POST /user/login", "POST /api/key (via libapi.keygen)"]}
+    },
+    {
+      "id": "VB-2", "category": "sql-injection", "file": "libuser.py", "lines": [25],
+      "function": "create",
+      "detail": "\"INSERT ... VALUES ('%s', '%s', ...)\" % (username, password, ...)",
+      "reachable": {"unauthenticated": true, "routes": ["POST /user/create"]}
+    },
+    {
+      "id": "VB-3", "category": "sql-injection", "file": "libuser.py", "lines": [53],
+      "function": "password_change",
+      "detail": "\"UPDATE users SET password = '{}' WHERE username = '{}'\".format(password, username)",
+      "reachable": {"unauthenticated": true, "routes": ["POST /user/chpasswd"]}
+    },
+    {
+      "id": "VB-4", "category": "hardcoded-secret", "file": "vulpy.py", "lines": [16],
+      "function": "<module>",
+      "detail": "app.config['SECRET_KEY'] = 'aaaaaaa' (Flask session signing key)",
+      "reachable": null
+    },
+    {
+      "id": "VB-5", "category": "hardcoded-secret", "file": "vulpy-ssl.py", "lines": [13],
+      "function": "<module>",
+      "detail": "app.config['SECRET_KEY'] = 'aaaaaaa'",
+      "reachable": null
+    }
+  ],
+  "benign": [
+    {"category": "sql-injection", "file": "db.py", "lines": [19],
+     "why": "INSERT formatted with % from a hardcoded list of seed users in an init script; no outside input"},
+    {"category": "sql-injection", "file": "db_init.py", "lines": [20],
+     "why": "same: seed data from a local list"},
+    {"category": "hardcoded-secret", "file": "db_init.py", "lines": [10, 11, 12],
+     "why": "seed passwords for demo users in a list literal (lab data)"},
+    {"category": "hardcoded-secret", "file": "db.py", "lines": [8, 9, 10],
+     "why": "seed passwords for demo users, hashed before storing"}
+  ]
+}

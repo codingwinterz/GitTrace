@@ -1,0 +1,1036 @@
+{
+  "target": {
+    "name": "mealie",
+    "repo": "https://github.com/mealie-recipes/mealie",
+    "commit": "c3893a3e64304e2b8cfe3d9b11362d1e0be08e3c",
+    "scan_path": ".",
+    "framework": "fastapi"
+  },
+  "scanned": {
+    "files": 695,
+    "parse_failures": 0,
+    "functions": 4007,
+    "endpoints": 213,
+    "calls": 27366
+  },
+  "gittrace_findings": 65,
+  "by_rule": {
+    "GT-SQLI-001": 33,
+    "GT-SECRET-001": 32
+  },
+  "by_severity": {
+    "medium": 65
+  },
+  "reachable": 0,
+  "unauthenticated": 0,
+  "bandit_findings_same_categories": 101,
+  "bandit_by_category": {
+    "hardcoded-secret": 69,
+    "sql-injection": 32
+  },
+  "reviewed": 65,
+  "unreviewed": [],
+  "false_positives": 63,
+  "false_positive_rate": 0.969,
+  "findings": [
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::69::29",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py",
+      "lines": [
+        69
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "query = session.execute(sa.text(f\"SELECT id, group_id, name FROM {model.__tablename__}\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::183::13",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py",
+      "lines": [
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "query = sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::105::21",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py",
+      "lines": [
+        105
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(sa.text(sql_statement), household_data)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::121::41",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py",
+      "lines": [
+        121
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "group_preferences = session.execute(sa.text(sql_statement), {\"group_id\": group_id}).fetchone()"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::143::21",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py",
+      "lines": [
+        143
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(sa.text(sql_statement), preferences_data)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::24::28",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py",
+      "lines": [
+        24
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "rows = session.execute(text(f\"SELECT id, {', '.join(source_columns)} FROM {table}\")).fetchall()"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::33::25",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py",
+      "lines": [
+        33
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(text(f\"UPDATE {table} SET {set_clause} WHERE id = :id\"), {**updates, \"id\": id_})"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/schema/_mealie/mealie_model.py::159::29",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/schema/_mealie/mealie_model.py",
+      "lines": [
+        159
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(text(f\"set pg_trgm.word_similarity_threshold = {cls._fuzzy_similarity_threshold};\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/schema/recipe/recipe.py::414::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/schema/recipe/recipe.py",
+      "lines": [
+        414
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "text(f\"set pg_trgm.word_similarity_threshold = {cls._fuzzy_ingredient_similarity_threshold};\")"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/schema/recipe/recipe.py::431::29",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/schema/recipe/recipe.py",
+      "lines": [
+        431
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(text(f\"set pg_trgm.word_similarity_threshold = {cls._fuzzy_similarity_threshold};\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/backups_v2/alchemy_exporter.py::44::41",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/services/backups_v2/alchemy_exporter.py",
+      "lines": [
+        44
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "self.connection.execute(text(f\"SET session_replication_role = '{initial_state}';\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/backups_v2/alchemy_exporter.py::47::41",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/services/backups_v2/alchemy_exporter.py",
+      "lines": [
+        47
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "self.connection.execute(text(f\"PRAGMA foreign_keys = {initial_state};\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::28::31",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py",
+      "lines": [
+        28
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "return connection.execute(sa.text(f\"SELECT COUNT(*) FROM {table}\")).scalar_one()"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::57::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py",
+      "lines": [
+        57,
+        58,
+        59
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::64::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py",
+      "lines": [
+        64,
+        65,
+        66
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::73::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py",
+      "lines": [
+        73,
+        74,
+        75
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::80::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py",
+      "lines": [
+        80,
+        81,
+        82
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-08-06-21.00.34_04ac51cbe9a4_added_group_slug.py::40::13",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-08-06-21.00.34_04ac51cbe9a4_added_group_slug.py",
+      "lines": [
+        40
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text(f\"UPDATE {Group.__tablename__} SET name=:name, slug=:slug WHERE id=:id\").bindparams("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py::38::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py",
+      "lines": [
+        38,
+        39,
+        40
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py::45::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py",
+      "lines": [
+        45,
+        46,
+        47
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py::56::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py",
+      "lines": [
+        56,
+        57,
+        58
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::101::9",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py",
+      "lines": [
+        101
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text(f\"DELETE FROM {IngredientFoodModel.__tablename__} WHERE id=:id\").bindparams(id=dupe_food_id)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::129::9",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py",
+      "lines": [
+        129
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text(f\"DELETE FROM {IngredientUnitModel.__tablename__} WHERE id=:id\").bindparams(id=dupe_unit_id)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::156::21",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py",
+      "lines": [
+        156
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(sa.text(f\"DELETE FROM {MultiPurposeLabel.__tablename__} WHERE id=:id\").bindparams(id=dupe_label_id))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::191::25",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+      "lines": [
+        191
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(text(f\"UPDATE recipes SET {assignments} WHERE id = :id\"), {**updates, \"id\": recipe_id})"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::207::13",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+      "lines": [
+        207
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "text(f\"SELECT id, {field}_seconds FROM recipes WHERE {field} IS NULL AND {field}_seconds IS NOT NULL\")"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::211::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+      "lines": [
+        211
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "text(f\"UPDATE recipes SET {field} = :value WHERE id = :id\"),"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-10-13-12.00.00_3697d65c5f92_clear_legacy_organizer_join_tables.py::35::20",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-10-13-12.00.00_3697d65c5f92_clear_legacy_organizer_join_tables.py",
+      "lines": [
+        35
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "op.execute(sa.text(f\"DELETE FROM {table}\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/core/settings/db_providers.py::38::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/core/settings/db_providers.py",
+      "lines": [
+        38
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "POSTGRES_PASSWORD: str = \"mea***\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/core/settings/settings.py::290::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/core/settings/settings.py",
+      "lines": [
+        290
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "_DEFAULT_PASSWORD: str = \"MyP*******\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/routes/_base/controller.py::15::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/routes/_base/controller.py",
+      "lines": [
+        15
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "CBV_CLASS_KEY = \"__c**********\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/routes/_base/controller.py::16::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/routes/_base/controller.py",
+      "lines": [
+        16
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "INCLUDE_INIT_PARAMS_KEY = \"__i********************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/routes/_base/controller.py::17::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/routes/_base/controller.py",
+      "lines": [
+        17
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "RETURN_TYPES_FUNC_KEY = \"__r******************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/routes/groups/controller_group_self_service.py::46::13",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/routes/groups/controller_group_self_service.py",
+      "lines": [
+        46
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"use*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/scripts/reprocess_images.py::63::34",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/scripts/reprocess_images.py",
+      "lines": [
+        63
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "result = session.execute(sa.text(f\"SELECT id FROM {RecipeModel.__tablename__}\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/household_services/household_service.py::29::17",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/household_services/household_service.py",
+      "lines": [
+        29
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"slu*\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/recipe/import_workflow/compilers/image.py::13::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/recipe/import_workflow/compilers/image.py",
+      "lines": [
+        13
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "progress_key = \"rec******************************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/recipe/import_workflow/compilers/transcription.py::17::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/recipe/import_workflow/compilers/transcription.py",
+      "lines": [
+        17
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "progress_key = \"rec*************************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/recipe/import_workflow/compilers/web_page.py::14::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/recipe/import_workflow/compilers/web_page.py",
+      "lines": [
+        14
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "progress_key = \"rec******************************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/recipe/import_workflow/recipe_conversion.py::14::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/recipe/import_workflow/recipe_conversion.py",
+      "lines": [
+        14
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "DEFAULT_RECIPE_NAME_KEY = \"rec************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/recipe/import_workflow/steps/build_recipe.py::16::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/recipe/import_workflow/steps/build_recipe.py",
+      "lines": [
+        16
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "progress_key = \"rec***********************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/recipe/import_workflow/steps/resolve_organizers.py::25::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/recipe/import_workflow/steps/resolve_organizers.py",
+      "lines": [
+        25
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "progress_key = \"rec*************************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/recipe/import_workflow/steps/translate_recipe.py::86::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/services/recipe/import_workflow/steps/translate_recipe.py",
+      "lines": [
+        86
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "progress_key = \"rec**************************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/conftest.py::40::26",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "tests/conftest.py",
+      "lines": [
+        40
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "conn.execute(text(f'DROP DATABASE IF EXISTS \"{worker_db}\"'))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/conftest.py::41::26",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "tests/conftest.py",
+      "lines": [
+        41
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "conn.execute(text(f'CREATE DATABASE \"{worker_db}\"'))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::17::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        17
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"tes*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::35::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        35
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"tes*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::46::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        46
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"tes*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::67::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        67
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"tes*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::84::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        84
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"tes*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::101::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        101
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"tes*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::201::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        201
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"oau****************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::212::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+      "lines": [
+        212
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = \"tes*****\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::50::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py",
+      "lines": [
+        50
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "token_key = \"acc*****************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::136::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py",
+      "lines": [
+        136
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "user_session_key = \"oau*****************************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/services_tests/test_email_service.py::15::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/services_tests/test_email_service.py",
+      "lines": [
+        15
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "NON_ASCII_PASSWORD = \"pa\u20ac******\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::38::36",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py",
+      "lines": [
+        38
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "connection.execute(sa.text(f\"CREATE TABLE {table} ({left} CHAR(32), {right} CHAR(32))\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::40::21",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py",
+      "lines": [
+        40
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "sa.text(f\"INSERT INTO {table} ({left}, {right}) VALUES ('a', 'b'), ('a', 'c'), ('d', 'b')\")"
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/unit_tests/test_oidc_native_client.py::9::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/unit_tests/test_oidc_native_client.py",
+      "lines": [
+        9
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "WEB_CLIENT_SECRET = \"web**************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/utils/api_routes/__init__.py::32::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/utils/api_routes/__init__.py",
+      "lines": [
+        32
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "admin_users_password_reset_token = \"/ap**********************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/utils/api_routes/__init__.py::52::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/utils/api_routes/__init__.py",
+      "lines": [
+        52
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "auth_oauth_native_token = \"/ap*************************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/utils/api_routes/__init__.py::58::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/utils/api_routes/__init__.py",
+      "lines": [
+        58
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "auth_token = \"/ap************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/utils/api_routes/__init__.py::210::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/utils/api_routes/__init__.py",
+      "lines": [
+        210
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "users_forgot_password = \"/ap***********************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/utils/api_routes/__init__.py::212::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/utils/api_routes/__init__.py",
+      "lines": [
+        212
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "users_password = \"/ap****************\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/utils/api_routes/__init__.py::216::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "tests/utils/api_routes/__init__.py",
+      "lines": [
+        216
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "users_reset_password = \"/ap**********************\""
+    }
+  ]
+}

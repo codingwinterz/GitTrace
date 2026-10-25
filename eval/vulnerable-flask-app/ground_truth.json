@@ -1,0 +1,51 @@
+{
+  "target": "vulnerable-flask-app",
+  "written": "before running GitTrace or Bandit on this target",
+  "sources": [
+    "README.md is one line ('This is a ZAP Test'); the vulnerabilities are listed from a reading of app/app.py at the pinned commit",
+    "the repository's old-workflows/semgrep.yml shows it is used as a SAST/DAST target"
+  ],
+  "notes": [
+    "/search checks a JWT inside the handler (verify_jwt); in reality it requires authentication, but no decorator or dependency says so.",
+    "Out of GitTrace's categories and not listed: SSTI via render_template_string (404 handler, /search error), XXE via python-docx upload, JWT decoded with verify=False, MD5 password hashing."
+  ],
+  "vulnerabilities": [
+    {
+      "id": "VF-1", "category": "sql-injection", "file": "app/app.py", "lines": [261, 265],
+      "function": "search_customer",
+      "detail": "str_query = \"SELECT ... WHERE username = '%s';\" % search_term; db.engine.execute(str_query)",
+      "reachable": {"unauthenticated": false, "routes": ["POST /search (JWT checked in the body)"]}
+    },
+    {
+      "id": "VF-2", "category": "unsafe-deserialization", "file": "app/app.py", "lines": [329],
+      "function": "yaml_hammer",
+      "detail": "yaml.load(y) on an uploaded file, no Loader",
+      "reachable": {"unauthenticated": true, "routes": ["POST /yaml_hammer"]}
+    },
+    {
+      "id": "VF-3", "category": "hardcoded-secret", "file": "app/app.py", "lines": [26],
+      "function": "<module>",
+      "detail": "app.config['SECRET_KEY_HMAC'] = 'secret' (the key that signs and verifies the JWTs)",
+      "reachable": null
+    },
+    {
+      "id": "VF-4", "category": "hardcoded-secret", "file": "app/app.py", "lines": [27],
+      "function": "<module>",
+      "detail": "app.config['SECRET_KEY_HMAC_2'] = 'am0r3C0mpl3xK3y'",
+      "reachable": null
+    },
+    {
+      "id": "VF-5", "category": "hardcoded-secret", "file": "app/app.py", "lines": [28],
+      "function": "<module>",
+      "detail": "app.secret_key = 'F12Zr47j\\3yX R~X@H!jmM]Lwf/,?KT' (Flask session key)",
+      "reachable": null
+    },
+    {
+      "id": "VF-6", "category": "hardcoded-secret", "file": "app/app.py", "lines": [63],
+      "function": "setup_users",
+      "detail": "user.password = 'admin123' (default admin credential, stored in plain text)",
+      "reachable": null
+    }
+  ],
+  "benign": []
+}

@@ -1,0 +1,266 @@
+{
+  "reviewed_by": "manual reading of each finding's source at the pinned commit",
+  "rules_at_review": "GitTrace at commit 94af77b (untouched)",
+  "verdicts": {
+    "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::69::29": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::183::13": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::105::21": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::121::41": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::143::21": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::24::28": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::33::25": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/schema/_mealie/mealie_model.py::159::29": {
+      "verdict": "fp",
+      "reason": "pg_trgm threshold from a class attribute constant"
+    },
+    "mealie/schema/recipe/recipe.py::414::17": {
+      "verdict": "fp",
+      "reason": "pg_trgm threshold from a class attribute constant"
+    },
+    "mealie/schema/recipe/recipe.py::431::29": {
+      "verdict": "fp",
+      "reason": "pg_trgm threshold from a class attribute constant"
+    },
+    "mealie/services/backups_v2/alchemy_exporter.py::44::41": {
+      "verdict": "fp",
+      "reason": "replication role / PRAGMA value from internal state ('origin'/'ON' defaults), not request data"
+    },
+    "mealie/services/backups_v2/alchemy_exporter.py::47::41": {
+      "verdict": "fp",
+      "reason": "replication role / PRAGMA value from internal state ('origin'/'ON' defaults), not request data"
+    },
+    "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::28::31": {
+      "verdict": "fp",
+      "reason": "test setup SQL with table/database names from the test itself"
+    },
+    "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::57::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::64::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::73::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-02-14-20.45.41_5ab195a474eb_add_normalized_search_properties.py::80::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-08-06-21.00.34_04ac51cbe9a4_added_group_slug.py::40::13": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py::38::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py::45::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-09-01-14.55.42_0341b154f79a_added_normalized_unit_and_food_names.py::56::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::101::9": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::129::9": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::156::21": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::191::25": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::207::13": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::211::17": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/alembic/versions/2026-10-13-12.00.00_3697d65c5f92_clear_legacy_organizer_join_tables.py::35::20": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/core/settings/db_providers.py::38::5": {
+      "verdict": "tp",
+      "reason": "default Postgres password 'mealie' in code; overridable by env, but a deployment that forgets uses it"
+    },
+    "mealie/core/settings/settings.py::290::5": {
+      "verdict": "tp",
+      "reason": "default admin password 'MyPassword' shipped in code (documented, must be changed after first login)"
+    },
+    "mealie/routes/_base/controller.py::15::1": {
+      "verdict": "fp",
+      "reason": "dunder attribute name constant (e.g. '__cbv_class__')"
+    },
+    "mealie/routes/_base/controller.py::16::1": {
+      "verdict": "fp",
+      "reason": "dunder attribute name constant (e.g. '__cbv_class__')"
+    },
+    "mealie/routes/_base/controller.py::17::1": {
+      "verdict": "fp",
+      "reason": "dunder attribute name constant (e.g. '__cbv_class__')"
+    },
+    "mealie/routes/groups/controller_group_self_service.py::46::13": {
+      "verdict": "fp",
+      "reason": "dictionary/field key name ('username', 'slug')"
+    },
+    "mealie/scripts/reprocess_images.py::63::34": {
+      "verdict": "fp",
+      "reason": "migration/maintenance SQL: table and column names from models or constants, values bound as parameters"
+    },
+    "mealie/services/household_services/household_service.py::29::17": {
+      "verdict": "fp",
+      "reason": "dictionary/field key name ('username', 'slug')"
+    },
+    "mealie/services/recipe/import_workflow/compilers/image.py::13::5": {
+      "verdict": "fp",
+      "reason": "i18n progress/translation key"
+    },
+    "mealie/services/recipe/import_workflow/compilers/transcription.py::17::5": {
+      "verdict": "fp",
+      "reason": "i18n progress/translation key"
+    },
+    "mealie/services/recipe/import_workflow/compilers/web_page.py::14::5": {
+      "verdict": "fp",
+      "reason": "i18n progress/translation key"
+    },
+    "mealie/services/recipe/import_workflow/recipe_conversion.py::14::1": {
+      "verdict": "fp",
+      "reason": "i18n progress/translation key"
+    },
+    "mealie/services/recipe/import_workflow/steps/build_recipe.py::16::5": {
+      "verdict": "fp",
+      "reason": "i18n progress/translation key"
+    },
+    "mealie/services/recipe/import_workflow/steps/resolve_organizers.py::25::5": {
+      "verdict": "fp",
+      "reason": "i18n progress/translation key"
+    },
+    "mealie/services/recipe/import_workflow/steps/translate_recipe.py::86::5": {
+      "verdict": "fp",
+      "reason": "i18n progress/translation key"
+    },
+    "tests/conftest.py::40::26": {
+      "verdict": "fp",
+      "reason": "test setup SQL with table/database names from the test itself"
+    },
+    "tests/conftest.py::41::26": {
+      "verdict": "fp",
+      "reason": "test setup SQL with table/database names from the test itself"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::17::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::35::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::46::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::67::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::84::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::101::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::201::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::212::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::50::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::136::5": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/services_tests/test_email_service.py::15::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::38::36": {
+      "verdict": "fp",
+      "reason": "test setup SQL with table/database names from the test itself"
+    },
+    "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::40::21": {
+      "verdict": "fp",
+      "reason": "test setup SQL with table/database names from the test itself"
+    },
+    "tests/unit_tests/test_oidc_native_client.py::9::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/utils/api_routes/__init__.py::32::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/utils/api_routes/__init__.py::52::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/utils/api_routes/__init__.py::58::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/utils/api_routes/__init__.py::210::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/utils/api_routes/__init__.py::212::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    },
+    "tests/utils/api_routes/__init__.py::216::1": {
+      "verdict": "fp",
+      "reason": "test fixture value or API route path, not a secret"
+    }
+  }
+}

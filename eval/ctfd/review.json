@@ -1,0 +1,46 @@
+{
+  "reviewed_by": "manual reading of each finding's source at the pinned commit",
+  "rules_at_review": "GitTrace at commit 94af77b (untouched)",
+  "verdicts": {
+    "CTFd/utils/exports/__init__.py::416::29": {
+      "verdict": "fp",
+      "reason": "table name from an admin-uploaded backup, rejected if it contains a quote; admin-only import"
+    },
+    "CTFd/utils/exports/__init__.py::247::21": {
+      "verdict": "fp",
+      "reason": "KILL {proc_id}: the id comes from SHOW PROCESSLIST (database-supplied integer)"
+    },
+    "CTFd/api/v1/scoreboard.py::35::17": {
+      "verdict": "fp",
+      "reason": "rule bug: SQLAlchemy select(...).join(...) is treated as str.join; no string SQL at all"
+    },
+    "CTFd/utils/health/__init__.py::16::5": {
+      "verdict": "fp",
+      "reason": "key = 'healthcheck' is a cache key name, not a secret"
+    },
+    "tests/teams/test_invites.py::31::9": {
+      "verdict": "fp",
+      "reason": "test fixture password/token"
+    },
+    "tests/test_config.py::106::9": {
+      "verdict": "fp",
+      "reason": "test fixture password/token"
+    },
+    "tests/test_config.py::180::9": {
+      "verdict": "fp",
+      "reason": "test fixture password/token"
+    },
+    "tests/test_config.py::181::9": {
+      "verdict": "fp",
+      "reason": "test fixture password/token"
+    },
+    "tests/test_config.py::254::9": {
+      "verdict": "fp",
+      "reason": "test fixture password/token"
+    },
+    "tests/test_config.py::371::9": {
+      "verdict": "fp",
+      "reason": "test fixture password/token"
+    }
+  }
+}

@@ -19,3 +19,7 @@ debug/
 # Local Claude Code state
 .claude/
 skills-lock.json
+
+# evaluation checkouts and tools (reproduced by eval/run_eval.py)
+eval/.src/
+eval/.bandit-venv/

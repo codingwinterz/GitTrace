@@ -1,0 +1,305 @@
+{
+  "target": {
+    "name": "vulpy-bad",
+    "repo": "https://github.com/fportantier/vulpy",
+    "commit": "5249cc8b05a1c37f6b2f757b1cf16a509c327122",
+    "scan_path": "bad"
+  },
+  "gittrace_findings": [
+    {
+      "tool": "gittrace",
+      "id": "libuser.py::12::12",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        12
+      ],
+      "severity": "critical",
+      "score": 11,
+      "reachable": true,
+      "unauthenticated": true,
+      "snippet": "user = c.execute(\"SELECT * FROM users WHERE username = '{}' and password = '{}'\".format(username, password)).fetchone()"
+    },
+    {
+      "tool": "gittrace",
+      "id": "libuser.py::25::5",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        25
+      ],
+      "severity": "critical",
+      "score": 10,
+      "reachable": true,
+      "unauthenticated": true,
+      "snippet": "c.execute(\"INSERT INTO users (username, password, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%d', '%d', '%s')\" %(username, password, 0, 0, ''))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "libuser.py::53::5",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        53
+      ],
+      "severity": "critical",
+      "score": 10,
+      "reachable": true,
+      "unauthenticated": true,
+      "snippet": "c.execute(\"UPDATE users SET password = '{}' WHERE username = '{}'\".format(password, username))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "db.py::19::9",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "db.py",
+      "lines": [
+        19
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "c.execute(\"INSERT INTO users (user, password, failures) VALUES ('%s', '%s', '%d')\" %(u, p, 0))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "db_init.py::20::9",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "db_init.py",
+      "lines": [
+        20
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "c.execute(\"INSERT INTO users (username, password, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%d', '%d', '%s')\" %(u, p, 0, 0, ''))"
+    }
+  ],
+  "bandit_findings": [
+    {
+      "tool": "bandit",
+      "id": "db.py:19:B608",
+      "rule": "B608",
+      "category": "sql-injection",
+      "file": "db.py",
+      "lines": [
+        19
+      ],
+      "severity": "medium",
+      "snippet": "18     for u,p in users:"
+    },
+    {
+      "tool": "bandit",
+      "id": "db_init.py:20:B608",
+      "rule": "B608",
+      "category": "sql-injection",
+      "file": "db_init.py",
+      "lines": [
+        20
+      ],
+      "severity": "medium",
+      "snippet": "19     for u,p in users:"
+    },
+    {
+      "tool": "bandit",
+      "id": "libuser.py:12:B608",
+      "rule": "B608",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        12
+      ],
+      "severity": "medium",
+      "snippet": "11 "
+    },
+    {
+      "tool": "bandit",
+      "id": "libuser.py:25:B608",
+      "rule": "B608",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        25
+      ],
+      "severity": "medium",
+      "snippet": "24 "
+    },
+    {
+      "tool": "bandit",
+      "id": "libuser.py:53:B608",
+      "rule": "B608",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        53
+      ],
+      "severity": "medium",
+      "snippet": "52 "
+    },
+    {
+      "tool": "bandit",
+      "id": "vulpy-ssl.py:13:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "vulpy-ssl.py",
+      "lines": [
+        13
+      ],
+      "severity": "low",
+      "snippet": "12 app = Flask('vulpy')"
+    },
+    {
+      "tool": "bandit",
+      "id": "vulpy.py:16:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "vulpy.py",
+      "lines": [
+        16
+      ],
+      "severity": "low",
+      "snippet": "15 app = Flask('vulpy')"
+    }
+  ],
+  "gittrace": {
+    "ground_truth": 5,
+    "tp": 3,
+    "fp": 2,
+    "fp_benign": 2,
+    "fn": 2,
+    "duplicates": 0,
+    "precision": 0.6,
+    "precision_ignoring_benign": 1.0,
+    "recall": 0.6,
+    "true_positives": {
+      "VB-1": [
+        "libuser.py::12::12"
+      ],
+      "VB-2": [
+        "libuser.py::25::5"
+      ],
+      "VB-3": [
+        "libuser.py::53::5"
+      ]
+    },
+    "false_positives": [],
+    "false_positives_benign": [
+      {
+        "tool": "gittrace",
+        "id": "db.py::19::9",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "db.py",
+        "lines": [
+          19
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "c.execute(\"INSERT INTO users (user, password, failures) VALUES ('%s', '%s', '%d')\" %(u, p, 0))"
+      },
+      {
+        "tool": "gittrace",
+        "id": "db_init.py::20::9",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "db_init.py",
+        "lines": [
+          20
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "c.execute(\"INSERT INTO users (username, password, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%d', '%d', '%s')\" %(u, p, 0, 0, ''))"
+      }
+    ],
+    "false_negatives": [
+      {
+        "id": "VB-4",
+        "category": "hardcoded-secret",
+        "file": "vulpy.py",
+        "lines": [
+          16
+        ],
+        "detail": "app.config['SECRET_KEY'] = 'aaaaaaa' (Flask session signing key)"
+      },
+      {
+        "id": "VB-5",
+        "category": "hardcoded-secret",
+        "file": "vulpy-ssl.py",
+        "lines": [
+          13
+        ],
+        "detail": "app.config['SECRET_KEY'] = 'aaaaaaa'"
+      }
+    ],
+    "tp_reachable_unauthenticated": 3,
+    "tp_reachable_any": 3
+  },
+  "bandit": {
+    "ground_truth": 5,
+    "tp": 5,
+    "fp": 2,
+    "fp_benign": 2,
+    "fn": 0,
+    "duplicates": 0,
+    "precision": 0.714,
+    "precision_ignoring_benign": 1.0,
+    "recall": 1.0,
+    "true_positives": {
+      "VB-1": [
+        "libuser.py:12:B608"
+      ],
+      "VB-2": [
+        "libuser.py:25:B608"
+      ],
+      "VB-3": [
+        "libuser.py:53:B608"
+      ],
+      "VB-4": [
+        "vulpy.py:16:B105"
+      ],
+      "VB-5": [
+        "vulpy-ssl.py:13:B105"
+      ]
+    },
+    "false_positives": [],
+    "false_positives_benign": [
+      {
+        "tool": "bandit",
+        "id": "db.py:19:B608",
+        "rule": "B608",
+        "category": "sql-injection",
+        "file": "db.py",
+        "lines": [
+          19
+        ],
+        "severity": "medium",
+        "snippet": "18     for u,p in users:"
+      },
+      {
+        "tool": "bandit",
+        "id": "db_init.py:20:B608",
+        "rule": "B608",
+        "category": "sql-injection",
+        "file": "db_init.py",
+        "lines": [
+          20
+        ],
+        "severity": "medium",
+        "snippet": "19     for u,p in users:"
+      }
+    ],
+    "false_negatives": []
+  },
+  "ground_truth_reachable_unauthenticated": 3
+}

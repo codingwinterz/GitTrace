@@ -1,0 +1,616 @@
+{
+  "target": {
+    "name": "vulnpy",
+    "repo": "https://github.com/Contrast-Security-OSS/vulnpy",
+    "commit": "b81885e58283a3449b578d20c20557aff637e5ea",
+    "scan_path": "."
+  },
+  "gittrace_findings": [
+    {
+      "tool": "gittrace",
+      "id": "apps/fastapi_app.py::43::9",
+      "rule": "GT-CMDI-001",
+      "category": "command-injection",
+      "file": "apps/fastapi_app.py",
+      "lines": [
+        43
+      ],
+      "severity": "critical",
+      "score": 10,
+      "reachable": true,
+      "unauthenticated": true,
+      "snippet": "os.system(cmd)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/cmdi.py::6::12",
+      "rule": "GT-CMDI-001",
+      "category": "command-injection",
+      "file": "src/vulnpy/trigger/cmdi.py",
+      "lines": [
+        6
+      ],
+      "severity": "critical",
+      "score": 10,
+      "reachable": true,
+      "unauthenticated": true,
+      "snippet": "return os.system(command)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "apps/falcon_app.py::29::9",
+      "rule": "GT-CMDI-001",
+      "category": "command-injection",
+      "file": "apps/falcon_app.py",
+      "lines": [
+        29
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "os.system(cmd)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "apps/falcon_app.py::64::5",
+      "rule": "GT-CMDI-001",
+      "category": "command-injection",
+      "file": "apps/falcon_app.py",
+      "lines": [
+        64
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "os.system(cmd)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/cmdi.py::10::15",
+      "rule": "GT-CMDI-001",
+      "category": "command-injection",
+      "file": "src/vulnpy/trigger/cmdi.py",
+      "lines": [
+        10,
+        11,
+        12
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "process = subprocess.Popen("
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/deserialization.py::12::12",
+      "rule": "GT-DESER-001",
+      "category": "unsafe-deserialization",
+      "file": "src/vulnpy/trigger/deserialization.py",
+      "lines": [
+        12
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "return pickle.loads(user_input.encode(\"utf-8\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/deserialization.py::17::16",
+      "rule": "GT-DESER-001",
+      "category": "unsafe-deserialization",
+      "file": "src/vulnpy/trigger/deserialization.py",
+      "lines": [
+        17
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "return yaml.load(user_input, Loader=yaml.UnsafeLoader)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/deserialization.py::23::14",
+      "rule": "GT-DESER-001",
+      "category": "unsafe-deserialization",
+      "file": "src/vulnpy/trigger/deserialization.py",
+      "lines": [
+        23
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "result = yaml.load_all(user_input, Loader=yaml.UnsafeLoader)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/sqli.py::37::9",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "src/vulnpy/trigger/sqli.py",
+      "lines": [
+        37
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "cursor.execute(sql)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/sqli.py::48::9",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "src/vulnpy/trigger/sqli.py",
+      "lines": [
+        48
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "cursor.executemany(sql, [(\"1\")])"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/sqli.py::59::16",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "src/vulnpy/trigger/sqli.py",
+      "lines": [
+        59
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "return cursor.executescript(sql)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py::2::5",
+      "rule": "GT-EVAL-001",
+      "category": "code-injection",
+      "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+      "lines": [
+        2
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "exec(code)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py::6::12",
+      "rule": "GT-EVAL-001",
+      "category": "code-injection",
+      "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+      "lines": [
+        6
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "return eval(code)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py::10::12",
+      "rule": "GT-EVAL-001",
+      "category": "code-injection",
+      "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+      "lines": [
+        10
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "return compile(code, \"vulnpy.py\", \"exec\")"
+    },
+    {
+      "tool": "gittrace",
+      "id": "tests/trigger/test_unsafe_code_exec.py::57::9",
+      "rule": "GT-EVAL-001",
+      "category": "code-injection",
+      "file": "tests/trigger/test_unsafe_code_exec.py",
+      "lines": [
+        57
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "exec(code)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "src/vulnpy/trigger/deserialization.py::8::12",
+      "rule": "GT-DESER-001",
+      "category": "unsafe-deserialization",
+      "file": "src/vulnpy/trigger/deserialization.py",
+      "lines": [
+        8
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "return pickle.load(user_input)"
+    }
+  ],
+  "bandit_findings": [
+    {
+      "tool": "bandit",
+      "id": "apps/django_app.py:27:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "apps/django_app.py",
+      "lines": [
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "severity": "low",
+      "snippet": "26             else \"apps.django_app\","
+    },
+    {
+      "tool": "bandit",
+      "id": "apps/falcon_app.py:29:B605",
+      "rule": "B605",
+      "category": "command-injection",
+      "file": "apps/falcon_app.py",
+      "lines": [
+        29
+      ],
+      "severity": "high",
+      "snippet": "28         cmd = \"echo \" + str(user_input[:10])"
+    },
+    {
+      "tool": "bandit",
+      "id": "apps/falcon_app.py:64:B605",
+      "rule": "B605",
+      "category": "command-injection",
+      "file": "apps/falcon_app.py",
+      "lines": [
+        64
+      ],
+      "severity": "high",
+      "snippet": "63     cmd = \"echo \" + str(user_input)"
+    },
+    {
+      "tool": "bandit",
+      "id": "apps/fastapi_app.py:43:B605",
+      "rule": "B605",
+      "category": "command-injection",
+      "file": "apps/fastapi_app.py",
+      "lines": [
+        43
+      ],
+      "severity": "high",
+      "snippet": "42         print(\"will echo command\")"
+    },
+    {
+      "tool": "bandit",
+      "id": "src/vulnpy/trigger/cmdi.py:6:B605",
+      "rule": "B605",
+      "category": "command-injection",
+      "file": "src/vulnpy/trigger/cmdi.py",
+      "lines": [
+        6
+      ],
+      "severity": "high",
+      "snippet": "5 def do_os_system(command):"
+    },
+    {
+      "tool": "bandit",
+      "id": "src/vulnpy/trigger/cmdi.py:11:B602",
+      "rule": "B602",
+      "category": "command-injection",
+      "file": "src/vulnpy/trigger/cmdi.py",
+      "lines": [
+        10,
+        11,
+        12
+      ],
+      "severity": "high",
+      "snippet": "10     process = subprocess.Popen("
+    },
+    {
+      "tool": "bandit",
+      "id": "src/vulnpy/trigger/deserialization.py:8:B301",
+      "rule": "B301",
+      "category": "unsafe-deserialization",
+      "file": "src/vulnpy/trigger/deserialization.py",
+      "lines": [
+        8
+      ],
+      "severity": "medium",
+      "snippet": "7     user_input = io.BytesIO(user_input.encode(\"utf-8\"))"
+    },
+    {
+      "tool": "bandit",
+      "id": "src/vulnpy/trigger/deserialization.py:12:B301",
+      "rule": "B301",
+      "category": "unsafe-deserialization",
+      "file": "src/vulnpy/trigger/deserialization.py",
+      "lines": [
+        12
+      ],
+      "severity": "medium",
+      "snippet": "11 def do_pickle_loads(user_input):"
+    },
+    {
+      "tool": "bandit",
+      "id": "src/vulnpy/trigger/deserialization.py:17:B506",
+      "rule": "B506",
+      "category": "unsafe-deserialization",
+      "file": "src/vulnpy/trigger/deserialization.py",
+      "lines": [
+        17
+      ],
+      "severity": "medium",
+      "snippet": "16     try:"
+    },
+    {
+      "tool": "bandit",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py:2:B102",
+      "rule": "B102",
+      "category": "code-injection",
+      "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+      "lines": [
+        2
+      ],
+      "severity": "medium",
+      "snippet": "1 def do_exec(code):"
+    },
+    {
+      "tool": "bandit",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py:6:B307",
+      "rule": "B307",
+      "category": "code-injection",
+      "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+      "lines": [
+        6
+      ],
+      "severity": "medium",
+      "snippet": "5 def do_eval(code):"
+    },
+    {
+      "tool": "bandit",
+      "id": "tests/trigger/test_unsafe_code_exec.py:57:B102",
+      "rule": "B102",
+      "category": "code-injection",
+      "file": "tests/trigger/test_unsafe_code_exec.py",
+      "lines": [
+        57
+      ],
+      "severity": "medium",
+      "snippet": "56         code = self.trigger_func(self.good_input[0])"
+    }
+  ],
+  "gittrace": {
+    "ground_truth": 15,
+    "tp": 15,
+    "fp": 1,
+    "fp_benign": 1,
+    "fn": 0,
+    "duplicates": 0,
+    "precision": 0.938,
+    "precision_ignoring_benign": 1.0,
+    "recall": 1.0,
+    "true_positives": {
+      "VP-1": [
+        "src/vulnpy/trigger/cmdi.py::6::12"
+      ],
+      "VP-10": [
+        "src/vulnpy/trigger/sqli.py::37::9"
+      ],
+      "VP-11": [
+        "src/vulnpy/trigger/sqli.py::48::9"
+      ],
+      "VP-12": [
+        "src/vulnpy/trigger/sqli.py::59::16"
+      ],
+      "VP-13": [
+        "src/vulnpy/trigger/unsafe_code_exec.py::2::5"
+      ],
+      "VP-14": [
+        "src/vulnpy/trigger/unsafe_code_exec.py::6::12"
+      ],
+      "VP-15": [
+        "src/vulnpy/trigger/unsafe_code_exec.py::10::12"
+      ],
+      "VP-2": [
+        "src/vulnpy/trigger/cmdi.py::10::15"
+      ],
+      "VP-3": [
+        "apps/fastapi_app.py::43::9"
+      ],
+      "VP-4": [
+        "apps/falcon_app.py::29::9"
+      ],
+      "VP-5": [
+        "apps/falcon_app.py::64::5"
+      ],
+      "VP-6": [
+        "src/vulnpy/trigger/deserialization.py::8::12"
+      ],
+      "VP-7": [
+        "src/vulnpy/trigger/deserialization.py::12::12"
+      ],
+      "VP-8": [
+        "src/vulnpy/trigger/deserialization.py::17::16"
+      ],
+      "VP-9": [
+        "src/vulnpy/trigger/deserialization.py::23::14"
+      ]
+    },
+    "false_positives": [],
+    "false_positives_benign": [
+      {
+        "tool": "gittrace",
+        "id": "tests/trigger/test_unsafe_code_exec.py::57::9",
+        "rule": "GT-EVAL-001",
+        "category": "code-injection",
+        "file": "tests/trigger/test_unsafe_code_exec.py",
+        "lines": [
+          57
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "exec(code)"
+      }
+    ],
+    "false_negatives": [],
+    "tp_reachable_unauthenticated": 2,
+    "tp_reachable_any": 2
+  },
+  "bandit": {
+    "ground_truth": 15,
+    "tp": 10,
+    "fp": 2,
+    "fp_benign": 2,
+    "fn": 5,
+    "duplicates": 0,
+    "precision": 0.833,
+    "precision_ignoring_benign": 1.0,
+    "recall": 0.667,
+    "true_positives": {
+      "VP-1": [
+        "src/vulnpy/trigger/cmdi.py:6:B605"
+      ],
+      "VP-13": [
+        "src/vulnpy/trigger/unsafe_code_exec.py:2:B102"
+      ],
+      "VP-14": [
+        "src/vulnpy/trigger/unsafe_code_exec.py:6:B307"
+      ],
+      "VP-2": [
+        "src/vulnpy/trigger/cmdi.py:11:B602"
+      ],
+      "VP-3": [
+        "apps/fastapi_app.py:43:B605"
+      ],
+      "VP-4": [
+        "apps/falcon_app.py:29:B605"
+      ],
+      "VP-5": [
+        "apps/falcon_app.py:64:B605"
+      ],
+      "VP-6": [
+        "src/vulnpy/trigger/deserialization.py:8:B301"
+      ],
+      "VP-7": [
+        "src/vulnpy/trigger/deserialization.py:12:B301"
+      ],
+      "VP-8": [
+        "src/vulnpy/trigger/deserialization.py:17:B506"
+      ]
+    },
+    "false_positives": [],
+    "false_positives_benign": [
+      {
+        "tool": "bandit",
+        "id": "apps/django_app.py:27:B105",
+        "rule": "B105",
+        "category": "hardcoded-secret",
+        "file": "apps/django_app.py",
+        "lines": [
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "severity": "low",
+        "snippet": "26             else \"apps.django_app\","
+      },
+      {
+        "tool": "bandit",
+        "id": "tests/trigger/test_unsafe_code_exec.py:57:B102",
+        "rule": "B102",
+        "category": "code-injection",
+        "file": "tests/trigger/test_unsafe_code_exec.py",
+        "lines": [
+          57
+        ],
+        "severity": "medium",
+        "snippet": "56         code = self.trigger_func(self.good_input[0])"
+      }
+    ],
+    "false_negatives": [
+      {
+        "id": "VP-9",
+        "category": "unsafe-deserialization",
+        "file": "src/vulnpy/trigger/deserialization.py",
+        "lines": [
+          23
+        ],
+        "detail": "yaml.load_all(user_input, Loader=yaml.UnsafeLoader)"
+      },
+      {
+        "id": "VP-10",
+        "category": "sql-injection",
+        "file": "src/vulnpy/trigger/sqli.py",
+        "lines": [
+          36,
+          37
+        ],
+        "detail": "sql = EXECUTE_QUERY_FMT.format(user_input); cursor.execute(sql)"
+      },
+      {
+        "id": "VP-11",
+        "category": "sql-injection",
+        "file": "src/vulnpy/trigger/sqli.py",
+        "lines": [
+          47,
+          48
+        ],
+        "detail": "sql = ...format(user_input); cursor.executemany(sql, ...)"
+      },
+      {
+        "id": "VP-12",
+        "category": "sql-injection",
+        "file": "src/vulnpy/trigger/sqli.py",
+        "lines": [
+          58,
+          59
+        ],
+        "detail": "sql = ...format(user_input); cursor.executescript(sql)"
+      },
+      {
+        "id": "VP-15",
+        "category": "code-injection",
+        "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+        "lines": [
+          10
+        ],
+        "detail": "compile(code, 'vulnpy.py', 'exec')"
+      }
+    ]
+  },
+  "ground_truth_reachable_unauthenticated": 15
+}

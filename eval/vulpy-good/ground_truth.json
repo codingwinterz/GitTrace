@@ -1,0 +1,48 @@
+{
+  "target": "vulpy-good",
+  "written": "before running GitTrace or Bandit on this target",
+  "sources": [
+    "README.rst: the GOOD version 'tries to code with secure development best practices in mind' and 'is supposed to don't have vulnerabilities, but I'm a human being, so...'",
+    "reading of good/*.py at the pinned commit"
+  ],
+  "notes": [
+    "Not clean in GitTrace's categories: four hardcoded keys and one SQL statement built with %.",
+    "libuser.user_create builds SQL from its username parameter but is only called from db_init.py with constants; it is a latent injection no route reaches."
+  ],
+  "vulnerabilities": [
+    {
+      "id": "VG-1", "category": "sql-injection", "file": "libuser.py", "lines": [61],
+      "function": "user_create",
+      "detail": "\"INSERT ... VALUES ('%s', ...)\" % (username, ...)",
+      "reachable": {"unauthenticated": false, "routes": []}
+    },
+    {
+      "id": "VG-2", "category": "hardcoded-secret", "file": "vulpy.py", "lines": [17],
+      "function": "<module>",
+      "detail": "app.config['SECRET_KEY'] = '123aa8a9...' (Flask session signing key)",
+      "reachable": null
+    },
+    {
+      "id": "VG-3", "category": "hardcoded-secret", "file": "vulpy-ssl.py", "lines": [13],
+      "function": "<module>",
+      "detail": "app.config['SECRET_KEY'] = 'aaaaaaa'",
+      "reachable": null
+    },
+    {
+      "id": "VG-4", "category": "hardcoded-secret", "file": "libapi.py", "lines": [10],
+      "function": "<module>",
+      "detail": "secret = 'MYSUPERSECRETKEY' (JWT HS256 signing key)",
+      "reachable": null
+    },
+    {
+      "id": "VG-5", "category": "hardcoded-secret", "file": "libsession.py", "lines": [9],
+      "function": "<module>",
+      "detail": "key = 'JHtM1wEt...' (Fernet key encrypting the session cookie)",
+      "reachable": null
+    }
+  ],
+  "benign": [
+    {"category": "hardcoded-secret", "file": "db_init.py", "lines": [10, 11, 12],
+     "why": "seed passwords for demo users in a list literal (lab data)"}
+  ]
+}

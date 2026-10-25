@@ -207,6 +207,31 @@ FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= \
 - `tests/snapshots/sample_app_scan.json` is a reviewed snapshot of `scan --format json`; a test also checks it against the hand-written expectations. Regenerate with `GITTRACE_UPDATE_SNAPSHOTS=1 pytest tests/test_scan.py -k snapshot` and review the diff.
 - CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13 and the integration suites against a FalkorDB service container; locally the integration suites skip when FalkorDB is unreachable.
 
+## Evaluation
+
+`eval/` holds a reproducible evaluation (`python eval/run_eval.py`): four targets from three deliberately vulnerable Flask/FastAPI apps, each pinned to a commit with a ground truth written from the project's docs and code **before** either tool was run, plus two maintained real-world projects. Bandit (1.9.4) is compared on the same five categories only. The numbers below are the first run, with the rules exactly as committed in Phase 4 ("untouched").
+
+| Target | Ground truth | GitTrace TP / FP / FN | GitTrace precision · recall | Bandit TP / FP / FN | Bandit precision · recall |
+|---|---|---|---|---|---|
+| vulpy `bad/` | 5 | 3 / 2 / 2 | 60% · 60% | 5 / 2 / 0 | 71% · 100% |
+| vulpy `good/` | 5 | 2 / 0 / 3 | 100% · 40% | 4 / 0 / 1 | 100% · 80% |
+| we45 Vulnerable-Flask-App | 6 | 3 / 0 / 3 | 100% · 50% | 6 / 1 / 0 | 86% · 100% |
+| Contrast vulnpy | 15 | 15 / 1 / 0 | 94% · 100% | 10 / 2 / 5 | 83% · 67% |
+| **Overall** | **31** | **23 / 3 / 8** | **88% · 74%** | **25 / 5 / 6** | **83% · 81%** |
+
+- All 3 GitTrace false positives are dangerous-looking but harmless patterns (SQL formatted from constant seed data, `exec` of a constant in a test); ignoring those, its precision is 100%.
+- 7 of GitTrace's 23 true positives are marked reachable from an unauthenticated route. The ground truth has 19 that really are; most of the gap is vulnpy, which dispatches to its vulnerable functions with `getattr` (invisible to static call resolution). One of the 7 (`/search` in Vulnerable-Flask-App) is over-reported: it checks a JWT inside the handler, which GitTrace cannot see.
+- GitTrace's misses are all hardcoded secrets: 6 assigned through `config['KEY'] = "..."` subscripts (not checked), one containing a space, one all-caps value mistaken for an environment-variable name. Bandit misses SQL built through a variable (`sql = FMT.format(x); cursor.execute(sql)`), `yaml.load_all`, `compile()`, and a secret named `key`.
+
+On maintained projects every finding was reviewed by hand:
+
+| Project | Files | Endpoints detected | GitTrace findings | Reachable | Reviewed false positives | Bandit, same categories |
+|---|---|---|---|---|---|---|
+| CTFd (Flask) | 350 | 88 | 10 | 0 | 10 / 10 (100%) | 267 |
+| mealie (FastAPI) | 695 | 213 | 65 | 0 | 63 / 65 (97%) | 101 |
+
+The rules find the patterns they claim, but on real code those patterns are mostly harmless: SQL f-strings that interpolate table and column names from model metadata, constants named `*_key` that hold i18n keys or attribute names, and test fixtures. All of these were scored medium and none was reachable from a route; the two true positives are shipped default passwords in mealie. Per-finding results and reasons are in `eval/results/untouched/` and `eval/{ctfd,mealie}/review.json`.
+
 ## Limitations
 
 - **Python only**, and only FastAPI and Flask routes.
