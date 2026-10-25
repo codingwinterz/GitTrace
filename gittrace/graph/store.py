@@ -26,7 +26,7 @@ Schema (language-neutral):
           evidence, param_derived, params, flow_sensitive,
           -- set once reachability is known (write_findings):
           severity, score, reasons, reachable, unauthenticated, uncertain,
-          endpoints, endpoint_count, caller_count, blast_radius,
+          endpoints, endpoint_count, caller_count, blast_radius, in_tests,
           owner_status, owner_author, owner_email, owner_commit, owner_date})
   (File)-[:DECLARES]->(Function|Endpoint)
   (Endpoint)-[:HANDLED_BY]->(Function)
@@ -209,7 +209,7 @@ def write_findings(graph, graph_name: str, findings) -> None:
             "reachable": f.reachable, "unauthenticated": f.unauthenticated,
             "uncertain": f.uncertain, "endpoints": [r.endpoint_id for r in f.routes],
             "endpoint_count": len(f.routes), "caller_count": len(f.callers),
-            "blast_radius": f.blast_radius,
+            "blast_radius": f.blast_radius, "in_tests": f.in_tests,
             "owner_status": owner.status if owner else "unknown",
             "owner_author": (owner.author if owner else None) or "",
             "owner_email": (owner.email if owner else None) or "",
@@ -219,11 +219,12 @@ def write_findings(graph, graph_name: str, findings) -> None:
     for chunk in _batches(rows):
         graph.query("UNWIND $rows AS r MATCH (s:Sink {id: r.id}) SET s += r.props",
                     params={"rows": chunk})
+    main = [f for f in findings if not f.in_tests]
     by_level = {level: 0 for level in ("critical", "high", "medium", "low", "info")}
-    for f in findings:
+    for f in main:
         by_level[f.severity] += 1
     graph.query(
-        "MATCH (p:Project {id: $id}) SET p.findings = $total, p += $levels",
-        params={"id": graph_name, "total": len(findings),
+        "MATCH (p:Project {id: $id}) SET p.findings = $total, p.findings_tests = $tests, p += $levels",
+        params={"id": graph_name, "total": len(main), "tests": len(findings) - len(main),
                 "levels": {f"findings_{k}": v for k, v in by_level.items()}},
     )

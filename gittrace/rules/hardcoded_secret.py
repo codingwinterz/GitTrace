@@ -2,14 +2,18 @@
 GT-SECRET-001 — hardcoded secret.
 
 Matches a string constant bound to a name (`API_KEY = "..."`,
-`self.smtp_password = "..."`) when:
+`self.smtp_password = "..."`, `app.config["SECRET_KEY"] = "..."`) when:
   - the name's last word is a secret word: key, secret, password, passwd,
     pwd, pass, token, or a compound ending in one (apikey, accesstoken, ...),
     and the word before `key`/`token` is not a non-secret qualifier
     (primary_key, sort_key, cache_key, public_key, next_token, ...);
-  - the value is not empty, has no whitespace, is at least 4 characters, and
-    is not an obvious placeholder (changeme, xxx, ***, <your-key>, ${VAR},
-    {name}, your-..., an ENV_VAR_NAME, the name itself, ...).
+  - the value is at least 4 characters and is not an obvious placeholder
+    (changeme, xxx, ***, <your-key>, ${VAR}, {name}, your-..., an
+    ENV_VAR_NAME with an underscore, the name itself, a sentence of plain
+    words, a dunder name, a URL or path);
+  - for names ending in key/token, the value is not a letters-only dotted,
+    kebab or snake identifier (i18n and cache keys), and a bare `key` or
+    `token` holds at least two of lower case, upper case and digits.
 
 Not findings: values read from the environment or config (they are not
 constants), names that describe a secret rather than hold one
@@ -53,8 +57,16 @@ _PLACEHOLDER = re.compile(
     )$""",
     re.IGNORECASE | re.VERBOSE,
 )
-_ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
+# An environment variable's name, e.g. GITHUB_TOKEN; needs an underscore, so
+# an all-caps secret such as MYSUPERSECRETKEY is not mistaken for one.
+_ENV_NAME = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$")
 _WORDS = re.compile(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])")
+_DUNDER = re.compile(r"^__\w+__$")
+_URL_OR_PATH = re.compile(r"^(?:/|https?://)")
+# Letters-only words joined by . - or _: i18n keys, cache keys, attribute names
+# ("recipe.create-progress.reading", "test_key"). A value with digits is not one.
+_IDENTIFIER = re.compile(r"^[a-z]+(?:[._-][a-z]+)+$")
+_PROSE_WORD = re.compile(r"^[A-Za-z][A-Za-z']*[.,:;!?]?$")
 
 
 def name_words(name: str) -> list[str]:
@@ -77,16 +89,39 @@ def mask(value: str) -> str:
     return value[:3] + "*" * (len(value) - 3)
 
 
+def is_prose(value: str) -> bool:
+    """Two or more words of plain letters: a message, not a secret."""
+    words = value.split()
+    return len(words) >= 2 and all(_PROSE_WORD.match(w) for w in words)
+
+
 def is_placeholder(value: str, name: str) -> bool:
     v = value.strip()
     return (
         len(v) < 4
-        or any(ch.isspace() for ch in v)
+        or is_prose(v)
         or bool(_PLACEHOLDER.match(v))
         or ("{" in v and "}" in v)
         or bool(_ENV_NAME.match(v))
+        or bool(_DUNDER.match(v))
+        or bool(_URL_OR_PATH.match(v))
         or v.lower() == name.lower()
     )
+
+
+def is_identifier_value(value: str, name: str) -> bool:
+    """For names ending in key/token: values that name something rather than
+    authenticate. A bare `key`/`token` (usually a dict or cache key) also needs
+    at least two of lower case, upper case and digits to count as a secret."""
+    words = name_words(name)
+    if words[-1] not in ("key", "token") and not words[-1].endswith(("key", "token")):
+        return False
+    if _IDENTIFIER.match(value):
+        return True
+    if len(words) == 1 and words[0] in ("key", "token"):
+        classes = sum(bool(re.search(p, value)) for p in ("[a-z]", "[A-Z]", "[0-9]"))
+        return classes < 2
+    return False
 
 
 class HardcodedSecret(Rule):
@@ -100,7 +135,9 @@ class HardcodedSecret(Rule):
         value = assignment.value
         if not value.is_literal or not isinstance(value.value, str):
             return None
-        if not is_secret_name(assignment.target) or is_placeholder(value.value, assignment.target):
+        target = assignment.target
+        if (not is_secret_name(target) or is_placeholder(value.value, target)
+                or is_identifier_value(value.value, target)):
             return None
         # Reports end up in CI logs: never repeat the secret itself.
         site = replace(assignment.site, snippet=assignment.site.snippet.replace(value.value, mask(value.value)))

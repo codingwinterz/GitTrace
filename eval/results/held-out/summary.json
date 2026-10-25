@@ -1,0 +1,98 @@
+{
+  "label": "held-out",
+  "bandit_version": "1.9.4",
+  "gittrace_mode": "offline",
+  "vulnerable": {
+    "dvga": {
+      "gittrace": {
+        "ground_truth": 5,
+        "tp": 4,
+        "fp": 0,
+        "fp_benign": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "precision_ignoring_benign": 1.0,
+        "recall": 0.8,
+        "tp_reachable_unauthenticated": 1,
+        "tp_reachable_any": 1
+      },
+      "bandit": {
+        "ground_truth": 5,
+        "tp": 4,
+        "fp": 1,
+        "fp_benign": 0,
+        "fn": 1,
+        "precision": 0.8,
+        "precision_ignoring_benign": 0.8,
+        "recall": 0.8
+      },
+      "ground_truth_reachable_unauthenticated": 2,
+      "gittrace_test_findings": 0
+    }
+  },
+  "real_world": {
+    "open-webui": {
+      "target": {
+        "name": "open-webui",
+        "repo": "https://github.com/open-webui/open-webui",
+        "commit": "33c1978d5bad52a31df75ea55143025dfad18d16",
+        "scan_path": ".",
+        "framework": "fastapi"
+      },
+      "scanned": {
+        "files": 291,
+        "parse_failures": 0,
+        "functions": 3500,
+        "endpoints": 602,
+        "calls": 43333
+      },
+      "gittrace_findings": 29,
+      "gittrace_test_findings": 0,
+      "by_rule": {
+        "GT-SQLI-001": 26,
+        "GT-EVAL-001": 2,
+        "GT-SECRET-001": 1
+      },
+      "by_severity": {
+        "critical": 9,
+        "medium": 20
+      },
+      "reachable": 9,
+      "unauthenticated": 9,
+      "bandit_findings_same_categories": 69,
+      "bandit_by_category": {
+        "hardcoded-secret": 50,
+        "sql-injection": 17,
+        "code-injection": 2
+      },
+      "reviewed": 29,
+      "unreviewed": [],
+      "false_positives": 27,
+      "false_positive_rate": 0.931
+    }
+  },
+  "overall": {
+    "gittrace": {
+      "ground_truth": 5,
+      "tp": 4,
+      "fp": 0,
+      "fp_benign": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "precision_ignoring_benign": 1.0,
+      "recall": 0.8,
+      "tp_reachable_unauthenticated": 1,
+      "tp_reachable_any": 1
+    },
+    "bandit": {
+      "ground_truth": 5,
+      "tp": 4,
+      "fp": 1,
+      "fp_benign": 0,
+      "fn": 1,
+      "precision": 0.8,
+      "precision_ignoring_benign": 0.8,
+      "recall": 0.8
+    }
+  }
+}

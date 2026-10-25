@@ -1,0 +1,29 @@
+{
+  "target": "dvga",
+  "written": "before running GitTrace or Bandit on this target (held-out: chosen and read only after the rule fixes were final)",
+  "sources": [
+    "README.md 'Scenarios': Code Execution (OS Command Injection #1, #2), Injection (SQL Injection, XSS, log/HTML injection), Authorization Bypass (JWT Token Forge, ...), Miscellaneous (weak password protection, path traversal)",
+    "reading of app.py, config.py, setup.py, core/*.py at the pinned commit"
+  ],
+  "notes": [
+    "Both documented OS command injections run through the one dangerous call, helpers.run_cmd -> os.popen(cmd): #1 importPaste builds 'curl --insecure {url}' from its arguments (views.py:210-211), #2 systemDiagnostics passes cmd (views.py:345, after an admin-password check in the handler body) and systemDebug passes 'ps {}'.format(arg) (views.py:352). Listed once, at the sink.",
+    "Every resolver is reached through POST /graphql, registered with app.add_url_rule(view_func=OverriddenView.as_view(...)) and dispatched by graphene; GitTrace detects neither form, so no tool is expected to show this reachability statically.",
+    "Out of GitTrace's categories and not listed: XSS, log/HTML injection, JWT decoded without verifying the signature, path traversal in uploadPaste, SSRF in importPaste.",
+    "app.py:28 os.popen('python3 setup.py') is a constant command; app.py:10 app.secret_key = os.urandom(24) is random."
+  ],
+  "vulnerabilities": [
+    {"id": "DV-1", "category": "command-injection", "file": "core/helpers.py", "lines": [9],
+     "function": "run_cmd", "detail": "os.popen(cmd) with cmd built from GraphQL arguments by its callers",
+     "reachable": {"unauthenticated": true, "routes": ["POST /graphql importPaste, systemDebug (graphene dispatch)"]}},
+    {"id": "DV-2", "category": "sql-injection", "file": "core/views.py", "lines": [320],
+     "function": "Query.resolve_pastes", "detail": "text(\"title = '%s' or content = '%s'\" % (filter, filter))",
+     "reachable": {"unauthenticated": true, "routes": ["POST /graphql pastes(filter:) (graphene dispatch)"]}},
+    {"id": "DV-3", "category": "hardcoded-secret", "file": "app.py", "lines": [14],
+     "function": "<module>", "detail": "app.config['SECRET_KEY'] = 'dvga'", "reachable": null},
+    {"id": "DV-4", "category": "hardcoded-secret", "file": "app.py", "lines": [15],
+     "function": "<module>", "detail": "app.config['JWT_SECRET_KEY'] = 'dvga' (signs the access tokens)", "reachable": null},
+    {"id": "DV-5", "category": "hardcoded-secret", "file": "setup.py", "lines": [64],
+     "function": "pump_db", "detail": "User(..., password=\"password123\"): the seeded operator account's password, passed as a keyword argument", "reachable": null}
+  ],
+  "benign": []
+}

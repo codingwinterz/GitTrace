@@ -40,5 +40,24 @@
       "scan_path": ".",
       "framework": "fastapi"
     }
-  ]
+  ],
+  "held_out": {
+    "vulnerable": [
+      {
+        "name": "dvga",
+        "repo": "https://github.com/dolevf/Damn-Vulnerable-GraphQL-Application",
+        "commit": "a961308c02d1fb462b192681c336b0739e432da7",
+        "scan_path": "."
+      }
+    ],
+    "real_world": [
+      {
+        "name": "open-webui",
+        "repo": "https://github.com/open-webui/open-webui",
+        "commit": "33c1978d5bad52a31df75ea55143025dfad18d16",
+        "scan_path": ".",
+        "framework": "fastapi"
+      }
+    ]
+  }
 }

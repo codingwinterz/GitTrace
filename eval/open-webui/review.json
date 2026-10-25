@@ -1,0 +1,38 @@
+{
+  "reviewed_by": "manual reading of each finding's source at the pinned commit",
+  "rules_at_review": "GitTrace after tuning (eval/held_out_code.sha256), held-out run",
+  "notes": [
+    "All 9 findings marked reachable from an unauthenticated endpoint are in fact behind Depends(get_verified_user) (or get_admin_user): the name-based auth check does not match 'verified', so their severity is overstated. Recorded here, not fixed (held-out run)."
+  ],
+  "verdicts": {
+    "backend/open_webui/utils/plugin.py::242::9": {"verdict": "tp", "reason": "exec() of user-submitted Tool code (load_tool_module_by_id); code execution by design, gated by the workspace.tools permission"},
+    "backend/open_webui/utils/plugin.py::291::9": {"verdict": "tp", "reason": "exec() of user-submitted Function code (load_function_module_by_id); code execution by design, gated by permissions"},
+    "backend/open_webui/models/chats.py::2663::25": {"verdict": "fp", "reason": "the f-string inserts a bind-parameter name (:tag_id_N); the value is bound with .params()"},
+    "backend/open_webui/models/chats.py::2667::25": {"verdict": "fp", "reason": "same: bind-parameter name, value bound"},
+    "backend/open_webui/models/chats.py::2488::21": {"verdict": "fp", "reason": "SQL assembled from constant JSON-path fragments; chat_ids is an expanding bind parameter"},
+    "backend/open_webui/models/chats.py::2284::33": {"verdict": "fp", "reason": "bind-parameter names (:tag_id_N), values bound with .params()"},
+    "backend/open_webui/models/chats.py::2316::33": {"verdict": "fp", "reason": "same pattern as chats.py:2284"},
+    "backend/open_webui/routers/search.py::97::16": {"verdict": "fp", "reason": "table/key are internal identifiers (the code says so); user input stays a bound LIKE parameter"},
+    "backend/open_webui/routers/search.py::107::12": {"verdict": "fp", "reason": "same as search.py:97"},
+    "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::166::21": {"verdict": "fp", "reason": "CREATE TABLE with the configured distance strategy; no request data"},
+    "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::433::25": {"verdict": "fp", "reason": "WHERE clause of ? placeholders and a distance-function name; values passed as params"},
+    "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::475::17": {"verdict": "fp", "reason": "same: placeholders, values passed as params"},
+    "backend/open_webui/retrieval/vector/dbs/pgvector.py::237::34": {"verdict": "fp", "reason": "CREATE INDEX from configured index name/method/options"},
+    "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::585::25": {"verdict": "fp", "reason": "query with bind variables (:query_vector); interpolated parts are internal"},
+    "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::665::21": {"verdict": "fp", "reason": "query built with bind variables, values in params"},
+    "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::794::21": {"verdict": "fp", "reason": "query built with bind variables, values in params"},
+    "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::55::28": {"verdict": "fp", "reason": "migration PRAGMA on a table name from the schema"},
+    "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::64::33": {"verdict": "fp", "reason": "migration PRAGMA on an index name read from the database"},
+    "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::67::26": {"verdict": "fp", "reason": "migration DROP INDEX on an index name read from the database"},
+    "backend/open_webui/migrations/versions/461111b60977_add_missing_primary_keys_to_legacy_.py::63::22": {"verdict": "fp", "reason": "migration DROP TABLE on a table name from the schema"},
+    "backend/open_webui/migrations/env.py::62::13": {"verdict": "fp", "reason": "SQLCipher PRAGMA key from the DATABASE_PASSWORD setting (operator configuration)"},
+    "backend/open_webui/internal/db.py::303::9": {"verdict": "fp", "reason": "SQLCipher PRAGMA key from operator configuration"},
+    "backend/open_webui/internal/db.py::390::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
+    "backend/open_webui/internal/db.py::392::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
+    "backend/open_webui/internal/db.py::394::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
+    "backend/open_webui/internal/db.py::396::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
+    "backend/open_webui/internal/db.py::398::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
+    "backend/open_webui/internal/db.py::400::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
+    "backend/open_webui/routers/auths.py::738::9": {"verdict": "fp", "reason": "admin_password = 'admin' is used only when WEBUI_AUTH is False, where the instance runs without authentication by design"}
+  }
+}

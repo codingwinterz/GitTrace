@@ -521,12 +521,18 @@ class _Builder:
         if left.type in ("pattern_list", "tuple_pattern", "tuple"):
             self._flow(scope, left, "flow", right)
             return
-        target = left
-        if left.type == "attribute":                      # self.api_key = "..."
-            target = left.child_by_field_name("attribute")
-        if target is not None and target.type == "identifier" and right.type in (
-                "string", "concatenated_string"):
-            self._pending_assigns.append((scope, _text(target), right, node))
+        target_name = None
+        if left.type == "identifier":
+            target_name = _text(left)
+        elif left.type == "attribute":                    # self.api_key = "..."
+            target_name = _text(left.child_by_field_name("attribute"))
+        elif left.type == "subscript":                    # app.config["SECRET_KEY"] = "..."
+            index = left.child_by_field_name("subscript")
+            key = _string_literal(index) if index is not None else None
+            if key and key.isidentifier():
+                target_name = key
+        if target_name and right.type in ("string", "concatenated_string"):
+            self._pending_assigns.append((scope, target_name, right, node))
         if left.type != "identifier":
             return
         self._flow(scope, left, "assign", right)
@@ -640,8 +646,9 @@ class _Builder:
             func = node.child_by_field_name("function")
             if func is not None and func.type == "attribute":
                 method = _text(func.child_by_field_name("attribute"))
-                if method in ("format", "join"):
-                    inputs = [func.child_by_field_name("object")]
+                receiver = func.child_by_field_name("object")
+                if method in ("format", "join") and self._is_string(receiver, scope, seen, depth):
+                    inputs = [receiver]
                     arguments = node.child_by_field_name("arguments")
                     if arguments is not None:
                         inputs += [a.child_by_field_name("value") if a.type == "keyword_argument" else a
@@ -653,10 +660,46 @@ class _Builder:
             return "other", None, None, None
         if t == "identifier":
             return self._name_kind(_text(node), scope, seen, depth)
+        if t == "attribute":
+            return self._attribute_kind(node, scope, seen, depth)
         return "other", None, None, None
 
-    def _name_kind(self, name: str, scope: Scope, seen: frozenset, depth: int):
+    def _is_string(self, node: Node | None, scope: Scope, seen: frozenset, depth: int) -> bool:
+        """A string literal, or a name bound only to string constants."""
+        if node is None:
+            return False
+        if node.type in ("string", "concatenated_string"):
+            return True
+        kind, _, _, value = self._kind(node, scope, seen, depth + 1)
+        return kind == "literal" and isinstance(value, str)
+
+    def _attribute_kind(self, node: Node, scope: Scope, seen: frozenset, depth: int):
+        """`Model.__tablename__`, and class attributes bound to constants in the
+        class body (`self.X`, `cls.X`, `SomeClass.X` for a class in scope)."""
+        attr = _text(node.child_by_field_name("attribute"))
+        if attr == "__tablename__":
+            return "literal", None, None, None
+        obj = node.child_by_field_name("object")
+        if obj is None or obj.type != "identifier":
+            return "other", None, None, None
+        name = _text(obj)
+        class_key = None
         for s in self._binding_scopes(scope):
+            if s.kind == "function" and s.self_class is not None and s.self_name == name:
+                class_key = s.self_class
+                break
+            if name in s.classes:
+                class_key = s.classes[name]
+                break
+            if (id(s), name) in self._flows or (s.kind == "function" and name in s.locals):
+                break
+        class_scope = self.scopes.get(class_key) if class_key else None
+        if class_scope is None or (id(class_scope), attr) not in self._flows:
+            return "other", None, None, None
+        return self._name_kind(attr, class_scope, seen, depth + 1, only_here=True)
+
+    def _name_kind(self, name: str, scope: Scope, seen: frozenset, depth: int, only_here: bool = False):
+        for s in ([scope] if only_here else self._binding_scopes(scope)):
             key = (id(s), name)
             if key in seen:
                 return "other", None, None, None
@@ -664,19 +707,21 @@ class _Builder:
             if flows:
                 results = []
                 for how, value in flows:
-                    if how == "flow":                      # for x in ..., with ... as x
-                        results.append(("other", None))
+                    if how == "flow":     # for x in ..., with ... as x, a, b = ...
+                        # an element of a constant collection is a constant
+                        source = self._kind(value, s, seen | {key}, depth + 1)[0]
+                        results.append(("literal" if source == "literal" else "other", None, None))
                         continue
-                    kind, built_how, _, _ = self._kind(value, s, seen | {key}, depth + 1)
+                    kind, built_how, _, constant = self._kind(value, s, seen | {key}, depth + 1)
                     if how.startswith("aug") and kind != "literal":
                         built_how = {"aug+=": "concat", "aug%=": "percent"}.get(how)
                         kind = "built" if built_how else "other"
-                    results.append((kind, built_how))
+                    results.append((kind, built_how, constant if how == "assign" else None))
                 built = next((r for r in results if r[0] == "built"), None)
                 if built is not None:
                     return "built", built[1], name, None
                 if all(r[0] == "literal" for r in results):
-                    return "literal", None, name, None
+                    return "literal", None, name, results[0][2] if len(results) == 1 else None
                 if all(r[0] in ("param", "literal") for r in results):
                     return "param", None, name, None
                 return "other", None, name, None
@@ -716,6 +761,8 @@ class _Builder:
                         if key not in seen:
                             seen.add(key)
                             work.extend((value, s) for _, value in flows)
+                        if s.kind == "function" and name in s.params:   # x = wrap(x)
+                            found.add(name)
                         break
                     if s.kind == "function" and name in s.params:
                         found.add(name)

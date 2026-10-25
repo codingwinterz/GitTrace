@@ -51,8 +51,23 @@ anticipate. Neither changes any count, because both are false positives either w
   at the start of the enclosing dict (lines 23–25), not at line 27, so it is scored
   as an ordinary false positive rather than a benign one.
 
+## Runs
+
+| Label | Targets | Rules | Notes |
+|---|---|---|---|
+| `untouched` | the four vulnerable targets, CTFd, mealie | as committed in Phase 4 (94af77b) | first run; ground truth written before it |
+| `after-tuning` | the same | fixes 1-8 approved after `untouched` | optimistic: the fixes were chosen from these targets |
+| `held-out` | DVGA, open-webui | the tuned rules (`held_out_code.sha256`) | chosen and read only after the fixes were final; run once with `--targets held-out`, nothing changed afterwards; the open-webui review was folded in with `--review-only`, without re-scanning |
+
+Real-world reviews (`eval/<project>/review.json`) are keyed by finding id. A
+finding that only appeared after tuning was reviewed in the after-tuning run
+and is marked as such (CTFd `config.py:308`).
+
 ## Reproduce
 
 ```bash
-python eval/run_eval.py            # needs git and network for the first clone; Bandit is installed into eval/.bandit-venv
+python eval/run_eval.py --label untouched        # at commit e08d091 (the rules before tuning)
+python eval/run_eval.py --label after-tuning
+python eval/run_eval.py --targets held-out --label held-out
+# needs git and network for the first checkout; Bandit is installed into eval/.bandit-venv
 ```

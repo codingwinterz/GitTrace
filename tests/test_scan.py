@@ -240,6 +240,7 @@ class TestJsonSnapshot:
 
     def test_snapshot_agrees_with_the_hand_written_expectations(self):
         data = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+        assert data["summary"].pop("test_findings") == 0 and data["test_findings"] == []
         assert data["summary"] == expected.SUMMARY
         got = {
             f["id"]: (f["rule_id"], f["severity"], f["score"], f["function"], tuple(f["params"]),
@@ -249,3 +250,55 @@ class TestJsonSnapshot:
         }
         assert got == expected.FINDINGS
         assert [f["id"] for f in data["findings"]] == expected.ORDER
+
+
+class TestTestCode:
+    """Fix 7: findings in test code are a separate section at info severity."""
+
+    def _project(self, root: Path) -> Path:
+        (root / "app.py").write_text("import os\n\ndef run(cmd):\n    os.system(cmd)\n")
+        (root / "tests").mkdir()
+        (root / "tests" / "test_app.py").write_text('import os\n\ndef test_it(c):\n    os.system(c)\n')
+        (root / "conftest.py").write_text('API_KEY = "sk_live_51HxQ2vLs9Kd8W"\n')
+        return root
+
+    def test_reported_separately_at_info(self, tmp_path):
+        res = scan(self._project(tmp_path), offline=True, blame=False)
+        assert [f.file for f in res.findings] == ["app.py"]
+        assert sorted((f.file, f.severity, f.in_tests) for f in res.test_findings) == [
+            ("conftest.py", "info", True), ("tests/test_app.py", "info", True)]
+        assert "in test code: reported at info instead of medium" in res.test_findings[0].reasons[-1]
+        data = res.to_dict()
+        assert data["summary"]["total"] == 1 and data["summary"]["test_findings"] == 2
+        assert len(data["test_findings"]) == 2
+
+    def test_include_tests_treats_them_normally(self, tmp_path):
+        res = scan(self._project(tmp_path), offline=True, blame=False, include_tests=True)
+        assert res.test_findings == []
+        assert sorted(f.file for f in res.findings) == ["app.py", "conftest.py", "tests/test_app.py"]
+        assert {f.severity for f in res.findings} == {"medium"}
+
+    def test_the_gate_ignores_test_code_unless_included(self, tmp_path):
+        root = tmp_path / "p"
+        root.mkdir()
+        (root / "tests").mkdir()
+        (root / "tests" / "test_x.py").write_text('API_KEY = "sk_live_51HxQ2vLs9Kd8W"\n')
+        base = ["scan", str(root), "--offline", "--no-blame", "--format", "json", "--fail-on", "medium"]
+        out = runner.invoke(app, base)
+        assert out.exit_code == 0, out.output
+        assert json.loads(out.stdout)["test_findings"][0]["severity"] == "info"
+        assert runner.invoke(app, base + ["--include-tests"]).exit_code == 1
+
+    def test_rich_output_has_a_test_section(self, tmp_path):
+        out = runner.invoke(app, ["scan", str(self._project(tmp_path)), "--offline", "--no-blame",
+                                  "--fail-on", "none"])
+        assert "In test code: 2 finding(s), reported at info" in out.output
+        assert "2 more in test code (info)" in out.output
+
+    @pytest.mark.parametrize("path, expected", [
+        ("tests/test_a.py", True), ("pkg/test/util.py", True), ("conftest.py", True),
+        ("a/b_test.py", True), ("app/testing.py", False), ("contest.py", False),
+    ])
+    def test_test_paths(self, path, expected):
+        from gittrace.core.scan import is_test_path
+        assert is_test_path(path) is expected

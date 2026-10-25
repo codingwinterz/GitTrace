@@ -66,6 +66,7 @@ def _finding_summary(props: dict) -> dict:
         "uncertain": props.get("uncertain"),
         "endpoints": list(props.get("endpoints") or []),
         "blast_radius": props.get("blast_radius"),
+        "in_tests": bool(props.get("in_tests")),
         "owner": owner,
     }
 

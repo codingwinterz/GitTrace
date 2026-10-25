@@ -41,6 +41,10 @@
     "tests/test_config.py::371::9": {
       "verdict": "fp",
       "reason": "test fixture password/token"
+    },
+    "CTFd/config.py::308::5": {
+      "verdict": "fp",
+      "reason": "SECRET_KEY = \"AAAA...\" in TestingConfig: a dummy key for the test configuration (new after fix 3; reviewed in the after-tuning run)"
     }
   }
 }

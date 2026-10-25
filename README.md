@@ -62,7 +62,7 @@ Run from the repository root. Until the package is installed with its `gittrace`
 
 ```bash
 python -m gittrace scan <path> [--format rich|json] [--min-severity LEVEL] [--depth N]
-                               [--fail-on LEVEL|none] [--offline] [--no-blame]
+                               [--fail-on LEVEL|none] [--offline] [--no-blame] [--include-tests]
 python -m gittrace trace <file.py:line | finding-id> [--project PATH] [--depth N] [--format ...]
 python -m gittrace blast-radius <function-id> [--project PATH] [--depth N] [--format ...]
 ```
@@ -72,6 +72,7 @@ python -m gittrace blast-radius <function-id> [--project PATH] [--depth N] [--fo
 - `--depth` (default 10, max 50) bounds the CALLS hops followed from a route handler to the vulnerable function, and the upstream callers counted in the blast radius.
 - `--offline` computes reachability in memory and writes nothing to FalkorDB (same rules and scores); `trace` and `blast-radius` need the graph.
 - `--no-blame` skips `git blame`. Outside a git repository the owner lookup is skipped quietly.
+- Findings in test code (a `tests`/`test` directory, `test_*.py`, `*_test.py`, `conftest.py`) are listed in a separate section at `info` and never trip `--fail-on`; `--include-tests` treats them like any other code.
 - Exit code **2** means an error: bad arguments, an unscanned project, FalkorDB unreachable.
 
 ### Environment
@@ -92,11 +93,11 @@ Each rule is its own module under `gittrace/rules/`, with its id, what it matche
 
 | Rule | Base | Matches | Does not match |
 |---|---|---|---|
-| `GT-SQLI-001` SQL built from strings | high | `execute`/`executemany`/`executescript`/`mogrify`/`raw`/`read_sql[_query]` on any receiver, `sqlalchemy.text`, Django `RawSQL`, when the query is an f-string with a non-constant placeholder, `+`, `%`, `.format()`, `.join()`, or a local variable assigned or `+=`-ed from one | constant SQL, bound parameters, a query passed in unchanged as a parameter, a query returned by another function |
+| `GT-SQLI-001` SQL built from strings | high | `execute`/`executemany`/`executescript`/`mogrify`/`raw`/`read_sql[_query]` on any receiver, `sqlalchemy.text`, Django `RawSQL`, when the query is an f-string with a non-constant placeholder, `+`, `%`, `.format()` or `.join()` on a string, or a local variable assigned or `+=`-ed from one | constant SQL (including f-strings of constants, class constants, `Model.__tablename__`, and loops over constant tuples), bound parameters, a query passed in unchanged as a parameter, a query returned by another function |
 | `GT-EVAL-001` dynamic code evaluation | high | the builtins `eval`, `exec`, `compile` on a non-constant argument | constants; `re.compile` and other same-named functions |
 | `GT-CMDI-001` shell command injection | high | `subprocess.run/call/check_call/check_output/Popen` with `shell=True` and a non-constant command; `os.system`, `os.popen`, `subprocess.getoutput/getstatusoutput`, `asyncio.create_subprocess_shell` with a non-constant command | argument lists without `shell=True`; constant commands |
 | `GT-DESER-001` unsafe deserialization | high | `pickle`/`cPickle`/`dill`/`marshal` `load(s)`, `pandas.read_pickle`, `yaml.load[_all]` without `SafeLoader`/`CSafeLoader`, `yaml.unsafe_load` | `yaml.safe_load`, constant data |
-| `GT-SECRET-001` hardcoded secret | medium | a string constant bound to a name whose last word is key/secret/password/passwd/pwd/pass/token (or `apikey`, `accesstoken`, ...) | env/config lookups, descriptor names (`PASSWORD_FIELD`, `TOKEN_URL`, `API_KEY_HEADER`), non-secret keys (`primary_key`, `sort_key`, `public_key`, `next_token`, `ctx_key`), placeholders, values under 4 characters or with whitespace |
+| `GT-SECRET-001` hardcoded secret | medium | a string constant bound to a name, attribute or string subscript (`config["SECRET_KEY"]`) whose last word is key/secret/password/passwd/pwd/pass/token (or `apikey`, `accesstoken`, ...) | env/config lookups, descriptor names (`PASSWORD_FIELD`, `TOKEN_URL`, `API_KEY_HEADER`), non-secret keys (`primary_key`, `sort_key`, `public_key`, `next_token`, `ctx_key`), placeholders, sentences, `ENV_VAR_NAMES`, dunder names, URLs and paths, values under 4 characters; for `*key`/`*token` names, letters-only dotted/kebab/snake identifiers (i18n and cache keys), and for a bare `key`/`token`, values with fewer than two of lower case, upper case and digits |
 
 Every finding records whether its dangerous value **derives from a function parameter**, following local assignments (`q = "..." + x`), augmented assignments, `for`/`with` bindings, and enclosing functions' parameters for closures. Values are not followed across function calls. Calls resolved to project code are never sinks: what is dangerous happens inside them, where the rules look. A hardcoded secret's value is masked in every report.
 
@@ -209,28 +210,52 @@ FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= \
 
 ## Evaluation
 
-`eval/` holds a reproducible evaluation (`python eval/run_eval.py`): four targets from three deliberately vulnerable Flask/FastAPI apps, each pinned to a commit with a ground truth written from the project's docs and code **before** either tool was run, plus two maintained real-world projects. Bandit (1.9.4) is compared on the same five categories only. The numbers below are the first run, with the rules exactly as committed in Phase 4 ("untouched").
+`eval/` holds a reproducible evaluation (`python eval/run_eval.py`, see `eval/README.md`). For each deliberately vulnerable app, a ground truth was written from the project's docs and code **before** either tool was run on it. Bandit 1.9.4 is compared **only in the same five categories**. Every finding on the real-world projects was reviewed by hand; per-finding results and reasons are in `eval/results/<label>/` and `eval/<project>/review.json`.
 
-| Target | Ground truth | GitTrace TP / FP / FN | GitTrace precision · recall | Bandit TP / FP / FN | Bandit precision · recall |
+**Sample size is small:** 36 ground-truth vulnerabilities in 5 targets (31 in the four tuning targets, 5 held out), and 3 real-world projects. Treat the percentages as indicative, not as benchmarks.
+
+### 1. Untouched (rules as committed in Phase 4)
+
+| Target | Ground truth | GitTrace TP / FP / FN | Precision · recall | Bandit TP / FP / FN | Precision · recall |
 |---|---|---|---|---|---|
 | vulpy `bad/` | 5 | 3 / 2 / 2 | 60% · 60% | 5 / 2 / 0 | 71% · 100% |
 | vulpy `good/` | 5 | 2 / 0 / 3 | 100% · 40% | 4 / 0 / 1 | 100% · 80% |
 | we45 Vulnerable-Flask-App | 6 | 3 / 0 / 3 | 100% · 50% | 6 / 1 / 0 | 86% · 100% |
 | Contrast vulnpy | 15 | 15 / 1 / 0 | 94% · 100% | 10 / 2 / 5 | 83% · 67% |
 | **Overall** | **31** | **23 / 3 / 8** | **88% · 74%** | **25 / 5 / 6** | **83% · 81%** |
+| CTFd (Flask), reviewed | — | 10 findings, 10 false positives (100%) | | | |
+| mealie (FastAPI), reviewed | — | 65 findings, 63 false positives (97%) | | | |
 
-- All 3 GitTrace false positives are dangerous-looking but harmless patterns (SQL formatted from constant seed data, `exec` of a constant in a test); ignoring those, its precision is 100%.
-- 7 of GitTrace's 23 true positives are marked reachable from an unauthenticated route. The ground truth has 19 that really are; most of the gap is vulnpy, which dispatches to its vulnerable functions with `getattr` (invisible to static call resolution). One of the 7 (`/search` in Vulnerable-Flask-App) is over-reported: it checks a JWT inside the handler, which GitTrace cannot see.
-- GitTrace's misses are all hardcoded secrets: 6 assigned through `config['KEY'] = "..."` subscripts (not checked), one containing a space, one all-caps value mistaken for an environment-variable name. Bandit misses SQL built through a variable (`sql = FMT.format(x); cursor.execute(sql)`), `yaml.load_all`, `compile()`, and a secret named `key`.
+### 2. After tuning (eight rule fixes chosen from the misses above, re-run on the same targets)
 
-On maintained projects every finding was reviewed by hand:
+| Target | Ground truth | GitTrace TP / FP / FN | Precision · recall | Bandit TP / FP / FN | Precision · recall |
+|---|---|---|---|---|---|
+| vulpy `bad/` | 5 | 5 / 1 / 0 | 83% · 100% | 5 / 2 / 0 | 71% · 100% |
+| vulpy `good/` | 5 | 5 / 0 / 0 | 100% · 100% | 4 / 0 / 1 | 100% · 80% |
+| we45 Vulnerable-Flask-App | 6 | 4 / 0 / 2 | 100% · 67% | 6 / 1 / 0 | 86% · 100% |
+| Contrast vulnpy | 15 | 15 / 0 / 0 | 100% · 100% | 10 / 2 / 5 | 83% · 67% |
+| **Overall** | **31** | **29 / 1 / 2** | **97% · 94%** | **25 / 5 / 6** | **83% · 81%** |
+| CTFd (Flask), reviewed | — | 3 findings, 3 false positives (100%); 16 more in test code at info | | | |
+| mealie (FastAPI), reviewed | — | 15 findings, 13 false positives (87%); 11 more in test code at info | | | |
 
-| Project | Files | Endpoints detected | GitTrace findings | Reachable | Reviewed false positives | Bandit, same categories |
-|---|---|---|---|---|---|---|
-| CTFd (Flask) | 350 | 88 | 10 | 0 | 10 / 10 (100%) | 267 |
-| mealie (FastAPI) | 695 | 213 | 65 | 0 | 63 / 65 (97%) | 101 |
+These numbers are **optimistic by construction**: the fixes were chosen by looking at these same targets. One fix also introduced a new false positive (a dummy `SECRET_KEY` in CTFd's `TestingConfig`).
 
-The rules find the patterns they claim, but on real code those patterns are mostly harmless: SQL f-strings that interpolate table and column names from model metadata, constants named `*_key` that hold i18n keys or attribute names, and test fixtures. All of these were scored medium and none was reachable from a route; the two true positives are shipped default passwords in mealie. Per-finding results and reasons are in `eval/results/untouched/` and `eval/{ctfd,mealie}/review.json`.
+### 3. Held out (two new targets, chosen after the fixes were final, run once, nothing changed afterwards)
+
+| Target | Ground truth | GitTrace TP / FP / FN | Precision · recall | Bandit TP / FP / FN | Precision · recall |
+|---|---|---|---|---|---|
+| DVGA (Damn Vulnerable GraphQL App, Flask) | 5 | 4 / 0 / 1 | 100% · 80% | 4 / 1 / 1 | 80% · 80% |
+| open-webui (FastAPI), reviewed | — | 29 findings, 27 false positives (93%) | | | |
+
+- DVGA: GitTrace's miss is a seeded password passed as a keyword argument (`User(password="password123")`, not checked); Bandit's miss is the SQL injection through SQLAlchemy `text("..." % ...)`.
+- open-webui: the 2 true positives are `exec()` of user-submitted Tool and Function code (code execution by design, permission-gated). The 27 false positives are SQL f-strings that interpolate bind-parameter names, table/column/index names and configuration values, and one default password used only with authentication turned off.
+
+### What the numbers say
+
+- **Within these five categories GitTrace is comparable to Bandit, not better.** Untouched it was 88%/74% against Bandit's 83%/81%; on the held-out vulnerable app both found 4 of 5. The after-tuning gap is not evidence, because the tuning saw those targets.
+- **GitTrace's contribution is the context around a finding**: whether a route reaches it and whether that route needs authentication, the path, the blast radius over callers and endpoints, and the owner from `git blame`. On the vulnerable apps, 7 of the 23 untouched true positives were marked reachable without auth, and 1 of the 4 held-out ones.
+- **That context is only as good as route and auth detection.** On the held-out DVGA, the one "reachable without auth" finding (`run_cmd`) is reached through `/start_over`, which passes a constant command, while the real attack paths go through `/graphql` (graphene dispatch, not visible statically). On open-webui, all 9 findings marked unauthenticated and critical are behind `Depends(get_verified_user)`, whose name the auth check does not recognise, so their severity is overstated.
+- **Real-world precision is low.** Most reported patterns are real but harmless (SQL built from trusted identifiers). On CTFd and mealie every finding is `medium`, so `--min-severity high` hides all their false positives, but it also hides mealie's two true positives. On open-webui it would not help: the auth miss above put 7 false positives at `critical`.
 
 ## Limitations
 
@@ -248,7 +273,8 @@ The rules find the patterns they claim, but on real code those patterns are most
   This exact case is in `tests/fixtures/sample_app/app/db.py:24`, and the tests assert that it is *not* reported, so a fix will show up as a deliberate test change.
 - **Call resolution is static and conservative.** Calls on parameters, attributes or return values (`db_session.query`, `self.repo.get`) stay unresolved, so paths through them are missed; dynamic dispatch (plugin registries, `getattr`) is invisible.
 - **Rules are pattern rules.** A finding means the dangerous pattern is there, not that it is exploitable: a query formatted from trusted schema names is still reported, with a lower severity when no route reaches it.
-- **Auth detection is name-based** and only sees obvious dependencies and decorators; checks inside the handler body (e.g. signature verification) are not recognised.
+- **Auth detection is name-based** and only sees obvious dependencies and decorators; checks inside the handler body (e.g. signature verification) are not recognised, and names outside the pattern (open-webui's `get_verified_user`) make an authenticated route look unauthenticated.
+- **Secrets are only checked where they are bound to a name**, an attribute or a string subscript; a password passed as a keyword argument (`User(password="...")`) or held in a dict literal is not reported.
 - **The model layer is not built yet.** Explanations and fix diffs come in a later phase; the agent loop in `gittrace.core.agent` is a generic, experimental shell.
 
 ## AI assistance disclosure (Rule 11)

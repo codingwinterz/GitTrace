@@ -277,3 +277,90 @@ class TestParameterTracking:
         assert (m.site.line, m.site.column, m.site.end_line) == (3, 12, 4)
         assert m.site.snippet == "    x = 1; os.system(\n        c)"
         assert m.sink_id == "m.py::3::12"
+
+    def test_a_rebound_parameter_still_counts(self):
+        # fix 8: user_input = BytesIO(user_input...) keeps the parameter as a source
+        (m,) = _matches("""
+            import io
+            import pickle
+            def f(user_input):
+                user_input = io.BytesIO(user_input.encode("utf-8"))
+                return pickle.load(user_input)
+        """)
+        assert (m.param_derived, m.params) == (True, ("user_input",))
+
+
+class TestTuningFixes:
+    """The rule fixes approved after the untouched evaluation (eval/)."""
+
+    def test_secret_through_a_string_subscript(self):
+        # fix 1
+        assert _found("""
+            import os
+            app.config["SECRET_KEY"] = "aaaaaaa"
+            os.environ["API_TOKEN"] = "ghp_16C7e42F292c6912E7710c838347Ae"
+            settings[name] = "hunter2hunter2"
+            app.config["DEBUG_MODE"] = "verbose"
+        """) == [("GT-SECRET-001", 3), ("GT-SECRET-001", 4)]
+
+    def test_whitespace_only_excludes_prose(self):
+        # fix 2
+        assert _found(r"""
+            app.secret_key = 'F12Zr47j\3yX R~X@H!jmM]Lwf/,?KT'
+            PROMPT_PASSWORD = "Enter your password, please"
+        """) == [("GT-SECRET-001", 2)]
+
+    def test_all_caps_value_without_underscore_is_a_secret(self):
+        # fix 3
+        assert _found("""
+            secret = "MYSUPERSECRETKEY"
+            GITHUB_TOKEN = "GH_PAT_VALUE"
+        """) == [("GT-SECRET-001", 2)]
+
+    def test_join_and_format_only_on_strings(self):
+        # fix 4
+        assert _found("""
+            from sqlalchemy import select
+            FMT = "INSERT INTO t VALUES ('{}')"
+            def f(db, cursor, x, sep):
+                db.session.execute(select(Users).where(Users.id == x).join(Teams, Users.team_id == Teams.id))
+                cursor.execute(sep.join(x))
+                cursor.execute(FMT.format(x))
+                cursor.execute(", ".join(x))
+        """) == [("GT-SQLI-001", 7), ("GT-SQLI-001", 8)]
+
+    def test_identifier_values_under_key_and_token_names(self):
+        # fix 5
+        assert _found("""
+            progress_key = "recipe.create-progress.reading-source"
+            CBV_CLASS_KEY = "__cbv_class__"
+            auth_token = "/api/auth/token"
+            DOCS_URL_PASSWORD = "https://example.com/docs/password"
+            key = "healthcheck"
+            token_key = "access_token"
+            key = "JHtM1wEt1I1J9N_Evjwqr3yYauXIqSxYzFnRhcf0ZG0="
+            SECRET_KEY = "aaaaaaa"
+            API_TOKEN = "s3cr3t-token-123"
+        """) == [("GT-SECRET-001", 8), ("GT-SECRET-001", 9), ("GT-SECRET-001", 10)]
+
+    def test_sql_from_model_and_class_constants(self):
+        # fix 6
+        assert _found("""
+            from sqlalchemy import text
+            LEGACY = ("a_table", "b_table")
+            class Model:
+                THRESHOLD = "0.5"
+                @classmethod
+                def search(cls, session):
+                    session.execute(text(f"set similarity = {cls.THRESHOLD};"))
+                def tune(self, session):
+                    session.execute(text(f"set similarity = {self.THRESHOLD};"))
+            def migrate(op, session, tables):
+                session.execute(text(f"SELECT id FROM {Model.__tablename__}"))
+                for table in LEGACY:
+                    op.execute(text(f"DELETE FROM {table}"))
+                for u, p in [("admin", "x"), ("tim", "y")]:
+                    session.execute("INSERT INTO users VALUES ('%s', '%s')" % (u, p))
+                for t in tables:
+                    op.execute(text(f"DELETE FROM {t}"))
+        """) == [("GT-SQLI-001", 18)]

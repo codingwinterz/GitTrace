@@ -110,7 +110,8 @@ def headline(data: dict) -> Panel:
     facts = Text(
         f"{scanned['files']} files · {scanned['functions']} functions · "
         f"{scanned['endpoints']} endpoints scanned"
-        + (f" · {scanned['parse_failures']} could not be parsed" if scanned["parse_failures"] else ""),
+        + (f" · {scanned['parse_failures']} could not be parsed" if scanned["parse_failures"] else "")
+        + (f" · {summary['test_findings']} more in test code (info)" if summary.get("test_findings") else ""),
         style=LAVENDER,
     )
     if total == 0:
@@ -186,11 +187,15 @@ def finding_detail(index: int, f: dict, functions: dict, blamed: bool) -> Panel:
 def render_scan(console: Console, data: dict, functions: dict, blamed: bool) -> None:
     console.print(headline(data))
     findings = data["findings"]
-    if not findings:
-        return
-    console.print(findings_table(findings))
-    for i, f in enumerate(findings, 1):
-        console.print(finding_detail(i, f, functions, blamed))
+    if findings:
+        console.print(findings_table(findings))
+        for i, f in enumerate(findings, 1):
+            console.print(finding_detail(i, f, functions, blamed))
+    tests = data.get("test_findings") or []
+    if tests:
+        console.print(Text(f"In test code: {len(tests)} finding(s), reported at info "
+                           "(--include-tests to treat them normally)", style=LAVENDER))
+        console.print(findings_table(tests))
     if data["parse_failures"]:
         console.print(Text("Not scanned (parse failures):", style=AMBER))
         for failure in data["parse_failures"]:

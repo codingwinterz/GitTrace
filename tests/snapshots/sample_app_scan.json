@@ -35,7 +35,8 @@
       "GT-SQLI-001": 3
     },
     "reachable": 8,
-    "unauthenticated": 7
+    "unauthenticated": 7,
+    "test_findings": 0
   },
   "findings": [
     {
@@ -113,6 +114,7 @@
         ],
         "endpoints": 2
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -172,6 +174,7 @@
         "callers": [],
         "endpoints": 1
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -232,6 +235,7 @@
         "callers": [],
         "endpoints": 1
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -291,6 +295,7 @@
         "callers": [],
         "endpoints": 1
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -350,6 +355,7 @@
         "callers": [],
         "endpoints": 1
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -413,6 +419,7 @@
         ],
         "endpoints": 1
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -475,6 +482,7 @@
         ],
         "endpoints": 1
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -533,6 +541,7 @@
         "callers": [],
         "endpoints": 1
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -581,6 +590,7 @@
         ],
         "endpoints": 0
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -627,6 +637,7 @@
         "callers": [],
         "endpoints": 0
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -668,6 +679,7 @@
         "callers": [],
         "endpoints": 0
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -709,6 +721,7 @@
         "callers": [],
         "endpoints": 0
       },
+      "in_tests": false,
       "owner": null
     },
     {
@@ -750,7 +763,9 @@
         "callers": [],
         "endpoints": 0
       },
+      "in_tests": false,
       "owner": null
     }
-  ]
+  ],
+  "test_findings": []
 }

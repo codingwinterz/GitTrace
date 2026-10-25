@@ -11,6 +11,10 @@ gittrace.core.scan — `gittrace scan`: rule findings, reachability, severity, o
     5. record the results on the Sink nodes.
 
 With offline=True, steps 2 and 5 are skipped and step 3 runs in memory.
+
+Findings in test code (a `tests`/`test` directory, test_*.py, *_test.py,
+conftest.py) are reported separately at info severity and never fail a
+`--fail-on` gate, unless include_tests=True treats them like any other code.
 """
 
 from __future__ import annotations
@@ -18,7 +22,7 @@ from __future__ import annotations
 import os
 from collections import Counter
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from gittrace.core import pipeline
 from gittrace.core.owner import Blamer, Owner
@@ -61,6 +65,7 @@ class Finding:
     callers: tuple[str, ...]
     uncertain: bool
     owner: Owner | None = None
+    in_tests: bool = False          # in test code, reported separately at info
 
     @property
     def reachable(self) -> bool:
@@ -113,6 +118,7 @@ class Finding:
                 "callers": list(self.callers),
                 "endpoints": len(self.routes),
             },
+            "in_tests": self.in_tests,
             "owner": None if self.owner is None else {
                 "status": self.owner.status, "author": self.owner.author,
                 "email": self.owner.email, "commit": self.owner.commit,
@@ -129,6 +135,7 @@ class ScanResult:
     depth: int
     findings: list[Finding]
     analysis: pipeline.Analysis = field(repr=False)
+    test_findings: list[Finding] = field(default_factory=list)
 
     def at_least(self, minimum: str) -> list[Finding]:
         floor = severity_rank(minimum)
@@ -154,9 +161,16 @@ class ScanResult:
             "settings": {"depth": self.depth, "min_severity": min_severity},
             "scanned": {k: counts[k] for k in ("files", "parse_failures", "functions", "endpoints", "calls")},
             "parse_failures": [{"file": f.path, "reason": f.reason} for f in self.analysis.failures],
-            "summary": self.summary(shown),
+            "summary": {**self.summary(shown), "test_findings": len(self.test_findings)},
             "findings": [f.to_dict() for f in shown],
+            "test_findings": [f.to_dict() for f in self.test_findings],
         }
+
+
+def is_test_path(path: str) -> bool:
+    p = PurePosixPath(path)
+    return (any(part in ("tests", "test") for part in p.parts[:-1])
+            or p.name == "conftest.py" or p.name.startswith("test_") or p.stem.endswith("_test"))
 
 
 def _exposure(match: Match, reach: Reach | None) -> Exposure:
@@ -174,7 +188,8 @@ def _exposure(match: Match, reach: Reach | None) -> Exposure:
 
 
 def scan(root: str | os.PathLike, *, depth: int = DEFAULT_DEPTH, blame: bool = True,
-         offline: bool = False, db=None, graph_name: str | None = None) -> ScanResult:
+         offline: bool = False, db=None, graph_name: str | None = None,
+         include_tests: bool = False) -> ScanResult:
     check_depth(depth)
     analysis = pipeline.analyze(root)
     matches = run_rules(analysis.rules, analysis.calls, analysis.assignments)
@@ -214,15 +229,22 @@ def scan(root: str | os.PathLike, *, depth: int = DEFAULT_DEPTH, blame: bool = T
     for m in matches:
         reach = reachability.reach(m.function_id) if m.flow_sensitive else None
         sev = score(m.base_severity, m.flow_sensitive, m.param_derived, _exposure(m, reach))
+        in_tests = not include_tests and is_test_path(m.site.file)
+        level, reasons = sev.level, sev.reasons
+        if in_tests:
+            level = "info"
+            reasons += (f"in test code: reported at info instead of {sev.level} "
+                        "(--include-tests to treat it normally)",)
         findings.append(Finding(
             id=m.sink_id, rule_id=m.rule_id, category=m.category, title=m.title,
-            severity=sev.level, score=sev.score, base_severity=m.base_severity,
-            reasons=sev.reasons, file=m.site.file, line=m.site.line, column=m.site.column,
+            severity=level, score=sev.score, base_severity=m.base_severity,
+            reasons=reasons, file=m.site.file, line=m.site.line, column=m.site.column,
             end_line=m.site.end_line, snippet=m.site.snippet, function_id=m.function_id,
             callee=m.callee, message=m.message, evidence=m.evidence,
             param_derived=m.param_derived, params=m.params, flow_sensitive=m.flow_sensitive,
             routes=reach.routes if reach else (), callers=reach.callers if reach else (),
             uncertain=sev.uncertain, owner=owners.get((m.site.file, m.site.line)),
+            in_tests=in_tests,
         ))
     findings.sort(key=Finding.sort_key)
 
@@ -231,4 +253,5 @@ def scan(root: str | os.PathLike, *, depth: int = DEFAULT_DEPTH, blame: bool = T
 
         store.write_findings(graph, name, findings)
     return ScanResult(project=analysis.root.name, root=analysis.root, graph=name,
-                      depth=depth, findings=findings, analysis=analysis)
+                      depth=depth, findings=[f for f in findings if not f.in_tests],
+                      analysis=analysis, test_findings=[f for f in findings if f.in_tests])

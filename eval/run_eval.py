@@ -4,6 +4,8 @@ eval/run_eval.py — reproduce the GitTrace evaluation (see eval/README.md).
     python eval/run_eval.py                       # results in eval/results/untouched/
     python eval/run_eval.py --label after-tuning  # a second, separately labelled run
     python eval/run_eval.py --graph               # use FalkorDB instead of --offline
+    python eval/run_eval.py --targets held-out --label held-out
+    python eval/run_eval.py --label held-out --review-only   # fold in review.json, no re-scan
 
 For each pinned target (eval/targets.json) this checks out the commit under
 eval/.src/, runs `gittrace scan` and Bandit, and for the vulnerable apps matches
@@ -162,8 +164,11 @@ def score(findings: list[dict], truth: dict) -> dict:
     return result
 
 
-def evaluate(label: str, use_graph: bool) -> dict:
+def evaluate(label: str, use_graph: bool, target_set: str = "tuning") -> dict:
+    """target_set: "tuning" (the targets the rules were tuned on) or "held-out"."""
     targets = json.loads((EVAL / "targets.json").read_text(encoding="utf-8"))
+    if target_set == "held-out":
+        targets = targets["held_out"]
     out_dir = EVAL / "results" / label
     out_dir.mkdir(parents=True, exist_ok=True)
     summary: dict = {"label": label, "bandit_version": BANDIT_VERSION,
@@ -173,9 +178,11 @@ def evaluate(label: str, use_graph: bool) -> dict:
     for t in targets["vulnerable"]:
         path = checkout(t)
         truth = json.loads((EVAL / t["name"] / "ground_truth.json").read_text(encoding="utf-8"))
-        g = gittrace_findings(run_gittrace(path, use_graph))
+        data = run_gittrace(path, use_graph)
+        g = gittrace_findings(data)                 # the main report; test code is separate
         b = bandit_findings(run_bandit(path), path)
         record = {"target": t, "gittrace_findings": g, "bandit_findings": b,
+                  "gittrace_test_findings": [f["id"] for f in data.get("test_findings", [])],
                   "gittrace": score(g, truth), "bandit": score(b, truth),
                   "ground_truth_reachable_unauthenticated": sum(
                       1 for v in truth["vulnerabilities"]
@@ -187,6 +194,7 @@ def evaluate(label: str, use_graph: bool) -> dict:
             for k in ("gittrace", "bandit")}
         summary["vulnerable"][t["name"]]["ground_truth_reachable_unauthenticated"] = \
             record["ground_truth_reachable_unauthenticated"]
+        summary["vulnerable"][t["name"]]["gittrace_test_findings"] = len(record["gittrace_test_findings"])
 
     for tool in ("gittrace", "bandit"):
         rows = [v[tool] for v in summary["vulnerable"].values()]
@@ -208,6 +216,7 @@ def evaluate(label: str, use_graph: bool) -> dict:
         b = bandit_findings(run_bandit(path), path)
         review_file = EVAL / t["name"] / "review.json"
         entry = {"target": t, "scanned": data["scanned"], "gittrace_findings": len(g),
+                 "gittrace_test_findings": len(data.get("test_findings", [])),
                  "by_rule": dict(Counter(f["rule"] for f in g)),
                  "by_severity": dict(Counter(f["severity"] for f in g)),
                  "reachable": sum(1 for f in g if f["reachable"]),
@@ -232,6 +241,28 @@ def evaluate(label: str, use_graph: bool) -> dict:
                                                    encoding="utf-8")
         summary["real_world"][t["name"]] = entry
 
+    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    (out_dir / "summary.md").write_text(markdown(summary), encoding="utf-8")
+    return summary
+
+
+def apply_reviews(label: str) -> dict:
+    """Recompute the reviewed false-positive rates of a finished run from its
+    saved findings, without scanning again (the held-out run happens once)."""
+    out_dir = EVAL / "results" / label
+    summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+    for name, entry in summary["real_world"].items():
+        findings = json.loads((out_dir / f"{name}.json").read_text(encoding="utf-8"))["findings"]
+        review_file = EVAL / name / "review.json"
+        if not review_file.exists():
+            continue
+        review = json.loads(review_file.read_text(encoding="utf-8"))["verdicts"]
+        missing = sorted({f["id"] for f in findings} - set(review))
+        fp = sum(1 for f in findings if review.get(f["id"], {}).get("verdict") == "fp")
+        entry.update({"reviewed": len(findings) - len(missing), "unreviewed": missing,
+                      "false_positives": fp,
+                      "false_positive_rate": round(fp / (len(findings) - len(missing)), 3)
+                      if len(findings) > len(missing) else None})
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     (out_dir / "summary.md").write_text(markdown(summary), encoding="utf-8")
     return summary
@@ -271,8 +302,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--label", default="untouched")
     parser.add_argument("--graph", action="store_true", help="run gittrace against FalkorDB")
+    parser.add_argument("--targets", choices=("tuning", "held-out"), default="tuning",
+                        help="the targets the rules were tuned on, or the held-out ones")
+    parser.add_argument("--review-only", action="store_true",
+                        help="only fold eval/<target>/review.json into an existing run's results")
     args = parser.parse_args()
-    summary = evaluate(args.label, args.graph)
+    if args.review_only:
+        summary = apply_reviews(args.label)
+    else:
+        summary = evaluate(args.label, args.graph, args.targets)
     sys.stdout.write(markdown(summary))
     return 0
 

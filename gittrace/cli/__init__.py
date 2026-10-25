@@ -2,7 +2,7 @@
 gittrace.cli — the command line (Typer).
 
     gittrace scan <path> [--format rich|json] [--min-severity LEVEL] [--depth N]
-                         [--fail-on LEVEL|none] [--offline] [--no-blame]
+                         [--fail-on LEVEL|none] [--offline] [--no-blame] [--include-tests]
     gittrace trace <file:line | finding-id> [--project PATH] [--depth N] [--format ...]
     gittrace blast-radius <function-id> [--project PATH] [--depth N] [--format ...]
 
@@ -87,6 +87,9 @@ def scan(
     offline: bool = typer.Option(False, "--offline",
                                  help="Compute reachability in memory; do not write the FalkorDB graph."),
     no_blame: bool = typer.Option(False, "--no-blame", help="Skip the git blame owner lookup."),
+    include_tests: bool = typer.Option(
+        False, "--include-tests",
+        help="Treat findings in test code like any other (default: a separate section at info)."),
 ) -> None:
     """Scan a Python project: rule findings, attack paths from routes, blast radius, owner."""
     from gittrace.core.scan import scan as run_scan
@@ -95,7 +98,8 @@ def scan(
     if not path.is_dir():
         _fail(f"not a directory: {path}")
     try:
-        result = run_scan(path, depth=depth, blame=not no_blame, offline=offline)
+        result = run_scan(path, depth=depth, blame=not no_blame, offline=offline,
+                          include_tests=include_tests)
     except RuntimeError as exc:          # FalkorDB unreachable, misconfigured, ...
         _fail(f"{exc} (use --offline to scan without FalkorDB)")
     data = result.to_dict(min_severity.value)

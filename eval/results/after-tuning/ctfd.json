@@ -1,0 +1,83 @@
+{
+  "target": {
+    "name": "ctfd",
+    "repo": "https://github.com/CTFd/CTFd",
+    "commit": "738f1de09ac4a8ccbd65bf74577acdc1dbecd08e",
+    "scan_path": ".",
+    "framework": "flask"
+  },
+  "scanned": {
+    "files": 350,
+    "parse_failures": 0,
+    "functions": 1716,
+    "endpoints": 88,
+    "calls": 18737
+  },
+  "gittrace_findings": 3,
+  "gittrace_test_findings": 16,
+  "by_rule": {
+    "GT-SQLI-001": 2,
+    "GT-SECRET-001": 1
+  },
+  "by_severity": {
+    "medium": 3
+  },
+  "reachable": 0,
+  "unauthenticated": 0,
+  "bandit_findings_same_categories": 267,
+  "bandit_by_category": {
+    "hardcoded-secret": 265,
+    "sql-injection": 2
+  },
+  "reviewed": 3,
+  "unreviewed": [],
+  "false_positives": 3,
+  "false_positive_rate": 1.0,
+  "findings": [
+    {
+      "tool": "gittrace",
+      "id": "CTFd/utils/exports/__init__.py::416::29",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "CTFd/utils/exports/__init__.py",
+      "lines": [
+        416
+      ],
+      "severity": "medium",
+      "score": 6,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "side_db.engine.execute(query)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "CTFd/utils/exports/__init__.py::247::21",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "CTFd/utils/exports/__init__.py",
+      "lines": [
+        247
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "db.session.execute(f\"KILL {proc_id}\")"
+    },
+    {
+      "tool": "gittrace",
+      "id": "CTFd/config.py::308::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "CTFd/config.py",
+      "lines": [
+        308
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "SECRET_KEY = \"AAA*****************\""
+    }
+  ]
+}

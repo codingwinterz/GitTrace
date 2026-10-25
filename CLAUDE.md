@@ -93,6 +93,35 @@ findings and code in plain language using a local LLM.
   `--no-blame` skips git blame. Severity is the fixed points table in
   gittrace/core/severity.py and the README; change both together.
 
+- Findings in test code (a `tests`/`test` directory, test_*.py, *_test.py,
+  conftest.py) are reported in a separate section at info severity and never
+  trip `--fail-on`; `--include-tests` treats them like any other code.
+- Evaluation (eval/): ground truth is written before a tool is run on a
+  target; the untouched, after-tuning and held-out results are kept as
+  separately labelled runs. A held-out target is run once and nothing is
+  changed because of its results.
+
+## Backlog (not scheduled; do not start without approval)
+- Routes from Flask-RESTful / Flask-RESTX `Resource` classes
+  (`@api.route(...)` / `@namespace.route(...)` on a class, `get`/`post`
+  methods as handlers). Most of CTFd's API is invisible without it.
+- Auth checks inside handler bodies (JWT verified in the handler, an
+  `if not current_user: abort(401)` guard) instead of a dependency or a
+  decorator. Today such routes count as unauthenticated.
+- `getattr` / `import_module` dispatch and routes registered dynamically in
+  loops (`add_url_rule` with computed names, decorators applied inside
+  factory functions, GraphQL resolvers dispatched by graphene). Mostly out of
+  reach for static analysis: document it as a limitation rather than guess
+  edges.
+- Cross-function SQL propagation: a query built in one function (or returned
+  by a helper) and executed in another, e.g. `execute(build_query())` and
+  `run_cmd(f"curl {url}")` reaching a sink through a wrapper with a constant
+  at some call sites and attacker input at others.
+- Found in the held-out run, not fixed: auth dependency names outside the
+  pattern (`get_verified_user`), secrets passed as keyword arguments
+  (`User(password="...")`) or in dict literals, and secret names ending in
+  `HMAC` (`SECRET_KEY_HMAC`).
+
 ## Phases (stop and report after each; do not start the next without approval)
 - Phase 1: Fix existing bugs in the current code.
 - Phase 2: Restructure into a package (gittrace/core, gittrace/graph, 

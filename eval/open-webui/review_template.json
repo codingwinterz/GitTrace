@@ -1,0 +1,623 @@
+{
+  "verdicts": {
+    "backend/open_webui/models/chats.py::2663::25": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/models/chats.py::2663::25",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/models/chats.py",
+        "lines": [
+          2663
+        ],
+        "severity": "critical",
+        "score": 11,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "text(f\"EXISTS (SELECT 1 FROM json_each(Chat.meta, '$.tags') WHERE json_each.value = :{param})\")"
+      }
+    },
+    "backend/open_webui/models/chats.py::2667::25": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/models/chats.py::2667::25",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/models/chats.py",
+        "lines": [
+          2667,
+          2668,
+          2669
+        ],
+        "severity": "critical",
+        "score": 11,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "text("
+      }
+    },
+    "backend/open_webui/utils/plugin.py::242::9": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/utils/plugin.py::242::9",
+        "rule": "GT-EVAL-001",
+        "category": "code-injection",
+        "file": "backend/open_webui/utils/plugin.py",
+        "lines": [
+          242
+        ],
+        "severity": "critical",
+        "score": 11,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "exec(content, module.__dict__)"
+      }
+    },
+    "backend/open_webui/utils/plugin.py::291::9": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/utils/plugin.py::291::9",
+        "rule": "GT-EVAL-001",
+        "category": "code-injection",
+        "file": "backend/open_webui/utils/plugin.py",
+        "lines": [
+          291
+        ],
+        "severity": "critical",
+        "score": 11,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "exec(content, module.__dict__)"
+      }
+    },
+    "backend/open_webui/models/chats.py::2488::21": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/models/chats.py::2488::21",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/models/chats.py",
+        "lines": [
+          2488,
+          2489,
+          2490,
+          2491,
+          2492,
+          2493,
+          2494,
+          2495
+        ],
+        "severity": "critical",
+        "score": 10,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "query = text(f\"\"\""
+      }
+    },
+    "backend/open_webui/routers/search.py::97::16": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/routers/search.py::97::16",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/routers/search.py",
+        "lines": [
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105
+        ],
+        "severity": "critical",
+        "score": 10,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "return text("
+      }
+    },
+    "backend/open_webui/routers/search.py::107::12": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/routers/search.py::107::12",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/routers/search.py",
+        "lines": [
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115
+        ],
+        "severity": "critical",
+        "score": 10,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "return text("
+      }
+    },
+    "backend/open_webui/models/chats.py::2284::33": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/models/chats.py::2284::33",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/models/chats.py",
+        "lines": [
+          2284,
+          2285,
+          2286,
+          2287,
+          2288,
+          2289,
+          2290
+        ],
+        "severity": "critical",
+        "score": 9,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "text(f\"\"\""
+      }
+    },
+    "backend/open_webui/models/chats.py::2316::33": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/models/chats.py::2316::33",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/models/chats.py",
+        "lines": [
+          2316,
+          2317,
+          2318,
+          2319,
+          2320,
+          2321,
+          2322
+        ],
+        "severity": "critical",
+        "score": 9,
+        "reachable": true,
+        "unauthenticated": true,
+        "snippet": "text(f\"\"\""
+      }
+    },
+    "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::166::21": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::166::21",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py",
+        "lines": [
+          166,
+          167,
+          168,
+          169,
+          170,
+          171,
+          172,
+          173,
+          174,
+          175,
+          176,
+          177,
+          178,
+          179,
+          180,
+          181
+        ],
+        "severity": "medium",
+        "score": 6,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cur.execute(f\"\"\""
+      }
+    },
+    "backend/open_webui/retrieval/vector/dbs/pgvector.py::237::34": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/retrieval/vector/dbs/pgvector.py::237::34",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/retrieval/vector/dbs/pgvector.py",
+        "lines": [
+          237
+        ],
+        "severity": "medium",
+        "score": 6,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "self.session.execute(text(index_sql))"
+      }
+    },
+    "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::55::28": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::55::28",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py",
+        "lines": [
+          55
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "indexes = conn.execute(sa.text(f\"PRAGMA index_list('{table_name}')\")).fetchall()"
+      }
+    },
+    "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::64::33": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::64::33",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py",
+        "lines": [
+          64
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "idx_info = conn.execute(sa.text(f\"PRAGMA index_info('{index_name}')\")).fetchall()"
+      }
+    },
+    "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::67::26": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::67::26",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py",
+        "lines": [
+          67
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "conn.execute(sa.text(f'DROP INDEX IF EXISTS {index_name}'))"
+      }
+    },
+    "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::433::25": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::433::25",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py",
+        "lines": [
+          433
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cur.execute(sql, params)"
+      }
+    },
+    "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::475::17": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::475::17",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py",
+        "lines": [
+          475
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cur.execute(sql, params)"
+      }
+    },
+    "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::585::25": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::585::25",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py",
+        "lines": [
+          585,
+          586,
+          587,
+          588,
+          589,
+          590,
+          591,
+          592,
+          593,
+          594,
+          595,
+          596,
+          597,
+          598,
+          599,
+          600,
+          601
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute("
+      }
+    },
+    "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::665::21": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::665::21",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py",
+        "lines": [
+          665
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(query, params)"
+      }
+    },
+    "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::794::21": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::794::21",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py",
+        "lines": [
+          794
+        ],
+        "severity": "medium",
+        "score": 5,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(query, params)"
+      }
+    },
+    "backend/open_webui/internal/db.py::303::9": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/internal/db.py::303::9",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/internal/db.py",
+        "lines": [
+          303
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "conn.execute(f\"PRAGMA key = '{database_password}'\")"
+      }
+    },
+    "backend/open_webui/internal/db.py::390::13": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/internal/db.py::390::13",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/internal/db.py",
+        "lines": [
+          390
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(f'PRAGMA synchronous={DATABASE_SQLITE_PRAGMA_SYNCHRONOUS}')"
+      }
+    },
+    "backend/open_webui/internal/db.py::392::13": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/internal/db.py::392::13",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/internal/db.py",
+        "lines": [
+          392
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(f'PRAGMA busy_timeout={DATABASE_SQLITE_PRAGMA_BUSY_TIMEOUT}')"
+      }
+    },
+    "backend/open_webui/internal/db.py::394::13": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/internal/db.py::394::13",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/internal/db.py",
+        "lines": [
+          394
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(f'PRAGMA cache_size={DATABASE_SQLITE_PRAGMA_CACHE_SIZE}')"
+      }
+    },
+    "backend/open_webui/internal/db.py::396::13": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/internal/db.py::396::13",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/internal/db.py",
+        "lines": [
+          396
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(f'PRAGMA temp_store={DATABASE_SQLITE_PRAGMA_TEMP_STORE}')"
+      }
+    },
+    "backend/open_webui/internal/db.py::398::13": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/internal/db.py::398::13",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/internal/db.py",
+        "lines": [
+          398
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(f'PRAGMA mmap_size={DATABASE_SQLITE_PRAGMA_MMAP_SIZE}')"
+      }
+    },
+    "backend/open_webui/internal/db.py::400::13": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/internal/db.py::400::13",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/internal/db.py",
+        "lines": [
+          400
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cursor.execute(f'PRAGMA journal_size_limit={DATABASE_SQLITE_PRAGMA_JOURNAL_SIZE_LIMIT}')"
+      }
+    },
+    "backend/open_webui/migrations/env.py::62::13": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/migrations/env.py::62::13",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/migrations/env.py",
+        "lines": [
+          62
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "cipher_conn.execute(f\"PRAGMA key = '{DATABASE_PASSWORD}'\")"
+      }
+    },
+    "backend/open_webui/migrations/versions/461111b60977_add_missing_primary_keys_to_legacy_.py::63::22": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/migrations/versions/461111b60977_add_missing_primary_keys_to_legacy_.py::63::22",
+        "rule": "GT-SQLI-001",
+        "category": "sql-injection",
+        "file": "backend/open_webui/migrations/versions/461111b60977_add_missing_primary_keys_to_legacy_.py",
+        "lines": [
+          63
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "conn.execute(sa.text(f'DROP TABLE IF EXISTS _alembic_tmp_{table_name}'))"
+      }
+    },
+    "backend/open_webui/routers/auths.py::738::9": {
+      "verdict": "tp|fp",
+      "reason": "",
+      "finding": {
+        "tool": "gittrace",
+        "id": "backend/open_webui/routers/auths.py::738::9",
+        "rule": "GT-SECRET-001",
+        "category": "hardcoded-secret",
+        "file": "backend/open_webui/routers/auths.py",
+        "lines": [
+          738
+        ],
+        "severity": "medium",
+        "score": 4,
+        "reachable": false,
+        "unauthenticated": false,
+        "snippet": "adm**_password = 'adm**'"
+      }
+    }
+  }
+}
