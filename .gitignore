@@ -15,3 +15,7 @@ venv/
 debug/
 
 *.bak
+
+# Local Claude Code state
+.claude/
+skills-lock.json

@@ -2,7 +2,7 @@
 gittrace.graph.seed — seed FalkorDB with the demo microservice graph.
 
 Connects to FalkorDB and seeds the gittrace graph with the schema and mock
-data from SPEC.md, using pure Cypher via graph.query() (the installed
+data from docs/archive/SPEC.md, using pure Cypher via graph.query() (the installed
 falkordb 1.8.0 exposes no ORM-style create/create_edge helpers).
 
 Run from the repository root:
