@@ -1,8 +1,8 @@
 """
 conftest.py — test bootstrap.
 
-`utils.py` reads the FalkorDB connection settings at import time, so importing
-`app` on a machine without a `.env` raises RuntimeError before pytest can collect
+`gittrace.graph.connection` reads the FalkorDB settings at import time, so importing
+`gittrace` on a machine without a `.env` raises RuntimeError before pytest can collect
 a single test. The offline suite never dials the database (every graph call is
 mocked), so placeholder settings are enough to let collection succeed.
 

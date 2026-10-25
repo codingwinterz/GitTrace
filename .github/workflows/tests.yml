@@ -33,7 +33,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run offline suite (mocked graph + mocked LLM, no credentials)
-        run: python -m pytest test_app.py -q
+        run: python -m pytest tests/test_core.py -q
 
   integration:
     name: integration suite (real FalkorDB)
@@ -84,4 +84,4 @@ jobs:
           EOF
 
       - name: Run integration suite (real FalkorDB, seeded per run)
-        run: python -m pytest test_integration.py -v
+        run: python -m pytest tests/test_integration.py -v

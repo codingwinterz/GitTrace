@@ -1,9 +1,12 @@
 """
-seed_graph.py — GitTrace Phase 2
+gittrace.graph.seed — seed FalkorDB with the demo microservice graph.
 
 Connects to FalkorDB and seeds the gittrace graph with the schema and mock
 data from SPEC.md, using pure Cypher via graph.query() (the installed
 falkordb 1.8.0 exposes no ORM-style create/create_edge helpers).
+
+Run from the repository root:
+    python -m gittrace.graph.seed
 
 Demo scenario wired:
   - CVE-2026-4421 (CRITICAL) affects token-service.validate_token
@@ -21,14 +24,8 @@ Env vars (from .env):
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv(Path(__file__).resolve().parent / ".env")
-
-import utils  # noqa: E402  (after load_dotenv so .env is visible)
-from utils import get_db  # noqa: E402
+from gittrace.graph import connection
 
 # ---------------------------------------------------------------------------
 # Seed data
@@ -204,7 +201,7 @@ def link(g, cypher: str, params: dict) -> None:
 
 
 def seed(db, graph_name: str | None = None) -> None:
-    graph_name = graph_name or utils.GRAPH_NAME
+    graph_name = graph_name or connection.GRAPH_NAME
 
     # Reset in place before inserting. This is a hard, unconditional wipe: the
     # old list_graphs()/delete() path swallowed every exception, so a failed
@@ -328,9 +325,9 @@ def seed(db, graph_name: str | None = None) -> None:
 
 
 def main() -> None:
-    print("GitTrace seed_graph.py")
+    print("GitTrace graph seed")
     print("=" * 60)
-    db = get_db()
+    db = connection.get_db()
     seed(db)
     print("=" * 60)
     print("Done.")

@@ -1,5 +1,8 @@
 """
-utils.py — GitTrace shared FalkorDB connection helpers.
+gittrace.graph.connection — the shared FalkorDB connection.
+
+Graph code reaches the database through `connection.get_graph()` (attribute
+access, not a from-import), so tests can swap in a mock graph in one place.
 
 The installed falkordb 1.8.0 exposes:
     FalkorDB(host, port, username, password)   -> instance handle
@@ -20,7 +23,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).resolve().parent / ".env")
+# gittrace/graph/connection.py -> the repository root, where .env lives.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
 def _env(name: str, required: bool = True) -> str:

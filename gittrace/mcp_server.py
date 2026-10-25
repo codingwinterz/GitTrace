@@ -1,20 +1,22 @@
 """
-mcp_server.py — GitTrace MCP server.
+gittrace.mcp_server — GitTrace MCP server.
 
 Exposes the FalkorDB graph tools over the Model Context Protocol (MCP) so any
 MCP-capable agent host (Claude Desktop, custom agents, etc.) can query the
 codebase dependency graph.
 
-Tools are generated from app.TOOL_REGISTRY, one MCP tool per entry, named
-"<tool>_tool" (e.g. get_blast_radius_tool). Each tool's input schema comes from
-the graph function's own signature and its description from the registry, so
-registering a tool in app.py is all it takes to expose it here.
+Tools are generated from gittrace.core.registry.TOOL_REGISTRY, one MCP tool per
+entry, named "<tool>_tool" (e.g. get_blast_radius_tool). Each tool's input
+schema comes from the graph function's own signature and its description from
+the registry, so registering a tool there is all it takes to expose it here.
 
-Run (stdio transport, the standard for local MCP servers):
-    python mcp_server.py
+Run from the repository root (stdio transport, the standard for local MCP
+servers):
+    python -m gittrace.mcp_server
 
 Then register this server in your MCP host with:
-    { "command": "python", "args": ["mcp_server.py"] }
+    { "command": "python", "args": ["-m", "gittrace.mcp_server"],
+      "env": { "PYTHONPATH": "/path/to/GitTrace" } }
 
 stdout is the protocol channel under stdio: nothing else may be printed to it.
 """
@@ -27,7 +29,7 @@ from typing import Any, Callable
 
 from mcp.server.mcpserver import MCPServer
 
-from app import TOOL_REGISTRY, GraphTool
+from gittrace.core.registry import TOOL_REGISTRY, GraphTool
 
 
 def _fmt(result: dict) -> str:
@@ -44,7 +46,7 @@ def _handler(tool: GraphTool) -> Callable[..., str]:
 
     MCPServer builds the input schema from the handler's signature, so the
     wrapper advertises the graph function's parameters (with annotations
-    evaluated, since app.py uses postponed annotations).
+    evaluated, since gittrace.core.tools uses postponed annotations).
     """
     def handler(**kwargs: Any) -> str:
         return _fmt(tool.func(**kwargs))
