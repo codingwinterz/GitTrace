@@ -33,7 +33,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run offline suite (mocked graph + mocked LLM, no credentials)
-        run: python -m pytest tests/test_core.py -q
+        run: python -m pytest tests/test_core.py tests/test_ingest.py -q
 
   integration:
     name: integration suite (real FalkorDB)
@@ -83,5 +83,5 @@ jobs:
               raise SystemExit("FalkorDB did not come up within 60s")
           EOF
 
-      - name: Run integration suite (real FalkorDB, seeded per run)
-        run: python -m pytest tests/test_integration.py -v
+      - name: Run integration suites (real FalkorDB, a fresh graph per run)
+        run: python -m pytest tests/test_integration.py tests/test_ingest_integration.py -v

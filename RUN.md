@@ -15,6 +15,7 @@ cp .env.example .env
 pip install -r requirements.txt
 python -m gittrace.graph.seed     # one-time graph seed
 python -m gittrace.mcp_server     # MCP server on stdio
+python -m gittrace.ingest path/to/project   # scan a Python project into its own graph
 ```
 
 For a local FalkorDB instead of the cloud:
@@ -48,7 +49,9 @@ without it the agent falls back to its keyword classifier. Never commit `.env`.
 python -m pytest tests -v
 ```
 
-`tests/test_core.py` is fully mocked (no live DB, no API key needed).
+`tests/test_core.py` and `tests/test_ingest.py` are offline (no live DB, no API key needed).
+`tests/test_ingest_integration.py` scans `tests/fixtures/sample_app` into a throwaway graph
+and checks its exact contents.
 `tests/test_integration.py` runs every Cypher query against a real FalkorDB: it seeds
 its own uniquely named graph (`gittrace_test_<random>`), tests against it and drops it,
 so it never touches the demo graph. Start a local FalkorDB with Docker and point the
@@ -56,7 +59,7 @@ tests at it:
 
 ```bash
 docker compose up -d falkordb
-FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_integration.py -v
+FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_integration.py tests/test_ingest_integration.py -v
 ```
 
 (Environment variables win over `.env`, so this works even with cloud settings in `.env`.)
@@ -68,7 +71,7 @@ Run at least the offline suite before pushing. CI (`.github/workflows/tests.yml`
 it on Python 3.11–3.13, plus the integration suite against FalkorDB in Docker:
 
 ```bash
-python -m pytest tests/test_core.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py -q
 ```
 
 ## MCP server (Track 01)
@@ -87,7 +90,7 @@ is **`main`**; the CLI rebuild happens on **`v2`**.
 
 ```bash
 git status                   # confirm only the files you meant to change
-python -m pytest tests/test_core.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py -q
 
 git add gittrace tests README.md RUN.md
 git commit -m "Describe the why, not the what"

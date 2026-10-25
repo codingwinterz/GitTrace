@@ -64,10 +64,11 @@ flowchart LR
 
 | Package | Contents |
 |---|---|
-| `gittrace/core` | The three graph tools, the tool registry, question parsing and the agent loop. No web framework. |
-| `gittrace/graph` | FalkorDB connection and the demo-graph seed |
+| `gittrace/core` | The three graph tools, the tool registry, question parsing and the agent loop; file discovery and the ingestion pipeline. No web framework. |
+| `gittrace/graph` | FalkorDB connection, the demo-graph seed, and `store` (writes a scanned project to its own graph) |
+| `gittrace/languages` | Language plug-in interface (`base`) and the Python plug-in: tree-sitter parser, call resolver, FastAPI/Flask route detector |
 | `gittrace/mcp_server.py` | MCP server generated from the tool registry |
-| `gittrace/languages/python`, `rules`, `llm`, `cli` | Empty placeholders for the CLI scanner (later phases) |
+| `gittrace/rules`, `llm`, `cli` | Empty placeholders for the CLI scanner (later phases) |
 
 The agent (`gittrace.core.agent`) has two execution paths over the same tools:
 
@@ -126,6 +127,35 @@ The seeded graph is a small but complete microservice estate: **7 services, 7 fi
 | `AUTHORED` | Developer → File | Developer wrote this file |
 | `AFFECTS` | CVE → Function | CVE affects this function |
 | `EXPOSES` | APIEndpoint → Function | Endpoint reaches this function |
+
+## Scanning a Python project (ingestion)
+
+The CLI scanner's first stage reads a real project into its own FalkorDB graph. Until `gittrace scan` exists, a temporary entry point runs it:
+
+```bash
+python -m gittrace.ingest path/to/project            # writes graph gittrace_<folder>_<hash>
+python -m gittrace.ingest path/to/project --dry-run  # parse and resolve only, no database
+```
+
+It prints counts of files, parse failures, functions, endpoints, and calls (resolved to project code vs. unresolved, by origin).
+
+- **Files:** every `.py` file except `.git`, virtualenvs (`venv`, `.venv`, or any directory with a `pyvenv.cfg`), `node_modules`, `__pycache__`, `site-packages`, `build`, `dist`, tool caches, and whatever the project's `.gitignore` files exclude. A file with a syntax error is logged, counted and skipped.
+- **Functions:** module-level functions, methods and nested functions, with IDs like `app/db.py::Repo.get_user` and `app/db.py::Repo.delete_user.build_query`, their line span (decorators included) and source. Code that runs at import time (module-level calls, decorators, default arguments) belongs to a `path.py::<module>` node.
+- **Calls, best effort:** same-file functions, nested functions, `import x [as z]`, `from x import y [as z]`, relative imports, re-exports from a package `__init__`, star imports, `self.m()` / `cls.m()` / `super().m()` through project base classes, and variables assigned once from a project class (`repo = Repo(); repo.get()`). Everything else is kept as an unresolved node named by its full dotted name with aliases expanded (`sp.run` → `external::subprocess.run`, `cursor.execute` → `external::cursor.execute`). Those are the sink candidates. Return values, attributes (`self.db.execute`) and parameters are not type-inferred.
+- **Routes:** FastAPI (`@app.get/post/...`, `api_route`, `websocket`, `APIRouter`, `include_router` prefixes, nested routers, sub-apps attached with `app.mount("/api/v1", api)`) and Flask (`@app.route(methods=...)`, `@bp.get/...`, `Blueprint(url_prefix=...)`, `register_blueprint(url_prefix=...)`). A decorator counts only when its object resolves to a `FastAPI`/`APIRouter`/`Flask`/`Blueprint` instance. Literal prefixes only; a router that is never included, or a prefix built from a variable, gives `prefix_resolved: false`. `auth_required` is true only with obvious evidence, recorded in `auth_evidence`: an auth-named `Depends(...)` (directly, or through an alias like `CurrentUser = Annotated[User, Depends(get_current_user)]`), any `Security(...)`, or a decorator such as `@login_required`.
+- **Graph:** one graph per project. Every node and edge is written with `MERGE` on its stable ID and stamped with the scan; whatever an older scan wrote and this one did not is deleted, so re-scanning is idempotent and removes stale code. Indexes on `Function.id`, `File.path`, `Endpoint.id`.
+
+| Node | Key properties |
+|---|---|
+| `(:Project)` | `id` (graph name), `name`, `root`, `scanned_at`, counts |
+| `(:File)` | `path`, `language`, `sha256`, `lines` |
+| `(:Function {resolved: true})` | `id`, `name`, `qualified_name`, `file`, `kind` (`function`/`method`/`nested`/`module`), `start_line`, `end_line`, `source`, `is_async` |
+| `(:Function {resolved: false})` | `id` = `external::<dotted>`, `qualified_name`, `origin` (`builtin`/`import`/`project`/`unknown`) |
+| `(:Endpoint)` | `id`, `framework`, `method`, `path`, `handler`, `line`, `auth_required`, `auth_evidence`, `prefix_resolved` |
+
+Edges: `(File)-[:DECLARES]->(Function|Endpoint)`, `(Endpoint)-[:HANDLED_BY]->(Function)`, `(Function)-[:CALLS {lines}]->(Function)`.
+
+The demo graph and the three tools below still use the older demo schema; the scanner replaces them in a later phase.
 
 ## The three tools
 
@@ -205,11 +235,13 @@ Exposes `get_blast_radius_tool`, `find_shortest_dependency_path_tool`, `find_cod
 ## Tests
 
 ```bash
-python -m pytest tests/test_core.py -q   # no DB, no API key
+python -m pytest tests/test_core.py tests/test_ingest.py -q   # no DB, no API key
 
-docker compose up -d falkordb              # real FalkorDB for the integration suite
-FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_integration.py -q
+docker compose up -d falkordb              # real FalkorDB for the integration suites
+FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_integration.py tests/test_ingest_integration.py -q
 ```
+
+`tests/fixtures/sample_app` (FastAPI) and `tests/fixtures/flask_app` are small projects the ingestion tests scan. The exact functions, calls and endpoints they must produce are written out by hand in `tests/expected_sample_app.py`. `test_ingest.py` checks the parser output against them, and `test_ingest_integration.py` checks the same facts in a real FalkorDB graph, together with idempotent re-scans, removal of deleted code, and one graph per project.
 
 The offline suite covers helpers, all graph tools against a mocked FalkorDB layer, the agent loop against a mocked LLM, the tool registry, the MCP server (including that it starts without importing a web framework), and seed-data integrity. It runs on a clean clone before `.env` exists, and in CI on Python 3.11–3.13 (`.github/workflows/tests.yml`).
 

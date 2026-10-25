@@ -48,6 +48,34 @@ findings and code in plain language using a local LLM.
     Typer. Color meaning: red/pink = critical, amber = warning, teal = clean, 
     lavender = structural info.
 
+## Decisions made so far (keep unless I change them)
+- Import-time code (module-level statements, decorators, default arguments)
+  belongs to a pseudo-function `path.py::<module>`, created only for files
+  that make calls at module level. Its source is the whole file.
+- Unresolved callees are Function nodes with id `external::<full.dotted.name>`
+  (aliases expanded, e.g. `sp.run` -> `subprocess.run`), `resolved: false`,
+  and an `origin` (builtin | import | project | unknown). One node per name,
+  shared across files; the call site lives on the CALLS edge (`lines`).
+- Instantiating a project class with no `__init__` of its own writes no edge
+  (no project code runs); it is counted, not dropped silently.
+- Duplicate qualified names in one file get `#2`, `#3`, ...; calls resolve to
+  the last definition.
+- Function source is whole lines start_line..end_line, decorators included,
+  CRLF normalised to LF. File sha256 is over the raw bytes.
+- Module names: a file is importable by its path from the project root, by
+  its path from the parent of the topmost package above it (directories
+  without __init__.py below that are namespace packages), and by its bare
+  name from a non-package directory. Ambiguous names resolve to the nearest
+  file, or stay unresolved on a tie. Never guess.
+- Endpoint id: `METHOD path -> handler_id`. FastAPI `app.mount()` of another
+  FastAPI app is followed. `prefix_resolved: false` when a router is never
+  mounted or a prefix is not a string literal. `auth_required` needs obvious
+  evidence (auth-named Depends, also through an `Annotated` alias; any
+  Security; auth-named decorator), stored in `auth_evidence`.
+- A scan rebuilds the project's own graph (`gittrace_<folder>_<hash8>`):
+  MERGE everything stamped with a scan_id, then delete what an older scan
+  wrote. tree-sitter accepts most Python 2 syntax, so Python 2 files parse.
+
 ## Phases (stop and report after each; do not start the next without approval)
 - Phase 1: Fix existing bugs in the current code.
 - Phase 2: Restructure into a package (gittrace/core, gittrace/graph, 
