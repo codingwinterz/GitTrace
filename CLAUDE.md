@@ -243,9 +243,25 @@ findings and code in plain language using a local LLM.
   .redact). The interactive status is a real round trip (GRAPH.LIST, 3 s
   timeout). Integration tests skip unless the configured FalkorDB is local.
 - Display: the git blame owner is shown by name only; --show-email adds the
-  email (rich and JSON; the graph and the MCP owner tool still carry it).
+  email (rich and JSON); the graph stores the full author, and the graph
+  tools (MCP) show the email only with GITTRACE_SHOW_EMAIL=1.
   GT-SECRET-* findings hide the model's "inputs" line (display only). A
   parse failure is reported once, in the summary (the log line is debug).
+- Phase 7 (packaging): pyproject.toml (setuptools, version from
+  gittrace.__version__), commands `gittrace` and `gittrace-mcp`;
+  requirements.txt is `-e .[dev]`. Settings (gittrace.config): environment,
+  then the first of $GITTRACE_ENV_FILE, a checkout's .env, the user config
+  dir's .env; never the current directory's. `doctor` (gittrace/cli/
+  machine.py, all probes through System for tests) exits 1 on a failed
+  check; `up` starts `gittrace-falkordb` (or the compose container) from
+  falkordb/falkordb:v4.22.1 (same tag as compose and CI), --pull pulls
+  models; `graphs` lists / --drop (remote needs --allow-remote). Graph tools
+  (MCP, trace, blast-radius) hide the owner email unless
+  GITTRACE_SHOW_EMAIL=1. git on scanned repos runs with
+  core.fsmonitor=false and blame --no-textconv. Typer tracebacks never
+  show locals. explain estimate 2.1 s/call (AC timing); explain code
+  sha256 8665e416d4ef. CI `package` job builds, pipx-installs and
+  smoke-tests on Linux and Windows.
 
 ## Backlog (not scheduled; do not start without approval)
 - Routes from Flask-RESTful / Flask-RESTX `Resource` classes

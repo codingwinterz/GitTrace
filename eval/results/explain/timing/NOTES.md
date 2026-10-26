@@ -20,3 +20,8 @@ True in standby, so `--require-ac` does not detect it.
 
 The README and eval/README.md report this run without those two calls. Every other call
 took 1.06 to 8.43 s.
+
+Used since (Phase 7): `explain`'s estimate before a run is 2.1 s per model call for both
+models (MODEL_SECONDS_PER_CALL in gittrace/llm/explain.py), from these figures. With that
+change the explain code sha256 is `8665e416d4ef` (it also covers triage prompt v4, which no
+explain prompt uses); see eval/README.md, "Code hashes".

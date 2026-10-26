@@ -226,6 +226,19 @@ that read or write the database.
 The seconds in the quality runs are not comparable between runs or models
 (battery power, model loads); see the `timing` run.
 
+Code hashes (explain code sha256 covers `gittrace/llm/*.py`, `gittrace/core/explain.py`,
+`gittrace/core/glossary.py` and `gittrace/languages/python/facts.py`; each run's
+`summary.json` records it):
+
+| Code | explain code sha256 | gittrace/llm sha256 | What changed |
+|---|---|---|---|
+| `after-tuning`, `held-out` | `a8aadf04f8c1` | `7f62a40da270` | the measured explain-v2 code |
+| `timing` | `17b003bf97de` | `edbf0c30a4cb` | the per-model time estimate and a comment |
+| Phase 7 (current) | `8665e416d4ef` | `4abb331f2884` | triage prompt v4 (`prompts.py`, `context.py`; explain uses neither its prompt nor its finding block, only the unchanged `fence` and `estimate_tokens`) and the time estimate set from the `timing` run: 2.1 s per call for both models |
+
+No change since `after-tuning` reaches an explain prompt, so the quality runs
+still describe the current code.
+
 Timing (`results/explain/timing/`, `--label timing --require-ac`): both
 models back to back on the measured targets, 102 calls each, llama3.1:8b
 first, power plan "Turbo", AC before and after each model. The laptop went

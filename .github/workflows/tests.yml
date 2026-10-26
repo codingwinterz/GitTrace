@@ -25,7 +25,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
 
       - name: Install dependencies
         run: |
@@ -33,7 +35,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run offline suites (no database, mocked LLM, no credentials)
-        run: python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py tests/test_explain.py tests/test_eval_hygiene.py tests/test_logo.py tests/test_interactive.py -q
+        run: python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py tests/test_explain.py tests/test_eval_hygiene.py tests/test_logo.py tests/test_interactive.py tests/test_connection.py tests/test_machine.py tests/test_config.py -q
 
   integration:
     name: integration suite (real FalkorDB)
@@ -59,7 +61,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
 
       - name: Install dependencies
         run: |
@@ -85,3 +89,52 @@ jobs:
 
       - name: Run integration suites (real FalkorDB, a fresh graph per run)
         run: python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -v
+
+  package:
+    name: package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Build the sdist and the wheel
+        run: |
+          python -m pip install --upgrade pip build pipx
+          python -m build
+          python -m zipfile -l dist/*.whl > wheel.txt
+          grep -q "gittrace/cli/__init__.py" wheel.txt
+          if grep -qE "^ *(tests|eval)/" wheel.txt; then echo "tests or eval files in the wheel"; exit 1; fi
+
+      - name: Install the wheel with pipx, as a user would
+        run: |
+          python -m pipx install dist/*.whl
+          python -m pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
+
+      - name: Smoke-test the installed commands, outside the checkout
+        working-directory: ${{ runner.temp }}
+        env:
+          PYTHONIOENCODING: utf-8
+          SAMPLE: ${{ github.workspace }}/tests/fixtures/sample_app
+        run: |
+          gittrace --version
+          gittrace --help > /dev/null
+          gittrace scan "$SAMPLE" --offline --no-llm --no-blame --format json --fail-on none > scan.json
+          python -c "import json; d = json.load(open('scan.json', encoding='utf-8')); n = len(d['findings']); assert n == 13, n; print('scan: findings', n)"
+          gittrace explain "$SAMPLE" --no-llm --format json > explain.json
+          python -c "import json; d = json.load(open('explain.json', encoding='utf-8')); print('explain: files', len(d['files']))"
+          # No Docker service or Ollama in this job: doctor must run and report, and fail (exit 1).
+          if gittrace doctor --format json > doctor.json; then echo "doctor should report the missing Ollama"; exit 1; fi
+          python -c "import json; d = json.load(open('doctor.json', encoding='utf-8')); print({c['name']: c['status'] for c in d['checks']})"
+          command -v gittrace-mcp
+

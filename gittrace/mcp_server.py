@@ -73,6 +73,9 @@ server = build_server()
 
 
 def main() -> None:
+    from gittrace import config
+
+    config.load()
     server.run()
 
 

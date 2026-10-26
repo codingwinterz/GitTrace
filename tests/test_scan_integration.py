@@ -198,8 +198,55 @@ class TestTools:
         if owner["status"] == "committed":
             assert owner["owner"]["commit"]
 
+    def test_owner_email_is_stored_but_shown_only_on_request(self, monkeypatch):
+        """The graph keeps the full blame author; tool results (MCP) carry the email
+        only with GITTRACE_SHOW_EMAIL=1. The fixture's lines are committed in this repository."""
+        db = connection.get_db()
+        name = "gittrace_test_owner_email"
+        try:
+            scan(ROOT, blame=True, db=db, graph_name=name)
+            rows = db.select_graph(name).query(
+                "MATCH (s:Sink) WHERE s.owner_status = 'committed' RETURN properties(s) LIMIT 1").result_set
+            if not rows:
+                pytest.skip("no committed fixture line (not a git checkout)")
+            props = rows[0][0]
+            assert props["owner_author"] and props["owner_email"]           # stored in full
+            monkeypatch.delenv(tools.SHOW_EMAIL_ENV, raising=False)
+            assert "email" not in tools._finding_summary(props)["owner"]
+            monkeypatch.setenv(tools.SHOW_EMAIL_ENV, "1")
+            assert tools._finding_summary(props)["owner"]["email"] == props["owner_email"]
+        finally:
+            if name in db.list_graphs():
+                db.select_graph(name).delete()
+
+    def test_mcp_owner_hides_the_email_by_default(self, scanned, monkeypatch):
+        monkeypatch.delenv(tools.SHOW_EMAIL_ENV, raising=False)
+        for owner in tools.finding_owner(PROJECT, "app/routers/admin.py:11")["owners"]:
+            assert owner["owner"] is None or "email" not in owner["owner"]
+        monkeypatch.setenv(tools.SHOW_EMAIL_ENV, "true")
+        for owner in tools.finding_owner(PROJECT, "app/routers/admin.py:11")["owners"]:
+            assert owner["owner"] is None or "email" in owner["owner"]
+
 
 class TestCli:
+    def test_graphs_lists_and_drops_exact_names(self):
+        db = connection.get_db()
+        name = "gittrace_test_graphs_cmd"
+        db.select_graph(name).query("CREATE (:Probe {n: 1})")
+        try:
+            listed = json.loads(runner.invoke(app, ["graphs", "--format", "json"]).stdout)
+            assert listed["database"] == "local" and name in listed["graphs"]
+            out = runner.invoke(app, ["graphs", "--drop", name + "_missing"])
+            assert out.exit_code == 2 and name in db.list_graphs()      # unknown name: nothing deleted
+            out = runner.invoke(app, ["graphs", "--drop", name, "--format", "json"])
+            assert out.exit_code == 0, out.output
+            data = json.loads(out.stdout)
+            assert data["dropped"] == [name] and name not in data["graphs"]
+            assert name not in db.list_graphs()
+        finally:
+            if name in db.list_graphs():
+                db.select_graph(name).delete()
+
     def test_trace(self, scanned):
         out = runner.invoke(app, ["trace", "app/utils/shell.py:8", "-p", PROJECT, "--format", "json"])
         assert out.exit_code == 0, out.output

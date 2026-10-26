@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gittrace"
+dynamic = ["version"]
+description = "Find vulnerabilities your HTTP routes can actually reach in a Python project, with attack paths, blast radius, owner, and a local model's triage."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Avaneesh S" }]
+keywords = ["security", "static-analysis", "sast", "python", "fastapi", "flask", "falkordb", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+# Keep in step with requirements.txt (which installs this package plus the test tools).
+dependencies = [
+    "falkordb>=1.0",
+    "redis>=5.0",
+    "litellm>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "platformdirs>=4.0",
+    "pydantic>=2.0.0",
+    "mcp>=2.0.0",
+    "tree-sitter>=0.23.0",
+    "tree-sitter-python>=0.23.0",
+    "pathspec>=0.12.0",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "textual>=8.2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "build>=1.2"]
+
+[project.scripts]
+gittrace = "gittrace.cli:main"
+gittrace-mcp = "gittrace.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/codingwinterz/GitTrace"
+Issues = "https://github.com/codingwinterz/GitTrace/issues"
+Changelog = "https://github.com/codingwinterz/GitTrace/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = { attr = "gittrace.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["gittrace*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

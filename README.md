@@ -1,23 +1,113 @@
 # GitTrace
 
-**Scan a Python project, find the vulnerabilities an HTTP route can actually reach, and see the attack path, the blast radius and the owner — from a code graph in FalkorDB.**
+**Point it at a Python web project. It finds the dangerous code an HTTP route can actually reach, shows the path from the route to the bug, who calls it, who last changed it, and asks a local model whether it is real.**
 
 [![tests](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml/badge.svg)](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)
 ![FalkorDB](https://img.shields.io/badge/graph%20database-FalkorDB-orange)
 ![license MIT](https://img.shields.io/badge/license-MIT-green)
 
-**Hackathon:** Graph Hacks — Track 01 (Agents That Act on Connected Data) · **Team:** SUDO SAIYAN (Avaneesh S, solo) · Team code `5S3M9E`
-**Demo video:** [GIT TRACE's Working & Explanation](https://youtu.be/xwo16Zesdus) (3 min, of the `main` branch)
+- **Scope, honestly:** Python only; routes from FastAPI and Flask; five kinds of finding (SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization, hardcoded secrets).
+- **Rules detect, the model only comments.** Every finding comes from a deterministic rule. A local model (via Ollama) gives an opinion on each one; it cannot add or remove findings or change the CI gate.
+- **Within those five categories it is comparable to Bandit, with added reachability and ownership context** (measured below, on small samples).
 
-> **This branch (`v2`) is the command-line rebuild** — see `CLAUDE.md` for the plan. The web UI, HTTP API and the synthetic CVE demo graph shown in the video are on `main` only. Python is the only language supported.
+Built for Graph Hacks, Track 01 (team SUDO SAIYAN, Avaneesh S). This is the `v2` command-line rebuild; the earlier web demo is on `main`.
+
+---
+
+## Install
+
+```bash
+pipx install git+https://github.com/codingwinterz/GitTrace@v2     # or, from a clone: pipx install .
+gittrace --version
+```
+
+Python 3.11 or newer. [pipx](https://pipx.pypa.io) puts `gittrace` (and `gittrace-mcp`, the MCP server) on your PATH in their own environment; `pip install .` in a virtualenv works too.
+
+### First run: Docker and Ollama
+
+A full `gittrace scan` needs two programs running on your machine: **Docker**, for the FalkorDB graph database, and **Ollama**, for the local model. Install both and start them, then:
+
+```bash
+gittrace up --pull      # starts FalkorDB in Docker and pulls both models (about 9.6 GB the first time)
+gittrace doctor         # checks Docker, FalkorDB, Ollama, the models, free GPU memory, power and sleep settings
+```
+
+The same by hand, if you prefer:
+
+```bash
+docker run -d --name gittrace-falkordb -p 6379:6379 -p 3000:3000 falkordb/falkordb:v4.22.1
+ollama pull llama3.1:8b          # 4.9 GB, used by scan to triage findings
+ollama pull qwen2.5-coder:7b     # 4.7 GB, used by explain to summarise code
+```
+
+- Docker: <https://docs.docker.com/get-docker/> · Ollama: <https://ollama.com/download>
+- The models run best on a GPU with about 6 GB of free memory (llama3.1:8b takes 5.6 GiB, qwen2.5-coder:7b 4.7 GiB); otherwise Ollama runs them on the CPU, much more slowly.
+- **Without either:** `gittrace scan <path> --offline --no-llm` and `gittrace explain <path> --no-llm` need neither Docker nor Ollama. The rules, reachability and facts work in memory; only the model's opinion and the stored graph are missing.
+- No configuration file is needed: GitTrace defaults to the local Docker database and local Ollama. See [Settings](#settings) to change that.
+
+## Quick start
+
+```bash
+gittrace scan path/to/project              # findings, attack paths, blast radius, owner, the model's triage
+gittrace explain path/to/project           # a plain-language tour of the code
+gittrace                                   # the interactive mode (in a terminal)
+```
+
+To try it on the bundled sample, a small FastAPI app with planted bugs, clone the repository and run `gittrace scan tests/fixtures/sample_app`.
+
+## Results at a glance
+
+All numbers come from `eval/` (scripts, labels and per-finding results are committed). **The samples are small: read them as indications, not benchmarks.** Ground truth and reviews were written before either tool or model ran on a target; "after tuning" rows are optimistic because the tuning looked at the same targets; held-out targets were run once, after tuning, and nothing was changed because of them.
+
+**Detection (the rules) against Bandit 1.9.4, in the same five categories only.** 36 known vulnerabilities in 5 deliberately vulnerable apps, plus every finding on 3 real projects reviewed by hand:
+
+| Set | Size | GitTrace precision · recall | Bandit precision · recall |
+|---|---|---|---|
+| Before any tuning (vulpy bad/good, Vulnerable-Flask-App, vulnpy) | 31 vulnerabilities | 88% · 74% | 83% · 81% |
+| After tuning on those same apps (optimistic) | 31 | 97% · 94% | 83% · 81% |
+| Held out (DVGA) | 5 | 100% · 80% (4 of 5) | 80% · 80% (4 of 5) |
+| Real projects after tuning (CTFd, mealie; open-webui held out) | 3 + 15 + 29 findings | 4 real issues among 47 findings (CTFd 0, mealie 2, open-webui 2) | not reviewed |
+
+So: **comparable to Bandit in these categories, with added reachability and ownership context**: which route reaches each finding, whether that route needs authentication, the path, how many callers and endpoints depend on it, and who last changed the line. On real projects most findings are real patterns that are not exploitable (SQL built from trusted table names); that context, and the model's triage, are how GitTrace helps you sort them. Details: [Evaluation](#evaluation).
+
+**Triage (the model's opinion on each finding).** "Real issues marked harmless" is the number that matters: a real problem the model would push into the "likely harmless" section (it is still reported there).
+
+| Set | Model | Real issues marked harmless | False alarms marked harmless |
+|---|---|---|---|
+| Tuning set, prompt `triage-v4` (35 real, 17 false) | **llama3.1:8b** (default) | **1 of 35** | 14 of 17 |
+| | qwen2.5-coder:7b | 9 of 35 | 11 of 17 |
+| Held out, open-webui, prompt `triage-v3` (2 real, 27 false) | llama3.1:8b | 0 of 2 | 11 of 27 |
+| | qwen2.5-coder:7b | 0 of 2 | 12 of 27 |
+
+Every real issue a model ever hid was a hardcoded secret. The held-out set has only 2 real issues and no secrets, so it says little about how often one is hidden. Details: [Model triage](#4-model-triage-phase-5).
+
+**Explain (the model's summaries)**, rated correct / partly / wrong against notes written before any summary existed. The ratings were made by an AI (Claude), with spot checks by the owner:
+
+| Set | Model | Files | Functions |
+|---|---|---|---|
+| After tuning: sample_app + microblog (47 files, 30 sampled functions) | **qwen2.5-coder:7b** (default) | 45 / 2 / 0 | 29 / 1 / 0 |
+| | llama3.1:8b | 38 / 8 / 1 | 26 / 3 / 1 |
+| Held out: fastapi-tdd-docker (18 files, 7 functions) | qwen2.5-coder:7b | 16 / 2 / 0 | 3 / 4 / 0 |
+| | llama3.1:8b | 14 / 4 / 0 | 4 / 3 / 0 |
+
+The held-out function summaries are weak because GitTrace's own facts missed that project's database library (the Tortoise ORM), and the models repeated "no side effects". Details: [Explain results](#5-explain-phase-6).
+
+### Which model does what, and why
+
+| Task | Default model | Why |
+|---|---|---|
+| `scan` triage | `ollama/llama3.1:8b` | It hid far fewer real issues (1 of 35, against qwen2.5-coder:7b's 10 with the earlier prompt and 9 with the current one) and ignored an injected "mark this harmless" comment (0 flips against 2). Cost: about 0.9 GiB more GPU memory. |
+| `explain` summaries | `ollama/qwen2.5-coder:7b` | Its summaries were rated higher in 5 of 6 comparisons and never "wrong", and it needs less GPU memory. Summarising is a different job from triage, so each task keeps the model that measured better at it. |
+
+Speed, on a laptop RTX 5050 (8 GB) on AC power: about 2.1 s per summary call for either model, and about 2.4 s per triaged finding. Any [LiteLLM](https://docs.litellm.ai) model name works with `--model` (or `GITTRACE_MODEL` / `GITTRACE_EXPLAIN_MODEL`); only the two defaults were measured.
 
 ---
 
 ## What it does
 
 ```bash
-python -m gittrace scan path/to/project
+gittrace scan path/to/project
 ```
 
 1. **Reads the real code** with tree-sitter: every function, method and nested function, the calls between them, and the FastAPI / Flask routes with their auth dependencies.
@@ -28,7 +118,7 @@ python -m gittrace scan path/to/project
 6. **Asks a local model to triage each finding** (Ollama through LiteLLM, `llama3.1:8b` by default): likely real, likely harmless or uncertain, a one-line reason, a severity adjustment of −2..+1 shown next to the rules' score, and, with `--fix`, a fix as a diff that GitTrace checks with `git apply --check` and never applies.
 
 ```bash
-python -m gittrace explain path/to/project
+gittrace explain path/to/project
 ```
 
 7. **Explains the project in plain language**, for someone who built it with an AI assistant and does not fully understand it: entry points, the endpoints table, modules by folder, libraries, data stores and outside services, side effects per function, a request-flow tree per endpoint, and model-written summaries of the project, every file and the important functions, with each function the summaries mention checked against the call graph. See [Explain](#explain).
@@ -52,49 +142,43 @@ Not reported, on purpose: constant SQL, a parameterised query, `eval("1 + 1")`, 
 
 ---
 
-## Quick start
+## Commands
 
 ```bash
-git clone https://github.com/codingwinterz/GitTrace && cd GitTrace
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-docker compose up -d falkordb                       # or a FalkorDB Cloud instance
-# no .env needed: local Docker (localhost:6379, no password) is the default; see .env.example
-ollama pull llama3.1:8b                             # the triage model (https://ollama.com); or scan with --no-llm
-ollama pull qwen2.5-coder:7b                        # the explain model; or explain with --no-llm
-python -m gittrace scan tests/fixtures/sample_app
+gittrace scan <path> [--format rich|json] [--min-severity LEVEL] [--depth N]
+                     [--fail-on LEVEL|none] [--offline] [--no-blame] [--include-tests]
+                     [--model NAME] [--no-llm] [--fix] [--allow-remote] [--show-email]
+gittrace explain <path> [--format rich|md|json] [--out FILE] [--file PATH | --function ID]
+                        [--all] [--min-callers N] [--depth N] [--model NAME] [--no-llm] [--yes]
+gittrace trace <file.py:line | finding-id> [--project PATH] [--depth N] [--format ...]
+gittrace blast-radius <function-id> [--project PATH] [--depth N] [--format ...]
+gittrace doctor [--format json]                  # is this machine ready? (changes nothing)
+gittrace up [--pull]                             # start local FalkorDB; check (and pull) the models
+gittrace graphs [--drop NAME ...] [--allow-remote]
+gittrace --version
 ```
 
-Run from the repository root. Until the package is installed with its `gittrace` entry point (a later phase), the CLI is `python -m gittrace`.
-
-### Commands
-
-```bash
-python -m gittrace scan <path> [--format rich|json] [--min-severity LEVEL] [--depth N]
-                               [--fail-on LEVEL|none] [--offline] [--no-blame] [--include-tests]
-                               [--model NAME] [--no-llm] [--fix] [--allow-remote] [--show-email]
-python -m gittrace explain <path> [--format rich|md|json] [--out FILE] [--file PATH | --function ID]
-                                  [--all] [--min-callers N] [--depth N] [--model NAME] [--no-llm] [--yes]
-python -m gittrace trace <file.py:line | finding-id> [--project PATH] [--depth N] [--format ...]
-python -m gittrace blast-radius <function-id> [--project PATH] [--depth N] [--format ...]
-```
+`python -m gittrace ...` works the same, e.g. from a source checkout.
 
 - `scan` writes the project's graph and prints a headline panel, a findings table (severity, rule, file:line, the endpoint that reaches it, whether that endpoint needs auth), then for each finding the code with the line highlighted, the attack paths as a tree, the blast radius, the owner and the severity reasons.
 - `--fail-on` (default `high`) sets the exit code: **1** if any finding is at or above it, so `scan` can gate CI; `none` never fails. It reads the rules' severity only, never the model's adjustment. `--min-severity` only filters what is shown (and what the model is asked about).
 - `--depth` (default 10, max 50) bounds the CALLS hops followed from a route handler to the vulnerable function, and the upstream callers counted in the blast radius.
 - `--offline` computes reachability in memory and writes nothing to FalkorDB (same rules and scores); `trace` and `blast-radius` need the graph.
 - `--no-blame` skips `git blame`. Outside a git repository the owner lookup is skipped quietly. The owner is shown by name only; `--show-email` adds the author's email (in the JSON output too).
-- `--allow-remote`: when `FALKORDB_HOST` is not this machine (`localhost`, `127.0.0.1`, `::1`), `scan` prints a one-line warning and refuses to write the graph, which includes the project's source code, unless you pass this flag (or `--offline`, which writes nothing).
+- `--allow-remote`: when `FALKORDB_HOST` is not this machine (`localhost`, `127.0.0.1`, `::1`), `scan` prints a one-line warning and refuses to write the graph, which includes the project's source code, unless you pass this flag (or `--offline`, which writes nothing). `graphs --drop` needs it too on a remote database.
 - Findings in test code (a `tests`/`test` directory, `test_*.py`, `*_test.py`, `conftest.py`) are listed in a separate section at `info` and never trip `--fail-on`; `--include-tests` treats them like any other code.
 - `--model` picks the triage model (any LiteLLM model name; default `$GITTRACE_MODEL`, else `ollama/llama3.1:8b`); `--no-llm` makes no model call at all. Test-code findings are not triaged unless `--include-tests`.
 - `--fix` also asks the model for a fix for each finding, shown as a diff checked with `git apply --check` (never applied). Off by default: writing fixes is the slow part of a reply, and a fix is only checked to apply, not to be correct. `--fix` cannot be combined with `--no-llm`.
+- `doctor` checks Python, Docker, FalkorDB (a real round trip), whether the configured database is local, Ollama and both models, free GPU memory against what the models need, and on Windows the power source, power plan, sleep and display timers and Modern Standby (in GitTrace's own evaluation, standby paused single model calls for up to 25 minutes). It exits 1 when a check fails.
+- `up` starts local FalkorDB in Docker (the `gittrace-falkordb` container, created from `falkordb/falkordb:v4.22.1` the first time, or the repository's docker compose container if it exists), waits until it answers, and checks Ollama and the models; `--pull` pulls the missing ones. It never touches a remote database.
+- `graphs` lists the graphs on the configured FalkorDB; `--drop NAME` deletes graphs by exact name.
 - Exit code **2** means an error: bad arguments, an unscanned project, FalkorDB unreachable, the model cannot be called (Ollama not running, model not pulled).
 
 ### Interactive mode
 
 ```bash
-python -m gittrace              # in a terminal: the interactive mode
-python -m gittrace --no-anim    # the same, with a still logo
+gittrace              # in a terminal: the interactive mode
+gittrace --no-anim    # the same, with a still logo
 ```
 
 Run with no arguments in a terminal, GitTrace opens a full-screen session (built with [Textual](https://textual.textualize.io)). A header shows a turning graph logo, the version, the current project, the model(s), and the database as `local` or `remote` with `up` or `down` (a real round trip, `GRAPH.LIST` with a 3 s timeout; never the address). Below it is a scrollable output area drawn exactly as the commands above draw, and a prompt at the bottom:
@@ -108,25 +192,27 @@ Run with no arguments in a terminal, GitTrace opens a full-screen session (built
 | `/model [name \| default]` | show the models, or use one model for both `/scan` and `/explain` |
 | `/help`, `/quit` | list the commands; leave (also `ctrl+q`) |
 
-- The current project is the last `/scan` or `/explain` path, else the working directory. Up and down recall earlier commands, and the right arrow accepts a suggested command name.
+- The current project is the last `/scan` or `/explain` path, else the working directory. Up and down recall earlier commands, and the right arrow accepts a suggested command name. An empty session suggests a first command.
 - One command runs at a time, on a background thread, with its progress on a status line. Errors are shown in the output instead of ending the session, and log warnings go to the output instead of stderr. `/explain` does not ask a question: when its estimate is over 10 minutes it stops and asks you to add `--yes`.
 - The logo (a cluster of connected nodes, ray-cast and shaded in ` .:-=+*#%@`) turns once in 2 s at 20 fps, then rests for 5 s. It holds still while a command runs, and it is a still frame with `--no-anim`, when `NO_COLOR` is set, or in a terminal smaller than 80×24. All 40 frames are computed once at start; at rest the timer is paused.
 - Scripts and CI are unaffected: any arguments, or no terminal on stdin and stdout, give the CLI exactly as before (no arguments without a terminal still prints the help).
 
-### Environment
+### Settings
 
-| Variable | Required | Purpose |
+Nothing needs configuring for the defaults (local Docker FalkorDB, local Ollama). To change something, set environment variables, or put them in a `.env` file: GitTrace reads the first of `$GITTRACE_ENV_FILE`, `.env` in a source checkout, and `.env` in your user config directory (e.g. `~/.config/gittrace/.env`, `%LOCALAPPDATA%\gittrace\.env`; `gittrace doctor` shows which). It never reads the `.env` of the directory you are in, which is usually the project being scanned. Environment variables win over the file. See `.env.example`.
+
+| Variable | Default | Purpose |
 |---|---|---|
-| `FALKORDB_HOST` / `FALKORDB_PORT` | no (default `localhost` / `6379`, local Docker) | FalkorDB instance; any other host is remote and `scan` needs `--allow-remote` to write to it |
-| `FALKORDB_USER` / `FALKORDB_PASSWORD` | remote only | Instance credentials (none for local Docker) |
-| `GITTRACE_MODEL` | no | Triage model (default `ollama/llama3.1:8b`); `--model` wins |
-| `GITTRACE_EXPLAIN_MODEL` | no | `explain` model (default `ollama/qwen2.5-coder:7b`); `--model` wins; `GITTRACE_MODEL` does not apply to `explain` |
-| `GITTRACE_LLM_TIMEOUT` | no | Seconds to wait for one reply (default 120) |
-| `OLLAMA_API_BASE` | no | Where Ollama listens (default `http://localhost:11434`) |
+| `FALKORDB_HOST` / `FALKORDB_PORT` | `localhost` / `6379` (local Docker) | FalkorDB instance; any other host is remote and `scan` needs `--allow-remote` to write to it |
+| `FALKORDB_USER` / `FALKORDB_PASSWORD` | none | Credentials, for a remote instance |
+| `GITTRACE_MODEL` | `ollama/llama3.1:8b` | Triage model; `--model` wins |
+| `GITTRACE_EXPLAIN_MODEL` | `ollama/qwen2.5-coder:7b` | `explain` model; `--model` wins; `GITTRACE_MODEL` does not apply to `explain` |
+| `GITTRACE_LLM_TIMEOUT` | 120 | Seconds to wait for one reply |
+| `GITTRACE_SHOW_EMAIL` | off | `1` adds the git blame email to the graph tools' results (MCP, `trace`, `blast-radius`); `scan` uses `--show-email` |
+| `GITTRACE_ENV_FILE` | none | A `.env` file to read first |
+| `OLLAMA_API_BASE` | `http://localhost:11434` | Where Ollama listens |
 
-`.env` is gitignored. GitTrace describes the database only as `local` or `remote`: the host, port and password are left out of every message, error and log line. The integration tests only ever use a local FalkorDB.
-
----
+GitTrace describes the database only as `local` or `remote`: the host, port and password are left out of every message, error and log line, and tracebacks never print local variables. The integration tests only ever use a local FalkorDB. See [SECURITY.md](SECURITY.md) for what GitTrace trusts and what it does not.
 
 ## Rules
 
@@ -165,7 +251,7 @@ After the rules and the severity table, `scan` asks a model about each finding i
 
 **What the model sees** (`gittrace/llm/context.py`): the rule's id and description, the deterministic score with its reasons and the reachability summary, then the location, the flagged statement with up to 6 lines either side, the fix region, the attack paths (up to 3 routes), the direct callers (up to 8, with their signatures) and the enclosing function. The prompt must fit the context window with room for the reply; if it does not, the enclosing function is cut to its signature plus the largest window around the finding that fits, then the callers, then the routes, and the prompt says what was cut. Hardcoded secrets are masked in everything the model sees, as in the reports.
 
-**What it returns** (`gittrace/llm/schemas.py`): a JSON object validated against a pydantic schema, with exactly `values` (each value flowing into the flagged call and its source: `constant` | `internal` | `attacker` | `unknown`), `verdict` (`likely_real` | `likely_harmless` | `uncertain`), `reason`, `severity_adjustment` (an integer from −2 to +1) and `fix_code` (or null; with `--fix` only). `values` comes first so the model states where the inputs come from before it decides, and a `likely_harmless` verdict is rejected while any listed value is `attacker` or `unknown`. For Ollama the schema also constrains decoding. Without `--fix` the prompt is exactly the same (`triage-v3`) and only the reply schema changes: `fix_code` may only be `null`, so the model writes no fix and every field before it is decoded under the same constraints as in the measured runs. Re-run on the tuning set this way, both models gave the same verdict, adjustment and value sources for all 52 findings as in the measured run. (A prompt with the fix instructions removed was tried first and hid more real issues, including a command injection; see `eval/results/triage/no-fix-paragraph/`.) The report shows the model's value sources next to its verdict. An invalid reply is sent back once with the validation error; a second invalid reply is an error for that finding, shown next to it. If the model cannot be called at all (Ollama not running, model not pulled), the scan stops with exit 2. Nothing falls back silently.
+**What it returns** (`gittrace/llm/schemas.py`): a JSON object validated against a pydantic schema, with exactly `values` (each value flowing into the flagged call and its source: `constant` | `internal` | `attacker` | `unknown`), `verdict` (`likely_real` | `likely_harmless` | `uncertain`), `reason`, `severity_adjustment` (an integer from −2 to +1) and `fix_code` (or null; with `--fix` only). `values` comes first so the model states where the inputs come from before it decides, and a `likely_harmless` verdict is rejected while any listed value is `attacker` or `unknown`. For Ollama the schema also constrains decoding. Without `--fix` the prompt is exactly the same (now `triage-v4`) and only the reply schema changes: `fix_code` may only be `null`, so the model writes no fix and every field before it is decoded under the same constraints as in the measured runs. Re-run on the tuning set this way with `triage-v3`, both models gave the same verdict, adjustment and value sources for all 52 findings as in the measured run (not re-measured for `triage-v4`). (A prompt with the fix instructions removed was tried first and hid more real issues, including a command injection; see `eval/results/triage/no-fix-paragraph/`.) The report shows the model's value sources next to its verdict. An invalid reply is sent back once with the validation error; a second invalid reply is an error for that finding, shown next to it. If the model cannot be called at all (Ollama not running, model not pulled), the scan stops with exit 2. Nothing falls back silently.
 
 **What it cannot do:**
 
@@ -180,7 +266,7 @@ After the rules and the severity table, `scan` asks a model about each finding i
 
 ## Explain
 
-`python -m gittrace explain <path>` describes a project for the person who owns it but did not write most of it. It needs no FalkorDB: it reads the same analysis as `scan --offline`.
+`gittrace explain <path>` describes a project for the person who owns it but did not write most of it. It needs no FalkorDB: it reads the same analysis as `scan --offline`.
 
 **Facts first** (`gittrace/core/explain.py`, `gittrace/languages/python/facts.py`; all of it works with `--no-llm`):
 
@@ -264,15 +350,17 @@ Four tools read a scanned project's graph; they are declared once in `TOOL_REGIS
 | `list_findings(project, min_severity, rule_id)` | the last scan's findings, most severe first |
 | `trace_attack_path(project, finding, depth)` | shortest routes from endpoints to a finding (`file.py:line` or `path.py::line::col`) |
 | `blast_radius(project, function_id, depth)` | callers of a function and the endpoints that reach it |
-| `finding_owner(project, finding)` | author, email and commit of the finding's line (`git blame`) |
+| `finding_owner(project, finding)` | author name and commit of the finding's line (`git blame`); the email only with `GITTRACE_SHOW_EMAIL=1` |
 
 ```bash
-python -m gittrace.mcp_server      # stdio transport, from the repository root
+gittrace-mcp      # stdio transport (or: python -m gittrace.mcp_server)
 ```
 
 ```json
-{ "command": "python", "args": ["-m", "gittrace.mcp_server"], "env": { "PYTHONPATH": "/path/to/GitTrace" } }
+{ "command": "gittrace-mcp", "env": { "GITTRACE_SHOW_EMAIL": "0" } }
 ```
+
+The server reads the same [settings](#settings) as the CLI; the graph keeps the full blame author, and the tools return the email only when `GITTRACE_SHOW_EMAIL=1`.
 
 The MCP tools are named `list_findings_tool`, `trace_attack_path_tool`, `blast_radius_tool` and `finding_owner_tool`.
 
@@ -281,12 +369,12 @@ The MCP tools are named `list_findings_tool`, `trace_attack_path_tool`, `blast_r
 ## Tests
 
 ```bash
-python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py tests/test_logo.py tests/test_interactive.py -q   # no DB, no model
+pip install -r requirements.txt                  # this checkout, editable, plus pytest and build
+python -m pytest tests -q                        # everything; DB and model tests skip without Docker / Ollama
 python -m pytest tests/test_llm_live.py -v          # one real triage; skips without Ollama
 
-docker compose up -d falkordb
-FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= \
-  python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -q
+gittrace up                                      # or: docker compose up -d falkordb
+GITTRACE_REQUIRE_FALKORDB=1 python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -q
 ```
 
 - The expected functions, calls and endpoints of `tests/fixtures/sample_app` are written out by hand in `tests/expected_sample_app.py`, and its expected findings, severities, routes and blast radii in `tests/expected_findings.py`. The offline suites check the parser, the rules and the in-memory scan against them; the integration suites check the same facts in a real FalkorDB graph (Sink nodes, `REACHES_SINK` edges, stored severities, every tool's Cypher) and that both reachability backends agree.
@@ -294,7 +382,8 @@ FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= \
 - `tests/test_llm.py` covers the model layer with the model mocked: schema validation, the retry, every error path (including the out-of-GPU-memory recovery), prompt-injection comments in scanned code, the token budget, cache hits and misses, the fix check, and the CLI (triage next to the rules' results, the likely-harmless section, the gate, `--no-llm`). `tests/test_llm_live.py` runs one real triage against Ollama and skips when it is not running.
 - `tests/test_explain.py` covers `explain` with the model mocked: the facts (entry points, imports, side effects call by call, services, important functions, flow trees, findings), the bottom-up order, the prompt budget, the fence and secret masking, the grounding check, the cache, errors, and the CLI (formats, `--out`, `--file`, `--function`, `--all`, the confirmation above 10 minutes).
 - `tests/test_eval_hygiene.py` fails if a raw secret value from the eval targets appears in `eval/results/` or a review file (see `eval/README.md`).
-- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13 and the integration suites against a FalkorDB service container; locally the integration suites skip when FalkorDB is unreachable.
+- `tests/test_connection.py`, `tests/test_config.py` and `tests/test_machine.py` cover the database target (local by default, redaction, `--allow-remote`), where settings come from, and `doctor` / `up` against a fake machine; `tests/test_interactive.py` and `tests/test_logo.py` the interactive mode.
+- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13, the integration suites against a FalkorDB service container, and a `package` job on Linux and Windows that builds the wheel, installs it with pipx and runs the installed `gittrace` outside the checkout. Locally the integration suites skip when no local FalkorDB answers, and never use a remote one.
 
 ## Evaluation
 
@@ -444,7 +533,7 @@ The prompt was not changed to avoid jargon, and the models use about as many ter
 
 - **On AC power the two models are equally fast**, about 2.1 s per call. llama3.1:8b was 0.2 s quicker per function summary and qwen2.5-coder:7b 0.15 s quicker per file summary. That is one run with no repeats, so differences this small are not a ranking. There is no 3x difference: the untouched run's "qwen2.5-coder:7b about 3x faster" compared llama3.1:8b on battery with qwen2.5-coder:7b on AC power, and does not hold.
 - On AC, calls took about a quarter less time than in the after-tuning run on battery (median 2.08 against 2.78 s for llama3.1:8b, 2.13 against 2.76 s for qwen2.5-coder:7b).
-- `explain`'s estimate before a run still uses the after-tuning battery means (3.0 s per call for qwen2.5-coder:7b, 3.7 s for llama3.1:8b), so on AC it overestimates by about a third; a default run on microblog (70 calls) is estimated at about 3.5 minutes and took about 2.8 minutes of model time with either model.
+- `explain`'s estimate before a run uses these AC figures: 2.1 s per model call for either model (it used the battery means, 3.0 and 3.7 s, before Phase 7). A default run on microblog (70 calls) is now estimated at about 2.5 minutes; it took about 2.8 minutes of model time with either model. On battery, expect about a quarter longer, and much longer on a low charge.
 
 The earlier runs, all on battery, seconds per model call (not used to compare the models):
 
@@ -459,6 +548,7 @@ The `timing-battery` pass measures the battery more than the models: qwen2.5-cod
 ## Limitations
 
 - **Python only**, and only FastAPI and Flask routes.
+- **A full run needs Docker and Ollama** on the machine (see [First run](#first-run-docker-and-ollama)); `--offline --no-llm` needs neither. `doctor`'s power and sleep checks are Windows-only.
 - **Intraprocedural data flow.** A dangerous value is tracked through assignments inside one function (and closures), not across calls, and a query passed in unchanged as a parameter is not a finding.
 - **Known false negative: SQL built in another function.** When one function builds the SQL string and another executes it, nothing is reported:
 

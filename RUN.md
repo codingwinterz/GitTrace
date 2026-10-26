@@ -9,26 +9,27 @@ which still has the web UI): <https://youtu.be/xwo16Zesdus>.
 Run every command from the repository root.
 
 ```bash
-pip install -r requirements.txt
-docker compose up -d falkordb
+pip install -r requirements.txt                             # editable install: puts `gittrace` on PATH
+gittrace up --pull                                          # FalkorDB in Docker + both Ollama models
+gittrace doctor                                             # everything ready?
 # No .env needed for local Docker: localhost:6379 without a password is the default.
 
-python -m gittrace scan tests/fixtures/sample_app           # findings, attack paths, owner
-python -m gittrace scan path/to/project --format json       # for CI; exit 1 at --fail-on (default high)
-python -m gittrace trace app/db.py:17 -p tests/fixtures/sample_app
-python -m gittrace blast-radius app/db.py::Repo.get_user -p tests/fixtures/sample_app
-python -m gittrace scan path/to/project --offline           # no FalkorDB needed
-python -m gittrace scan path/to/project --no-llm            # rules only, no model calls
-python -m gittrace scan path/to/project --model ollama/qwen2.5-coder:7b   # another model
-python -m gittrace scan path/to/project --fix               # also a checked fix diff per finding
+gittrace scan tests/fixtures/sample_app           # findings, attack paths, owner
+gittrace scan path/to/project --format json       # for CI; exit 1 at --fail-on (default high)
+gittrace trace app/db.py:17 -p tests/fixtures/sample_app
+gittrace blast-radius app/db.py::Repo.get_user -p tests/fixtures/sample_app
+gittrace scan path/to/project --offline           # no FalkorDB needed
+gittrace scan path/to/project --no-llm            # rules only, no model calls
+gittrace scan path/to/project --model ollama/qwen2.5-coder:7b   # another model
+gittrace scan path/to/project --fix               # also a checked fix diff per finding
 
-python -m gittrace explain path/to/project                  # plain-language tour: facts + summaries
-python -m gittrace explain path/to/project --no-llm         # facts only (entry points, endpoints, flows)
-python -m gittrace explain path/to/project --out EXPLAIN.md # keep it as a Markdown file
-python -m gittrace explain path/to/project --file app/db.py # one file (and all its functions)
-python -m gittrace explain path/to/project --function app/db.py::Repo.get_user
+gittrace explain path/to/project                  # plain-language tour: facts + summaries
+gittrace explain path/to/project --no-llm         # facts only (entry points, endpoints, flows)
+gittrace explain path/to/project --out EXPLAIN.md # keep it as a Markdown file
+gittrace explain path/to/project --file app/db.py # one file (and all its functions)
+gittrace explain path/to/project --function app/db.py::Repo.get_user
 
-python -m gittrace                                          # interactive mode (/help inside; --no-anim for a still logo)
+gittrace                                          # interactive mode (/help inside; --no-anim for a still logo)
 ```
 
 `scan` asks a local model to triage each finding, and `explain` to summarise the code.

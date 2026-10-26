@@ -74,7 +74,7 @@ class TestRedaction:
         assert "<remote host>" in text and "<password>" in text and "11001" in text
 
     def test_connect_error_is_redacted(self, remote, monkeypatch):
-        def refuse(**kwargs):
+        def refuse(*args, **kwargs):
             raise RedisConnectionError(f"Error 11001 connecting to {HOST}:{PORT}. getaddrinfo failed.")
         monkeypatch.setattr(connection, "_client", refuse)
         with pytest.raises(RuntimeError) as exc:
@@ -119,7 +119,7 @@ class TestCheck:
             connection = Conn()
 
         kwargs = {}
-        monkeypatch.setattr(connection, "_client", lambda **k: kwargs.update(k) or Db())
+        monkeypatch.setattr(connection, "_client", lambda *a, **k: kwargs.update(k) or Db())
         assert connection.check() == (True, "GRAPH.LIST answered")
         assert sent == [("GRAPH.LIST",)] and closed == [True]
         assert kwargs == {"socket_connect_timeout": connection.CHECK_TIMEOUT_S,
@@ -136,7 +136,7 @@ class TestCheck:
         class Db:
             connection = Conn()
 
-        monkeypatch.setattr(connection, "_client", lambda **k: Db())
+        monkeypatch.setattr(connection, "_client", lambda *a, **k: Db())
         ok, reason = connection.check()
         assert ok is False and _leaks(reason) == []
 
@@ -201,6 +201,11 @@ class TestRemoteWrites:
         monkeypatch.setattr(connection, "FALKORDB_HOST", "localhost")
         out = runner.invoke(app, ["scan", str(ROOT), "--offline", "--no-llm", "--no-blame", "--fail-on", "none"])
         assert out.exit_code == 0 and "warning:" not in out.output
+
+    def test_graphs_drop_needs_allow_remote(self, remote, monkeypatch):
+        monkeypatch.setattr(connection, "get_db", lambda: pytest.fail("must not connect"))
+        out = runner.invoke(app, ["graphs", "--drop", "gittrace_x"])
+        assert out.exit_code == 2 and "--allow-remote" in out.output and _leaks(out.output) == []
 
     def test_interactive_scan_needs_allow_remote(self, remote, monkeypatch):
         console = Console(file=io.StringIO(), width=300, color_system=None)

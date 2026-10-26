@@ -49,13 +49,29 @@ from gittrace.cli import render
 from gittrace.core.reachability import DEFAULT_DEPTH, MAX_DEPTH
 from gittrace.rules.base import severity_rank
 
-app = typer.Typer(add_completion=False, no_args_is_help=True,
+# pretty_exceptions_show_locals=False: a traceback must never print local variables (a password
+# in the connection code, a secret from scanned source).
+app = typer.Typer(add_completion=False, no_args_is_help=True, pretty_exceptions_show_locals=False,
                   help="Find vulnerabilities reachable from your API routes. "
                        "Run `gittrace` with no arguments in a terminal for the interactive mode "
                        "(`gittrace --no-anim`: without the logo animation).")
 
 EXIT_FINDINGS = 1
 EXIT_ERROR = 2
+
+
+def _show_version(value: bool) -> None:
+    if value:
+        from gittrace import __version__
+
+        typer.echo(f"gittrace {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(version: bool = typer.Option(False, "--version", callback=_show_version, is_eager=True,
+                                       help="Show the version and exit.")) -> None:
+    pass
 
 
 class Format(str, Enum):
@@ -255,6 +271,75 @@ def blast_radius(
         render.render_blast_radius(_console(), data)
 
 
+@app.command()
+def doctor(format: Format = _FORMAT) -> None:
+    """Check that this machine is ready: Python, Docker, FalkorDB, Ollama and its models, free VRAM,
+    power and sleep settings, and whether the configured database is local. Changes nothing."""
+    from gittrace.cli import machine as doc
+
+    checks = doc.run_checks()
+    if format is Format.json:
+        _print_json(doc.to_json(checks))
+    else:
+        doc.render_checks(_console(), checks)
+    if any(c.status == "fail" for c in checks):
+        raise typer.Exit(EXIT_FINDINGS)
+
+
+@app.command()
+def up(pull: bool = typer.Option(False, "--pull", help="Also pull the Ollama models that are missing "
+                                                        "(several GB the first time).")) -> None:
+    """Start local FalkorDB in Docker, wait until it answers, and check Ollama and the models."""
+    from gittrace.cli import machine as doc
+
+    code = doc.up(_console(), pull=pull)
+    if code:
+        raise typer.Exit(code)
+
+
+@app.command()
+def graphs(
+    drop: list[str] = typer.Option(None, "--drop",
+                                   help="Delete the graph with exactly this name (repeat for several)."),
+    allow_remote: bool = typer.Option(False, "--allow-remote",
+                                      help="Allow --drop on a remote FalkorDB (FALKORDB_HOST other than localhost)."),
+    format: Format = _FORMAT,
+) -> None:
+    """List the graphs on the configured FalkorDB, or delete named ones with --drop."""
+    from redis.exceptions import RedisError
+
+    from gittrace.graph import connection
+
+    where = connection.location()
+    drop = list(drop or [])
+    if drop and where != "local" and not allow_remote:
+        _fail("the configured FalkorDB is remote; deleting graphs there needs --allow-remote")
+    try:
+        db = connection.get_db()
+        before = sorted(db.list_graphs())
+        missing = [n for n in drop if n not in before]
+        if missing:
+            _fail(f"no graph named {', '.join(missing)} on the {where} FalkorDB; nothing deleted")
+        for name in drop:
+            db.select_graph(name).delete()
+        after = sorted(db.list_graphs()) if drop else before
+    except RuntimeError as exc:
+        _fail(str(exc))
+    except RedisError as exc:
+        _fail(f"the {where} FalkorDB failed: {type(exc).__name__}: {connection.redact(str(exc))}")
+    data = {"database": where, "graphs": after, "dropped": drop}
+    if format is Format.json:
+        _print_json(data)
+        return
+    console = _console()
+    for name in drop:
+        console.print(Text.assemble(("deleted ", render.AMBER), name))
+    console.print(Text.assemble((f"{len(after)} graph(s) on the {where} FalkorDB", f"bold {render.LAVENDER}")))
+    for name in after:
+        console.print(Text.assemble("  ", name, ("" if name.startswith("gittrace") else "  (not GitTrace's)",
+                                                 render.DIM)))
+
+
 CONFIRM_ABOVE_S = 600
 
 
@@ -400,6 +485,9 @@ def main() -> None:
                 stream.reconfigure(encoding="utf-8", errors="replace")
             except (AttributeError, ValueError):
                 pass
+    from gittrace import config
+
+    config.load()                       # .env settings (model, timeout, database) for every command
     args = sys.argv[1:]
     try:
         if _interactive(args):

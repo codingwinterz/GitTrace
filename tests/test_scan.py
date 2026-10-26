@@ -166,6 +166,21 @@ class TestOwner:
         res = scan(tmp_path, offline=True, blame=True)
         assert [f.owner for f in res.findings] == [None]
 
+    def test_git_runs_without_repository_hooks(self, tmp_path, monkeypatch):
+        """An untrusted repository's config must not make git run commands."""
+        from gittrace.core import owner as owner_mod
+
+        calls = []
+
+        def fake_run(args, **kw):
+            calls.append(args)
+            return subprocess.CompletedProcess(args, 0, "true\n", "")
+
+        monkeypatch.setattr(owner_mod.subprocess, "run", fake_run)
+        Blamer(tmp_path).blame("app.py", [3])
+        assert all(a[:3] == ["git", "-c", "core.fsmonitor=false"] for a in calls)
+        assert "--no-textconv" in calls[-1] and calls[-1][calls[-1].index("--no-textconv") - 1] == "--porcelain"
+
     @staticmethod
     def _repository(tmp_path):
         (tmp_path / "app.py").write_text('import os\n\ndef run(cmd):\n    os.system(cmd)\n')

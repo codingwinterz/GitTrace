@@ -111,7 +111,8 @@ TOOL_REGISTRY: dict[str, GraphTool] = {
             name="finding_owner",
             func=finding_owner,
             description=(
-                "Who last changed a finding's line, from git blame (author, email, commit), "
+                "Who last changed a finding's line, from git blame (author name and commit; the email "
+                "only when the server runs with GITTRACE_SHOW_EMAIL=1), "
                 "when the project is a git repository."
             ),
             parameters={

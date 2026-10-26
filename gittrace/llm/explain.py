@@ -72,12 +72,13 @@ MAX_LINE_CHARS = 300
 MAX_MENTIONS = 20
 _SAFETY_TOKENS = 256
 # Seconds per model call, for the estimate shown before a run (the progress
-# bar's ETA uses the real pace): the mean per call in the after-tuning
-# evaluation, both models back to back on an RTX 5050 Laptop GPU on battery
-# power (no AC measurement yet; a low battery made calls several times
-# slower in the timing-battery run). SECONDS_PER_CALL for any other model.
+# bar's ETA uses the real pace): the AC timing run (eval/results/explain/timing,
+# RTX 5050 Laptop GPU, both models back to back; 101 calls each without the two
+# interrupted by sleep): llama3.1:8b 2.08 s median / 2.33 s mean, qwen2.5-coder:7b
+# 2.13 / 2.34, so about 2.1 s for either. On battery calls took about a quarter
+# longer, and much longer on a low charge. SECONDS_PER_CALL for any other model.
 SECONDS_PER_CALL = 8.0
-MODEL_SECONDS_PER_CALL = {"ollama/qwen2.5-coder:7b": 3.0, "ollama/llama3.1:8b": 3.7}
+MODEL_SECONDS_PER_CALL = {"ollama/qwen2.5-coder:7b": 2.1, "ollama/llama3.1:8b": 2.1}
 
 _PREAMBLE = """\
 You explain a Python project to the person who owns it: they built it with an AI coding \

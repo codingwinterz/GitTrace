@@ -28,12 +28,10 @@ from __future__ import annotations
 
 import os
 import re
-from pathlib import Path
 
-from dotenv import load_dotenv
+from gittrace import config
 
-# gittrace/graph/connection.py -> the repository root, where .env lives.
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+config.load()                           # .env, if any (gittrace.config); variables win
 
 
 def _env(name: str) -> str:
@@ -86,11 +84,16 @@ def require_local_or_allowed(allow_remote: bool) -> None:
             "(its code included) there. Pass --allow-remote to do that, or --offline to write nothing.")
 
 
-def _client(**timeouts):
+LOCAL_DEFAULT = ("localhost", 6379)     # what `gittrace up` starts
+
+
+def _client(local_default: bool = False, **timeouts):
     try:
         from falkordb import FalkorDB
     except ImportError as exc:
-        raise RuntimeError("falkordb not installed. Run: pip install -r requirements.txt") from exc
+        raise RuntimeError("falkordb not installed. Run: pip install gittrace (or -r requirements.txt)") from exc
+    if local_default:
+        return FalkorDB(host=LOCAL_DEFAULT[0], port=LOCAL_DEFAULT[1], **timeouts)
     kwargs: dict = {"host": FALKORDB_HOST, "port": FALKORDB_PORT, **timeouts}
     # Credentials go together or not at all: redis-py sends AUTH whenever a
     # username is set, and AUTH with a username but no password fails to
@@ -101,12 +104,13 @@ def _client(**timeouts):
     return FalkorDB(**kwargs)
 
 
-def check(timeout: float = CHECK_TIMEOUT_S) -> tuple[bool, str]:
+def check(timeout: float = CHECK_TIMEOUT_S, local_default: bool = False) -> tuple[bool, str]:
     """A real round trip: a fresh connection runs GRAPH.LIST (a FalkorDB command,
     so a plain Redis or a wrong password fails) within `timeout` seconds.
-    Returns (ok, reason); the reason never names the host."""
+    Returns (ok, reason); the reason never names the host. `local_default`
+    checks local Docker (LOCAL_DEFAULT) whatever the settings say."""
     try:
-        db = _client(socket_connect_timeout=timeout, socket_timeout=timeout)
+        db = _client(local_default, socket_connect_timeout=timeout, socket_timeout=timeout)
         try:
             db.connection.execute_command("GRAPH.LIST")
         finally:

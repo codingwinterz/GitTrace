@@ -30,9 +30,15 @@ class Owner:
     summary: str | None = None
 
 
+# The scanned repository is untrusted: a .git/config shipped inside an archive could
+# make git run commands (an fsmonitor hook; a textconv driver, which blame applies by
+# default). Neither is needed to read who changed a line.
+_SAFE = ("-c", "core.fsmonitor=false")
+
+
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess | None:
     try:
-        return subprocess.run(["git", "-C", str(root), *args], capture_output=True,
+        return subprocess.run(["git", *_SAFE, "-C", str(root), *args], capture_output=True,
                               text=True, encoding="utf-8", errors="replace", timeout=_TIMEOUT)
     except (OSError, subprocess.SubprocessError):
         return None
@@ -49,7 +55,7 @@ class Blamer:
         if not self.enabled or not lines:
             return {}
         ranges = [arg for n in sorted(set(lines)) for arg in ("-L", f"{n},{n}")]
-        out = _git(self.root, "blame", "--porcelain", *ranges, "--", file)
+        out = _git(self.root, "blame", "--porcelain", "--no-textconv", *ranges, "--", file)
         if out is None or out.returncode != 0:
             if out is not None:
                 log.info("git blame %s: %s", file, out.stderr.strip())

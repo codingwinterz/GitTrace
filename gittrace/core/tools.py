@@ -15,6 +15,7 @@ the CLI, the MCP server and the agent can all show them as they are.
 from __future__ import annotations
 
 import functools
+import os
 from pathlib import Path
 from typing import Any
 
@@ -42,11 +43,24 @@ def _rows(graph, cypher: str, params: dict | None = None) -> list:
     return graph.query(cypher, params=params).result_set
 
 
+SHOW_EMAIL_ENV = "GITTRACE_SHOW_EMAIL"
+
+
+def show_email() -> bool:
+    """The owner's email is left out of tool results (MCP, trace, blast-radius)
+    unless $GITTRACE_SHOW_EMAIL is 1 / true / yes. The graph keeps it."""
+    return os.environ.get(SHOW_EMAIL_ENV, "").strip().lower() in ("1", "true", "yes")
+
+
+def _owner(author, email, commit, date) -> dict:
+    return {"author": author, **({"email": email} if show_email() else {}), "commit": commit, "date": date}
+
+
 def _finding_summary(props: dict) -> dict:
     owner = None
     if props.get("owner_status") == "committed":
-        owner = {"author": props.get("owner_author"), "email": props.get("owner_email"),
-                 "commit": props.get("owner_commit"), "date": props.get("owner_date")}
+        owner = _owner(props.get("owner_author"), props.get("owner_email"),
+                       props.get("owner_commit"), props.get("owner_date"))
     return {
         "id": props["id"],
         "rule_id": props["rule_id"],
@@ -194,9 +208,8 @@ def finding_owner(project: str, finding: str) -> dict[str, Any]:
             found = Blamer(root).blame(props["file"], [props["line"]]).get(props["line"])
             if found is not None:
                 status = found.status
-                owner = None if found.author is None else {
-                    "author": found.author, "email": found.email,
-                    "commit": found.commit, "date": found.date}
+                owner = None if found.author is None else _owner(found.author, found.email,
+                                                                  found.commit, found.date)
         owners.append({"finding": props["id"], "file": props["file"], "line": props["line"],
                        "status": status, "owner": owner})
     return {"project": str(root), "graph": name, "owners": owners}
