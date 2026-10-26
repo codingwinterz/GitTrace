@@ -240,6 +240,7 @@ class TestHardcodedSecret:
     @pytest.mark.parametrize("value, placeholder", [
         ("xxx", True), ("*****", True), ("change-me-later", True), ("your_api_key", True),
         ("{token}", True), ("%(password)s", True), ("abc", True), ("not set yet", True),
+        # Deliberately fake secret (a made-up Stripe-style test key) for the placeholder check; not a real credential.
         ("Zq8!pL2#", False), ("sk_test_4eC39HqLyjWDarjtT1zdp7dc", False),
     ])
     def test_placeholders(self, value, placeholder):

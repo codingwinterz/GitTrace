@@ -24,6 +24,13 @@ gittrace --version
 
 Python 3.11 or newer. [pipx](https://pipx.pypa.io) puts `gittrace` (and `gittrace-mcp`, the MCP server) on your PATH in their own environment; `pip install .` in a virtualenv works too.
 
+**Use Python 3.12, 3.13 or 3.14 for now.** Python 3.15 is new, and several dependencies (pydantic-core, tiktoken, tree-sitter, ...) have not published prebuilt wheels for it yet, so installing on 3.15 tries to compile them and fails without a C and Rust toolchain. If your default Python is 3.15, choose the version explicitly:
+
+```bash
+pipx install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2
+uv tool install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2    # the same with uv
+```
+
 ### First run: Docker and Ollama
 
 A full `gittrace scan` needs two programs running on your machine: **Docker**, for the FalkorDB graph database, and **Ollama**, for the local model. Install both and start them, then:
@@ -127,7 +134,7 @@ Rules detect; nothing else decides what is a finding. The model only comments on
 
 ## See it work
 
-`tests/fixtures/sample_app` is a small FastAPI app with planted vulnerabilities and planted non-findings. Every value below is asserted by the test suite, offline and against a real FalkorDB:
+`tests/fixtures/sample_app` is a small FastAPI app with planted vulnerabilities and planted non-findings. **The fixtures and tests contain deliberate fake secrets and vulnerabilities**: key-shaped strings (some look like Stripe or API keys), passwords and injectable code, written for testing and never real credentials. Secret scanners will flag them; do not copy them into real code. Every value below is asserted by the test suite, offline and against a real FalkorDB:
 
 | Finding | Severity | Why |
 |---|---|---|
