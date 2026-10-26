@@ -264,9 +264,6 @@ findings and code in plain language using a local LLM.
   smoke-tests on Linux and Windows.
 
 ## Backlog (not scheduled; do not start without approval)
-- Auth checks inside handler bodies (JWT verified in the handler, an
-  `if not current_user: abort(401)` guard) instead of a dependency or a
-  decorator. Today such routes count as unauthenticated.
 - `getattr` / `import_module` dispatch and routes registered dynamically in
   loops (`add_url_rule` with computed names, decorators applied inside
   factory functions, GraphQL resolvers dispatched by graphene). Mostly out of

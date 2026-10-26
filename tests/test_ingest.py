@@ -464,6 +464,107 @@ class TestRoutes:
         }
         assert {e.path for e in endpoints if e.auth_required} == {"/b", "/c", "/d"}
 
+    def test_auth_checked_in_the_handler_body(self):
+        _, _, endpoints = _analyze_sources({"notes.py": """
+            import jwt
+            from fastapi import FastAPI, HTTPException, status
+            from flask import Flask, abort, request, session
+            from helpers import verify_token, authenticate, login_user
+            web = Flask(__name__)
+            api = FastAPI()
+
+            @web.route("/notes", methods=["POST"])
+            def add_note():
+                \"\"\"Docstring first.\"\"\"
+                try:
+                    claims = jwt.decode(request.headers["X-Token"], KEY, algorithms=["HS256"])
+                    body = request.json
+                except Exception:
+                    return {"error": "bad token"}, 403
+                return store(claims, body)
+
+            @web.route("/drafts")
+            def drafts():
+                if not session.get("uid"):
+                    abort(401)
+                return list_drafts()
+
+            @web.route("/export")
+            def export():
+                verify_token(request)
+                return dump()
+
+            @api.get("/me")
+            def me(user=None):
+                if user is None:
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+                return user
+
+            @web.route("/login", methods=["POST"])
+            def login():
+                user = authenticate(request.form["u"], request.form["p"])
+                login_user(user)
+                return {"token": jwt.encode({"u": user}, KEY)}
+
+            @web.route("/late")
+            def late():
+                a = 1
+                b = 2
+                c = 3
+                d = 4
+                e = 5
+                jwt.decode(request.args["t"], KEY)     # too far down to count as a guard
+                return a
+
+            @web.route("/item/<i>")
+            def item(i):
+                if not exists(i):
+                    abort(404)
+                return fetch(i)
+
+            # 401/403 that guard no identity: a form field, a feature flag, a quota, a try without auth
+            @web.route("/signup", methods=["POST"])
+            def signup():
+                if not request.form.get("username"):
+                    return {"error": "username missing"}, 401
+                return create(request.form)
+
+            @web.route("/invite")
+            def invite():
+                if not config.INVITES_ENABLED:
+                    abort(403)
+                return send_invite()
+
+            @api.post("/upload")
+            def upload(files: list):
+                if len(files) > QUOTA:
+                    raise HTTPException(status_code=403)
+                return save(files)
+
+            @web.route("/report")
+            def report():
+                try:
+                    rows = db.query(Report).all()
+                except Exception:
+                    return {"error": "denied"}, 403
+                return rows
+        """})
+        got = {e.path: e.auth_evidence for e in endpoints}
+        assert got == {
+            "/notes": ('in body: except: return {"error": "bad token"}, 403', "in body: jwt.decode()"),
+            "/drafts": ('in body: if not session.get("uid"): abort(401)',),
+            "/export": ("in body: helpers.verify_token()",),
+            "/me": ("in body: if user is None: raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)",),
+            "/login": (),
+            "/late": (),
+            "/item/<i>": (),
+            "/signup": (),
+            "/invite": (),
+            "/upload": (),
+            "/report": (),
+        }
+        assert {e.path for e in endpoints if e.auth_required} == {"/notes", "/drafts", "/export", "/me"}
+
     def test_flask_restful_resources(self):
         _, _, endpoints = _analyze_sources({
             "shop/__init__.py": "",

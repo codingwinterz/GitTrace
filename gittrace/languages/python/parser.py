@@ -118,6 +118,10 @@ class PyFunction:
     decorators: tuple[Value, ...]
     dependencies: tuple[Value, ...]   # Depends(...)/Security(...) calls in its parameters
     parameter_refs: tuple[Value, ...] = ()   # names used as a parameter's annotation or default
+    # The top of the body (see _top_of_body): the last line of its first
+    # statements, and the 401/403 rejections guarding them.
+    top_end_line: int = 0
+    body_guards: tuple[str, ...] = ()
 
 
 @dataclass(eq=False)
@@ -399,9 +403,10 @@ class _Builder:
         if return_type is not None:
             self._walk(return_type, outer)
 
-        self.functions.append(PyFunction(record, scope, outer, decorators, dependencies,
-                                         tuple(parameter_refs)))
         body = node.child_by_field_name("body")
+        top_end, guards = _top_of_body(body)
+        self.functions.append(PyFunction(record, scope, outer, decorators, dependencies,
+                                         tuple(parameter_refs), top_end, guards))
         if body is not None:
             self._walk(body, scope)
 
@@ -855,6 +860,95 @@ class _Builder:
 
 def _join(base: str, name: str) -> str:
     return f"{base}.{name}" if base else name
+
+
+TOP_STATEMENTS = 5          # how far "the top of a handler" reaches
+_REJECT_EXCEPTIONS = frozenset({"Unauthorized", "Forbidden", "NotAuthenticated", "AuthenticationFailed",
+                                "PermissionDenied", "AccessDenied", "HTTPUnauthorized", "HTTPForbidden"})
+_REJECT_STATUS = re.compile(r"^(401|403)$|UNAUTHORIZED|FORBIDDEN")
+# A 401/403 alone is not an auth check: handlers also send it for a missing
+# form field, a user limit or a disabled feature. The guarded condition (or the
+# leading try block) must name the caller's identity or credentials.
+# `username` / `password` are not enough: a login form checks those.
+_AUTH_CONDITION = re.compile(
+    r"token|jwt|bearer|auth|api_?key|session|current_user|\buser\b|logged_in|is_authenticated"
+    r"|identity|claims|permission|\badmin\b|is_admin|\brole",
+    re.IGNORECASE,
+)
+
+
+def _top_of_body(body: Node | None) -> tuple[int, tuple[str, ...]]:
+    """The first TOP_STATEMENTS statements of a body (after the docstring; a
+    leading `try` counts with the statements inside it): the line where they
+    end, and each rejection with status 401 or 403 that guards them, either an
+    `if` among them or an `except` of the leading `try` whose block starts by
+    rejecting: `abort(401)`, `raise Forbidden()`, `raise HTTPException(
+    status_code=401)`, `return {...}, 403`, `return Response(..., status=401)`.
+    The `if` condition, or the `try` block, must match _AUTH_CONDITION."""
+    if body is None:
+        return 0, ()
+    statements = [c for c in body.named_children if c.type != "comment"]
+    if statements and _docstring(body) is not None:
+        statements = statements[1:]
+    handlers: list[Node] = []
+    if statements and statements[0].type == "try_statement":
+        block = statements[0].child_by_field_name("body")
+        inner = [c for c in block.named_children if c.type != "comment"] if block is not None else []
+        if _AUTH_CONDITION.search(" ".join(_text(c) for c in inner[:TOP_STATEMENTS])):
+            handlers = [c for c in statements[0].named_children if c.type == "except_clause"]
+        statements = inner + statements[1:]
+    top = statements[:TOP_STATEMENTS]
+    if not top:
+        return 0, ()
+    guards = []
+    for stmt in top:
+        condition = _text(stmt.child_by_field_name("condition")) if stmt.type == "if_statement" else ""
+        if _AUTH_CONDITION.search(condition):
+            reject = _rejection(stmt.child_by_field_name("consequence"))
+            if reject:
+                guards.append(f"if {condition[:60]}: {reject}")
+    for handler in handlers:
+        block = next((c for c in handler.named_children if c.type == "block"), None)
+        reject = _rejection(block)
+        if reject:
+            guards.append(f"except: {reject}")
+    return top[-1].end_point[0] + 1, tuple(guards)
+
+
+def _rejection(block: Node | None) -> str | None:
+    """The block's first statement, if it rejects the request with 401/403."""
+    first = next((c for c in block.named_children if c.type != "comment"), None) if block is not None else None
+    if first is None:
+        return None
+    expr = first.named_children[0] if first.named_children else None
+    if expr is None:
+        return None
+    text = " ".join(_text(first).split())[:80]
+    if first.type == "raise_statement":
+        call = expr if expr.type == "call" else None
+        name = _text(call.child_by_field_name("function") if call is not None else expr).split(".")[-1]
+        if name in _REJECT_EXCEPTIONS or (call is not None and _status_argument(call)):
+            return text
+    elif first.type == "expression_statement" and expr.type == "call":
+        if _text(expr.child_by_field_name("function")).split(".")[-1] == "abort" and _status_argument(expr):
+            return text
+    elif first.type == "return_statement":
+        if expr.type == "expression_list" and expr.named_children \
+                and _REJECT_STATUS.search(_text(expr.named_children[-1]).split(".")[-1]):
+            return text
+        if expr.type == "call" and _status_argument(expr):
+            return text
+    return None
+
+
+def _status_argument(call: Node) -> bool:
+    """A call passes 401/403 (or HTTP_401_UNAUTHORIZED, HTTPStatus.FORBIDDEN, ...)."""
+    args = call.child_by_field_name("arguments")
+    for arg in args.named_children if args is not None else ():
+        value = arg.child_by_field_name("value") if arg.type == "keyword_argument" else arg
+        if value is not None and _REJECT_STATUS.search(_text(value).split(".")[-1]):
+            return True
+    return False
 
 
 def _docstring(body: Node | None) -> str | None:

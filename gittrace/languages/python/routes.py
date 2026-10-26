@@ -31,7 +31,13 @@ directly or through an alias such as
 `CurrentUser = Annotated[User, Depends(get_current_user)]`) whose target is
 named like auth, any `Security(...)`, or a handler decorator named like auth
 (`@login_required`, `@jwt_required()`, ...), including a resource class's
-`method_decorators` / `decorators` list. Default false.
+`method_decorators` / `decorators` list, or a check at the top of the
+handler's own body (its first parser.TOP_STATEMENTS statements): a
+token-verifying call (`jwt.decode`, `verify_jwt_in_request()`, a function
+named like `verify_token` / `check_auth`; not `login()` or
+`authenticate()`, which a login handler calls) or a guard rejecting with
+401/403. Checks in functions the handler calls are not followed. Default
+false.
 """
 
 from __future__ import annotations
@@ -60,6 +66,15 @@ _RESOURCE_DECORATOR_LISTS = ("method_decorators", "decorators")
 AUTH_NAME = re.compile(
     r"auth|current_user|current_active_user|logged_in|login|token|jwt|oauth|bearer"
     r"|api_?key|permission|require|admin|verify",
+    re.IGNORECASE,
+)
+# A call at the top of a handler that checks a token. Narrower than AUTH_NAME on
+# purpose: a login handler calls login() / authenticate() and is still open.
+VERIFY_CALLS = frozenset({"jwt.decode", "jose.jwt.decode", "flask_jwt_extended.verify_jwt_in_request",
+                          "flask_jwt_extended.view_decorators.verify_jwt_in_request"})
+VERIFY_NAME = re.compile(
+    r"^(verify|validate|check|require|ensure)_?(jwt|(access_|auth_|bearer_|id_)?token|auth\w*"
+    r"|api_?key|permissions?|admin|access)$",
     re.IGNORECASE,
 )
 
@@ -130,6 +145,25 @@ class _Detector:
         self.resolver = resolver
         self.mounts: dict[VarSym, list[_Mount]] = {}
         self.functions: dict[str, PyFunction] = {fn.record.id: fn for mod in modules for fn in mod.functions}
+        self.module_of: dict[str, PyModule] = {fn.record.id: mod for mod in modules for fn in mod.functions}
+        self.calls_by_caller: dict[str, list] = {}
+        for mod in modules:
+            for call in mod.calls:
+                self.calls_by_caller.setdefault(call.caller_id, []).append(call)
+
+    def body_evidence(self, fn: PyFunction) -> list[str]:
+        """Auth checked at the top of the handler's own body: a token-verifying
+        call (VERIFY_CALLS, or a function named like VERIFY_NAME) or a guard
+        that rejects with 401/403 (parser._top_of_body)."""
+        found = [f"in body: {g}" for g in fn.body_guards]
+        mod = self.module_of[fn.record.id]
+        for call in self.calls_by_caller.get(fn.record.id, []):
+            if call.call.line > fn.top_end_line:
+                continue
+            name = self.resolver.resolve_ref(mod, call.scope, call.call.parts).name
+            if name in VERIFY_CALLS or VERIFY_NAME.match(name.split(".")[-1]):
+                found.append(f"in body: {name}()")
+        return found
 
     def route_object(self, mod: PyModule, scope, parts: tuple[str, ...]) -> RouteObject | None:
         sym = self.resolver.resolve_ref(mod, scope, parts).sym
@@ -303,7 +337,7 @@ class _Detector:
                 fn = self.functions.get(member.id) if isinstance(member, FuncSym) else None
                 if fn is None:
                     continue
-                evidence = class_evidence + _decorator_evidence(fn.decorators, None)
+                evidence = class_evidence + _decorator_evidence(fn.decorators, None) + self.body_evidence(fn)
                 for url in urls:
                     route, route_ok = _literal(url)
                     for chain in self.chains(obj):
@@ -323,7 +357,7 @@ class _Detector:
                     route_value = dec.args[0] if dec.args else dec.kwarg(
                         "rule" if obj.framework == "flask" else "path")
                     route, route_ok = _literal(route_value)
-                    evidence = _decorator_evidence(fn.decorators, dec)
+                    evidence = _decorator_evidence(fn.decorators, dec) + self.body_evidence(fn)
                     handler_deps = fn.dependencies + self.parameter_dependencies(mod, fn)
                     for chain in self.chains(obj):
                         deps = chain.dependencies + _items(dec.kwarg("dependencies")) + handler_deps
