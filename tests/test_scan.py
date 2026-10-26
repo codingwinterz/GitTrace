@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -222,7 +223,8 @@ class TestOwner:
 
 class TestCli:
     def _scan(self, *args: str):
-        return runner.invoke(app, ["scan", str(ROOT), "--offline", "--no-blame", "--no-llm", *args])
+        return runner.invoke(app, ["scan", str(ROOT), "--offline", "--no-blame", "--no-llm", *args],
+                             env={"COLUMNS": "120"})       # rich output: the same width on every runner
 
     def test_exit_code_gates_on_fail_on(self):
         assert self._scan("--format", "json").exit_code == 1               # default: high
@@ -261,8 +263,10 @@ class TestCli:
         for needle in ("FINDINGS", "CRITICAL", "7 critical", "GT-SQLI-001", "app/db.py:17",
                        "GET /api/users/{name}", "NO AUTH", "Attack paths",
                        "blast radius: 5", "owner lookup skipped",
-                       "> 17         cursor.execute", "model triage off (--no-llm)"):
+                       "model triage off (--no-llm)"):
             assert needle in text, needle
+        # Rich marks the line with "❱" on UTF-8 output (Linux) and ">" otherwise (Windows)
+        assert re.search(r"[>❱] 17\s+cursor\.execute", text)
 
 
 class TestJsonSnapshot:

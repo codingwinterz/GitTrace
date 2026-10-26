@@ -253,7 +253,7 @@ class TestCli:
         assert json.loads(out.stdout)["traces"][0]["finding"]["id"] == "app/utils/shell.py::8::9"
 
     def test_trace_rich(self, scanned):
-        out = runner.invoke(app, ["trace", "app/utils/shell.py:8", "-p", PROJECT])
+        out = runner.invoke(app, ["trace", "app/utils/shell.py:8", "-p", PROJECT], env={"COLUMNS": "120"})
         assert out.exit_code == 0, out.output
         for needle in ("GET /api/users/{name}/files", "NO AUTH", "app/utils/shell.py::run_command.log",
                        "os.system  at app/utils/shell.py:8"):
@@ -274,6 +274,7 @@ class TestCli:
         out = runner.invoke(app, ["blast-radius", "a.py::f", "-p", str(tmp_path)])
         assert out.exit_code == 2
         assert "gittrace scan" in out.output
+        assert len([l for l in out.output.splitlines() if l.strip()]) == 1      # errors are not hard-wrapped
 
 
 class TestRescan:

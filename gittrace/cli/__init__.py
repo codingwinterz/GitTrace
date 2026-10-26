@@ -117,7 +117,8 @@ def _print_json(data: dict) -> None:
 
 
 def _fail(message: str) -> None:
-    Console(stderr=True, highlight=False).print(f"[bold red]error:[/] {message}")
+    # soft_wrap: one logical line, so a suggested command or a path is never split mid-way
+    Console(stderr=True, highlight=False, soft_wrap=True).print(f"[bold red]error:[/] {message}")
     raise typer.Exit(EXIT_ERROR)
 
 
