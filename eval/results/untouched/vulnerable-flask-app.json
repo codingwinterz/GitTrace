@@ -75,7 +75,7 @@
         27
       ],
       "severity": "low",
-      "snippet": "26 app.config['SECRET_KEY_HMAC'] = 'secret'"
+      "snippet": "26 app.config['SECRET_KEY_HMAC'] = 'sec***'"
     },
     {
       "tool": "bandit",
@@ -87,7 +87,7 @@
         28
       ],
       "severity": "low",
-      "snippet": "27 app.config['SECRET_KEY_HMAC_2'] = 'am0r3C0mpl3xK3y'"
+      "snippet": "27 app.config['SECRET_KEY_HMAC_2'] = 'am0************'"
     },
     {
       "tool": "bandit",
@@ -169,7 +169,7 @@
         "lines": [
           26
         ],
-        "detail": "app.config['SECRET_KEY_HMAC'] = 'secret' (the key that signs and verifies the JWTs)"
+        "detail": "app.config['SECRET_KEY_HMAC'] = 'sec***' (the key that signs and verifies the JWTs)"
       },
       {
         "id": "VF-4",
@@ -178,7 +178,7 @@
         "lines": [
           27
         ],
-        "detail": "app.config['SECRET_KEY_HMAC_2'] = 'am0r3C0mpl3xK3y'"
+        "detail": "app.config['SECRET_KEY_HMAC_2'] = 'am0************'"
       },
       {
         "id": "VF-5",
@@ -187,7 +187,7 @@
         "lines": [
           28
         ],
-        "detail": "app.secret_key = 'F12Zr47j\\3yX R~X@H!jmM]Lwf/,?KT' (Flask session key)"
+        "detail": "app.secret_key = 'F12****************************' (Flask session key)"
       }
     ],
     "tp_reachable_unauthenticated": 2,

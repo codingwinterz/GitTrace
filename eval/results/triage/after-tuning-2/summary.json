@@ -1,0 +1,555 @@
+{
+  "label": "after-tuning-2",
+  "set": "measured",
+  "targets": [
+    "vulpy-bad",
+    "vulpy-good",
+    "vulnerable-flask-app",
+    "vulnpy",
+    "dvga",
+    "ctfd",
+    "mealie"
+  ],
+  "prompt_version": "triage-v3",
+  "llm_code_sha256": "25ef9a865a92fcc68e5c22047181e2e656a6b3c87484db9a7819b255e66cf2ac",
+  "gpu": "NVIDIA GeForce RTX 5050 Laptop GPU, 8151 MiB",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "models": {
+    "ollama/qwen2.5-coder:7b": {
+      "model": {
+        "model": "ollama/qwen2.5-coder:7b",
+        "digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+        "quantization": "Q4_K_M",
+        "parameters": "7.6B",
+        "ollama_version": "0.40.11"
+      },
+      "warmup_seconds": 19.53,
+      "wall_seconds": 128.0,
+      "metrics": {
+        "findings": 52,
+        "tp": 35,
+        "fp": 17,
+        "fp_marked_harmless": 0.647,
+        "tp_marked_harmless": 0.286,
+        "uncertain": 0.019,
+        "tp_verdicts": {
+          "likely_real": 24,
+          "uncertain": 1,
+          "likely_harmless": 10,
+          "error": 0
+        },
+        "fp_verdicts": {
+          "likely_real": 6,
+          "uncertain": 0,
+          "likely_harmless": 11,
+          "error": 0
+        },
+        "errors": 0,
+        "retried": 0,
+        "mean_adjustment_tp": 0,
+        "mean_adjustment_fp": 0,
+        "fix_offered": 31,
+        "fix_applies": 27,
+        "seconds_mean": 2.36,
+        "seconds_median": 2.09,
+        "seconds_max": 4.18,
+        "tp_hidden": [
+          "vulpy-ssl.py::13::1",
+          "vulpy.py::16::1",
+          "libapi.py::10::1",
+          "libsession.py::9::1",
+          "vulpy-ssl.py::13::1",
+          "vulpy.py::17::1",
+          "app/app.py::63::9",
+          "app.py::14::1",
+          "app.py::15::1",
+          "mealie/core/settings/settings.py::290::5"
+        ]
+      },
+      "by_target": {
+        "vulpy-bad": {
+          "findings": 6,
+          "tp": 5,
+          "fp": 1,
+          "fp_marked_harmless": 0.0,
+          "tp_marked_harmless": 0.4,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 3,
+            "uncertain": 0,
+            "likely_harmless": 2,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 1,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": 0,
+          "fix_offered": 4,
+          "fix_applies": 4,
+          "seconds_mean": 2.22,
+          "seconds_median": 2.09,
+          "seconds_max": 2.74,
+          "tp_hidden": [
+            "vulpy-ssl.py::13::1",
+            "vulpy.py::16::1"
+          ]
+        },
+        "vulpy-good": {
+          "findings": 5,
+          "tp": 5,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.8,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 1,
+            "uncertain": 0,
+            "likely_harmless": 4,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": null,
+          "fix_offered": 1,
+          "fix_applies": 1,
+          "seconds_mean": 2.33,
+          "seconds_median": 1.94,
+          "seconds_max": 4.12,
+          "tp_hidden": [
+            "libapi.py::10::1",
+            "libsession.py::9::1",
+            "vulpy-ssl.py::13::1",
+            "vulpy.py::17::1"
+          ]
+        },
+        "vulnerable-flask-app": {
+          "findings": 4,
+          "tp": 4,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.25,
+          "uncertain": 0.25,
+          "tp_verdicts": {
+            "likely_real": 2,
+            "uncertain": 1,
+            "likely_harmless": 1,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": -0.25,
+          "mean_adjustment_fp": null,
+          "fix_offered": 3,
+          "fix_applies": 2,
+          "seconds_mean": 2.47,
+          "seconds_median": 2.23,
+          "seconds_max": 3.71,
+          "tp_hidden": [
+            "app/app.py::63::9"
+          ]
+        },
+        "vulnpy": {
+          "findings": 15,
+          "tp": 15,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 15,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0.07,
+          "mean_adjustment_fp": null,
+          "fix_offered": 15,
+          "fix_applies": 14,
+          "seconds_mean": 1.87,
+          "seconds_median": 1.86,
+          "seconds_max": 2.38,
+          "tp_hidden": []
+        },
+        "dvga": {
+          "findings": 4,
+          "tp": 4,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.5,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 2,
+            "uncertain": 0,
+            "likely_harmless": 2,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": null,
+          "fix_offered": 2,
+          "fix_applies": 2,
+          "seconds_mean": 2.19,
+          "seconds_median": 2.21,
+          "seconds_max": 2.38,
+          "tp_hidden": [
+            "app.py::14::1",
+            "app.py::15::1"
+          ]
+        },
+        "ctfd": {
+          "findings": 3,
+          "tp": 0,
+          "fp": 3,
+          "fp_marked_harmless": 0.667,
+          "tp_marked_harmless": null,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 1,
+            "uncertain": 0,
+            "likely_harmless": 2,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": null,
+          "mean_adjustment_fp": 0,
+          "fix_offered": 1,
+          "fix_applies": 0,
+          "seconds_mean": 3.75,
+          "seconds_median": 3.8,
+          "seconds_max": 3.83,
+          "tp_hidden": []
+        },
+        "mealie": {
+          "findings": 15,
+          "tp": 2,
+          "fp": 13,
+          "fp_marked_harmless": 0.692,
+          "tp_marked_harmless": 0.5,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 1,
+            "uncertain": 0,
+            "likely_harmless": 1,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 4,
+            "uncertain": 0,
+            "likely_harmless": 9,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": 0,
+          "fix_offered": 5,
+          "fix_applies": 4,
+          "seconds_mean": 2.66,
+          "seconds_median": 2.77,
+          "seconds_max": 4.18,
+          "tp_hidden": [
+            "mealie/core/settings/settings.py::290::5"
+          ]
+        }
+      }
+    },
+    "ollama/llama3.1:8b": {
+      "model": {
+        "model": "ollama/llama3.1:8b",
+        "digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+        "quantization": "Q4_K_M",
+        "parameters": "8.0B",
+        "ollama_version": "0.40.11"
+      },
+      "warmup_seconds": 15.23,
+      "wall_seconds": 127.5,
+      "metrics": {
+        "findings": 52,
+        "tp": 35,
+        "fp": 17,
+        "fp_marked_harmless": 0.824,
+        "tp_marked_harmless": 0.029,
+        "uncertain": 0.058,
+        "tp_verdicts": {
+          "likely_real": 32,
+          "uncertain": 2,
+          "likely_harmless": 1,
+          "error": 0
+        },
+        "fp_verdicts": {
+          "likely_real": 2,
+          "uncertain": 1,
+          "likely_harmless": 14,
+          "error": 0
+        },
+        "errors": 0,
+        "retried": 0,
+        "mean_adjustment_tp": 0.37,
+        "mean_adjustment_fp": 0.06,
+        "fix_offered": 32,
+        "fix_applies": 28,
+        "seconds_mean": 2.36,
+        "seconds_median": 2.13,
+        "seconds_max": 4.82,
+        "tp_hidden": [
+          "mealie/core/settings/db_providers.py::38::5"
+        ]
+      },
+      "by_target": {
+        "vulpy-bad": {
+          "findings": 6,
+          "tp": 5,
+          "fp": 1,
+          "fp_marked_harmless": 1.0,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 5,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 1,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": 0,
+          "fix_offered": 5,
+          "fix_applies": 5,
+          "seconds_mean": 2.22,
+          "seconds_median": 2.08,
+          "seconds_max": 3.0,
+          "tp_hidden": []
+        },
+        "vulpy-good": {
+          "findings": 5,
+          "tp": 5,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 5,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0.2,
+          "mean_adjustment_fp": null,
+          "fix_offered": 5,
+          "fix_applies": 5,
+          "seconds_mean": 2.27,
+          "seconds_median": 1.98,
+          "seconds_max": 3.51,
+          "tp_hidden": []
+        },
+        "vulnerable-flask-app": {
+          "findings": 4,
+          "tp": 4,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.25,
+          "tp_verdicts": {
+            "likely_real": 3,
+            "uncertain": 1,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": null,
+          "fix_offered": 3,
+          "fix_applies": 3,
+          "seconds_mean": 2.59,
+          "seconds_median": 2.4,
+          "seconds_max": 3.83,
+          "tp_hidden": []
+        },
+        "vulnpy": {
+          "findings": 15,
+          "tp": 15,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.067,
+          "tp_verdicts": {
+            "likely_real": 14,
+            "uncertain": 1,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0.8,
+          "mean_adjustment_fp": null,
+          "fix_offered": 15,
+          "fix_applies": 11,
+          "seconds_mean": 1.82,
+          "seconds_median": 1.73,
+          "seconds_max": 2.72,
+          "tp_hidden": []
+        },
+        "dvga": {
+          "findings": 4,
+          "tp": 4,
+          "fp": 0,
+          "fp_marked_harmless": null,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 4,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": null,
+          "fix_offered": 3,
+          "fix_applies": 3,
+          "seconds_mean": 2.03,
+          "seconds_median": 1.95,
+          "seconds_max": 2.54,
+          "tp_hidden": []
+        },
+        "ctfd": {
+          "findings": 3,
+          "tp": 0,
+          "fp": 3,
+          "fp_marked_harmless": 0.667,
+          "tp_marked_harmless": null,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 0,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 1,
+            "uncertain": 0,
+            "likely_harmless": 2,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": null,
+          "mean_adjustment_fp": 0,
+          "fix_offered": 1,
+          "fix_applies": 1,
+          "seconds_mean": 3.88,
+          "seconds_median": 3.68,
+          "seconds_max": 4.82,
+          "tp_hidden": []
+        },
+        "mealie": {
+          "findings": 15,
+          "tp": 2,
+          "fp": 13,
+          "fp_marked_harmless": 0.846,
+          "tp_marked_harmless": 0.5,
+          "uncertain": 0.067,
+          "tp_verdicts": {
+            "likely_real": 1,
+            "uncertain": 0,
+            "likely_harmless": 1,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 1,
+            "uncertain": 1,
+            "likely_harmless": 11,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": 0.08,
+          "fix_offered": 0,
+          "fix_applies": 0,
+          "seconds_mean": 2.71,
+          "seconds_median": 2.49,
+          "seconds_max": 4.41,
+          "tp_hidden": [
+            "mealie/core/settings/db_providers.py::38::5"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -90,7 +90,7 @@
         15
       ],
       "severity": "low",
-      "snippet": "14 app.config['SECRET_KEY'] = 'dvga'"
+      "snippet": "14 app.config['SECRET_KEY'] = 'dvg*'"
     },
     {
       "tool": "bandit",
@@ -164,7 +164,7 @@
         "lines": [
           64
         ],
-        "detail": "User(..., password=\"password123\"): the seeded operator account's password, passed as a keyword argument"
+        "detail": "User(..., password=\"pas********\"): the seeded operator account's password, passed as a keyword argument"
       }
     ],
     "tp_reachable_unauthenticated": 1,

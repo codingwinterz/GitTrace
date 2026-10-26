@@ -24,6 +24,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import hygiene  # eval/hygiene.py: keeps raw secret values out of the output
+
 EVAL = Path(__file__).resolve().parent
 REPO = EVAL.parent
 SRC = EVAL / ".src"
@@ -71,7 +73,7 @@ def bandit() -> Path:
 
 
 def run_gittrace(path: Path, use_graph: bool) -> dict:
-    cmd = [sys.executable, "-m", "gittrace", "scan", str(path), "--no-blame",
+    cmd = [sys.executable, "-m", "gittrace", "scan", str(path), "--no-blame", "--no-llm",
            "--format", "json", "--fail-on", "none"]
     if not use_graph:
         cmd.append("--offline")
@@ -178,6 +180,7 @@ def evaluate(label: str, use_graph: bool, target_set: str = "tuning") -> dict:
     for t in targets["vulnerable"]:
         path = checkout(t)
         truth = json.loads((EVAL / t["name"] / "ground_truth.json").read_text(encoding="utf-8"))
+        hygiene.register(hygiene.target_values(t["name"], path=path))
         data = run_gittrace(path, use_graph)
         g = gittrace_findings(data)                 # the main report; test code is separate
         b = bandit_findings(run_bandit(path), path)
@@ -187,7 +190,7 @@ def evaluate(label: str, use_graph: bool, target_set: str = "tuning") -> dict:
                   "ground_truth_reachable_unauthenticated": sum(
                       1 for v in truth["vulnerabilities"]
                       if (v.get("reachable") or {}).get("unauthenticated"))}
-        (out_dir / f"{t['name']}.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+        hygiene.write_json(out_dir / f"{t['name']}.json", record)
         summary["vulnerable"][t["name"]] = {k: {m: record[k][m] for m in (
             "ground_truth", "tp", "fp", "fp_benign", "fn", "precision", "precision_ignoring_benign",
             "recall", "tp_reachable_unauthenticated", "tp_reachable_any") if m in record[k]}
@@ -211,6 +214,7 @@ def evaluate(label: str, use_graph: bool, target_set: str = "tuning") -> dict:
 
     for t in targets["real_world"]:
         path = checkout(t)
+        hygiene.register(hygiene.target_values(t["name"], path=path))
         data = run_gittrace(path, use_graph)
         g = gittrace_findings(data)
         b = bandit_findings(run_bandit(path), path)
@@ -235,14 +239,13 @@ def evaluate(label: str, use_graph: bool, target_set: str = "tuning") -> dict:
             template = {"verdicts": {f["id"]: {"verdict": "tp|fp", "reason": "", "finding": f}
                                      for f in g}}
             (EVAL / t["name"]).mkdir(exist_ok=True)
-            (EVAL / t["name"] / "review_template.json").write_text(json.dumps(template, indent=2),
-                                                                   encoding="utf-8")
-        (out_dir / f"{t['name']}.json").write_text(json.dumps({**entry, "findings": g}, indent=2),
-                                                   encoding="utf-8")
+            hygiene.write_json(EVAL / t["name"] / "review_template.json", template)
+        hygiene.write_json(out_dir / f"{t['name']}.json", {**entry, "findings": g})
         summary["real_world"][t["name"]] = entry
 
-    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    (out_dir / "summary.md").write_text(markdown(summary), encoding="utf-8")
+    hygiene.write_json(out_dir / "summary.json", summary)
+    hygiene.write_text(out_dir / "summary.md", markdown(summary))
+    hygiene.assert_clean(out_dir)
     return summary
 
 
@@ -263,8 +266,9 @@ def apply_reviews(label: str) -> dict:
                       "false_positives": fp,
                       "false_positive_rate": round(fp / (len(findings) - len(missing)), 3)
                       if len(findings) > len(missing) else None})
-    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    (out_dir / "summary.md").write_text(markdown(summary), encoding="utf-8")
+    hygiene.write_json(out_dir / "summary.json", summary)
+    hygiene.write_text(out_dir / "summary.md", markdown(summary))
+    hygiene.assert_clean(out_dir)
     return summary
 
 

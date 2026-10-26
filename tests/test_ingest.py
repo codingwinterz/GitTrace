@@ -478,7 +478,7 @@ class TestEntryPoint:
 
     def _scan(self, path) -> subprocess.CompletedProcess:
         return subprocess.run(
-            [sys.executable, "-m", "gittrace", "scan", str(path), "--offline", "--no-blame",
+            [sys.executable, "-m", "gittrace", "scan", str(path), "--offline", "--no-blame", "--no-llm",
              "--format", "json", "--fail-on", "none"],
             cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", timeout=120,
         )

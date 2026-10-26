@@ -19,15 +19,21 @@ python -m gittrace scan path/to/project --format json       # for CI; exit 1 at 
 python -m gittrace trace app/db.py:17 -p tests/fixtures/sample_app
 python -m gittrace blast-radius app/db.py::Repo.get_user -p tests/fixtures/sample_app
 python -m gittrace scan path/to/project --offline           # no FalkorDB needed
+python -m gittrace scan path/to/project --no-llm            # rules only, no model calls
+python -m gittrace scan path/to/project --model ollama/qwen2.5-coder:7b   # another model
 ```
+
+`scan` asks a local model to triage each finding. Install [Ollama](https://ollama.com) and pull
+the default model once (`ollama pull llama3.1:8b`), or pass `--no-llm`. Replies are
+cached in `<project>/.gittrace/cache`, so a rescan of unchanged code makes no model calls.
 
 Severity, the rules and the graph model are documented in README.md.
 
 ## Env vars
 
-See `.env.example`. FalkorDB settings are required except for `scan --offline`;
-`Gemini_API_Key` / `LITELLM_MODEL` are only read by the experimental agent loop.
-Never commit `.env`.
+See `.env.example`. FalkorDB settings are required except for `scan --offline`.
+`GITTRACE_MODEL` picks the triage model (`--model` wins over it), `GITTRACE_LLM_TIMEOUT`
+the seconds to wait per reply, `OLLAMA_API_BASE` where Ollama listens. Never commit `.env`.
 
 ## Tests
 
@@ -35,8 +41,9 @@ Never commit `.env`.
 python -m pytest tests -v
 ```
 
-`tests/test_core.py`, `tests/test_ingest.py`, `tests/test_rules.py` and `tests/test_scan.py`
-are offline (no live DB, no API key). `tests/test_ingest_integration.py` and
+`tests/test_core.py`, `tests/test_ingest.py`, `tests/test_rules.py`, `tests/test_scan.py` and
+`tests/test_llm.py` are offline (no live DB, the model mocked). `tests/test_llm_live.py`
+runs one real triage against Ollama and skips when Ollama or the model is not there. `tests/test_ingest_integration.py` and
 `tests/test_scan_integration.py` scan `tests/fixtures/sample_app` into a real FalkorDB and
 check the exact graph, findings and tool results; they create their graphs and drop them.
 
@@ -54,7 +61,7 @@ Run at least the offline suites before pushing. CI (`.github/workflows/tests.yml
 them on Python 3.11–3.13, plus the integration suites against FalkorDB in Docker:
 
 ```bash
-python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py -q
 ```
 
 ## MCP server (Track 01)
@@ -73,7 +80,7 @@ is **`main`**; the CLI rebuild happens on **`v2`**.
 
 ```bash
 git status                   # confirm only the files you meant to change
-python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py -q
 
 git add gittrace tests README.md RUN.md
 git commit -m "Describe the why, not the what"
@@ -88,15 +95,15 @@ git log --oneline -1 origin/v2
 
 ### Before every push: no secrets
 
-`.env` is gitignored and must stay that way — it holds the FalkorDB password and the
-Gemini API key. Check the tracked tree, not just the working directory:
+`.env` is gitignored and must stay that way — it holds the FalkorDB password (and any
+API key, if you point `GITTRACE_MODEL` at a hosted model). Check the tracked tree, not just the working directory:
 
 ```bash
 git ls-files | grep -i '\.env$'          # must print nothing
 git grep -nE 'AIza[0-9A-Za-z_-]{10,}|AQ\.[A-Za-z0-9_-]{10,}'   # must print nothing
 ```
 
-If a key ever does get committed, rotate it in FalkorDB Cloud / AI Studio first — a
+If a key ever does get committed, rotate it at its provider first — a
 force-push does not un-leak it — then rewrite history.
 
 Do not commit `*.log`, `debug/`, `.venv/`, `__pycache__/`, or `.pytest_cache/`; all are

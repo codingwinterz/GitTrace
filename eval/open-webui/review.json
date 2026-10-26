@@ -33,6 +33,6 @@
     "backend/open_webui/internal/db.py::396::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
     "backend/open_webui/internal/db.py::398::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
     "backend/open_webui/internal/db.py::400::13": {"verdict": "fp", "reason": "PRAGMA from an environment setting"},
-    "backend/open_webui/routers/auths.py::738::9": {"verdict": "fp", "reason": "admin_password = 'admin' is used only when WEBUI_AUTH is False, where the instance runs without authentication by design"}
+    "backend/open_webui/routers/auths.py::738::9": {"verdict": "fp", "reason": "admin_password = 'adm**' is used only when WEBUI_AUTH is False, where the instance runs without authentication by design"}
   }
 }

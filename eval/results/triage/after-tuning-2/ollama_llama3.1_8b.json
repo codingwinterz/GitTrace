@@ -1,0 +1,1927 @@
+{
+  "model": {
+    "model": "ollama/llama3.1:8b",
+    "digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+    "quantization": "Q4_K_M",
+    "parameters": "8.0B",
+    "ollama_version": "0.40.11"
+  },
+  "warmup_seconds": 15.23,
+  "wall_seconds": 127.5,
+  "metrics": {
+    "findings": 52,
+    "tp": 35,
+    "fp": 17,
+    "fp_marked_harmless": 0.824,
+    "tp_marked_harmless": 0.029,
+    "uncertain": 0.058,
+    "tp_verdicts": {
+      "likely_real": 32,
+      "uncertain": 2,
+      "likely_harmless": 1,
+      "error": 0
+    },
+    "fp_verdicts": {
+      "likely_real": 2,
+      "uncertain": 1,
+      "likely_harmless": 14,
+      "error": 0
+    },
+    "errors": 0,
+    "retried": 0,
+    "mean_adjustment_tp": 0.37,
+    "mean_adjustment_fp": 0.06,
+    "fix_offered": 32,
+    "fix_applies": 28,
+    "seconds_mean": 2.36,
+    "seconds_median": 2.13,
+    "seconds_max": 4.82,
+    "tp_hidden": [
+      "mealie/core/settings/db_providers.py::38::5"
+    ]
+  },
+  "by_target": {
+    "vulpy-bad": {
+      "findings": 6,
+      "tp": 5,
+      "fp": 1,
+      "fp_marked_harmless": 1.0,
+      "tp_marked_harmless": 0.0,
+      "uncertain": 0.0,
+      "tp_verdicts": {
+        "likely_real": 5,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 0,
+        "uncertain": 0,
+        "likely_harmless": 1,
+        "error": 0
+      },
+      "errors": 0,
+      "retried": 0,
+      "mean_adjustment_tp": 0,
+      "mean_adjustment_fp": 0,
+      "fix_offered": 5,
+      "fix_applies": 5,
+      "seconds_mean": 2.22,
+      "seconds_median": 2.08,
+      "seconds_max": 3.0,
+      "tp_hidden": []
+    },
+    "vulpy-good": {
+      "findings": 5,
+      "tp": 5,
+      "fp": 0,
+      "fp_marked_harmless": null,
+      "tp_marked_harmless": 0.0,
+      "uncertain": 0.0,
+      "tp_verdicts": {
+        "likely_real": 5,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 0,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "errors": 0,
+      "retried": 0,
+      "mean_adjustment_tp": 0.2,
+      "mean_adjustment_fp": null,
+      "fix_offered": 5,
+      "fix_applies": 5,
+      "seconds_mean": 2.27,
+      "seconds_median": 1.98,
+      "seconds_max": 3.51,
+      "tp_hidden": []
+    },
+    "vulnerable-flask-app": {
+      "findings": 4,
+      "tp": 4,
+      "fp": 0,
+      "fp_marked_harmless": null,
+      "tp_marked_harmless": 0.0,
+      "uncertain": 0.25,
+      "tp_verdicts": {
+        "likely_real": 3,
+        "uncertain": 1,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 0,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "errors": 0,
+      "retried": 0,
+      "mean_adjustment_tp": 0,
+      "mean_adjustment_fp": null,
+      "fix_offered": 3,
+      "fix_applies": 3,
+      "seconds_mean": 2.59,
+      "seconds_median": 2.4,
+      "seconds_max": 3.83,
+      "tp_hidden": []
+    },
+    "vulnpy": {
+      "findings": 15,
+      "tp": 15,
+      "fp": 0,
+      "fp_marked_harmless": null,
+      "tp_marked_harmless": 0.0,
+      "uncertain": 0.067,
+      "tp_verdicts": {
+        "likely_real": 14,
+        "uncertain": 1,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 0,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "errors": 0,
+      "retried": 0,
+      "mean_adjustment_tp": 0.8,
+      "mean_adjustment_fp": null,
+      "fix_offered": 15,
+      "fix_applies": 11,
+      "seconds_mean": 1.82,
+      "seconds_median": 1.73,
+      "seconds_max": 2.72,
+      "tp_hidden": []
+    },
+    "dvga": {
+      "findings": 4,
+      "tp": 4,
+      "fp": 0,
+      "fp_marked_harmless": null,
+      "tp_marked_harmless": 0.0,
+      "uncertain": 0.0,
+      "tp_verdicts": {
+        "likely_real": 4,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 0,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "errors": 0,
+      "retried": 0,
+      "mean_adjustment_tp": 0,
+      "mean_adjustment_fp": null,
+      "fix_offered": 3,
+      "fix_applies": 3,
+      "seconds_mean": 2.03,
+      "seconds_median": 1.95,
+      "seconds_max": 2.54,
+      "tp_hidden": []
+    },
+    "ctfd": {
+      "findings": 3,
+      "tp": 0,
+      "fp": 3,
+      "fp_marked_harmless": 0.667,
+      "tp_marked_harmless": null,
+      "uncertain": 0.0,
+      "tp_verdicts": {
+        "likely_real": 0,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 1,
+        "uncertain": 0,
+        "likely_harmless": 2,
+        "error": 0
+      },
+      "errors": 0,
+      "retried": 0,
+      "mean_adjustment_tp": null,
+      "mean_adjustment_fp": 0,
+      "fix_offered": 1,
+      "fix_applies": 1,
+      "seconds_mean": 3.88,
+      "seconds_median": 3.68,
+      "seconds_max": 4.82,
+      "tp_hidden": []
+    },
+    "mealie": {
+      "findings": 15,
+      "tp": 2,
+      "fp": 13,
+      "fp_marked_harmless": 0.846,
+      "tp_marked_harmless": 0.5,
+      "uncertain": 0.067,
+      "tp_verdicts": {
+        "likely_real": 1,
+        "uncertain": 0,
+        "likely_harmless": 1,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 1,
+        "uncertain": 1,
+        "likely_harmless": 11,
+        "error": 0
+      },
+      "errors": 0,
+      "retried": 0,
+      "mean_adjustment_tp": 0,
+      "mean_adjustment_fp": 0.08,
+      "fix_offered": 0,
+      "fix_applies": 0,
+      "seconds_mean": 2.71,
+      "seconds_median": 2.49,
+      "seconds_max": 4.41,
+      "tp_hidden": [
+        "mealie/core/settings/db_providers.py::38::5"
+      ]
+    }
+  },
+  "records": [
+    {
+      "target": "vulpy-bad",
+      "id": "libuser.py::12::12",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 11,
+      "label": "tp",
+      "source": "ground truth VB-1",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using f-strings with placeholders for the username and password, which are derived from function parameters.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "username",
+          "source": "attacker"
+        },
+        {
+          "value": "password",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 1.99,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1236,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/libuser.py\n+++ b/libuser.py\n@@ -9,7 +9,7 @@\n     conn.row_factory = sqlite3.Row\r\n     c = conn.cursor()\r\n \r\n-    user = c.execute(\"SELECT * FROM users WHERE username = '{}' and password = '{}'\".format(username, password)).fetchone()\r\n+    user = c.execute(\"SELECT * FROM users WHERE username = ? and password = ?\", (username, password)).fetchone()\r\n \r\n     if user:\r\n         return user['username']\r\n"
+    },
+    {
+      "target": "vulpy-bad",
+      "id": "libuser.py::25::5",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 10,
+      "label": "tp",
+      "source": "ground truth VB-2",
+      "verdict": "likely_real",
+      "reason": "The password and username are derived from function parameters.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "username",
+          "source": "attacker"
+        },
+        {
+          "value": "password",
+          "source": "attacker"
+        },
+        {
+          "value": ":d",
+          "source": "constant"
+        },
+        {
+          "value": ":d",
+          "source": "constant"
+        },
+        {
+          "value": "''",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 3.0,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1120,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/libuser.py\n+++ b/libuser.py\n@@ -22,7 +22,7 @@\n     conn = sqlite3.connect('db_users.sqlite')\r\n     c = conn.cursor()\r\n \r\n-    c.execute(\"INSERT INTO users (username, password, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%d', '%d', '%s')\" %(username, password, 0, 0, ''))\r\n+    c.execute(\"INSERT INTO users (username, password, failures, mfa_enabled, mfa_secret) VALUES (?, ?, ?, ?, ?)\", (username, password, 0, 0, ''))\r\n \r\n     conn.commit()\r\n     conn.close()\r\n"
+    },
+    {
+      "target": "vulpy-bad",
+      "id": "libuser.py::53::5",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 10,
+      "label": "tp",
+      "source": "ground truth VB-3",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using f-strings with placeholders for the password and username, which are derived from function parameters.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "password",
+          "source": "attacker"
+        },
+        {
+          "value": "username",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 2.15,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1126,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/libuser.py\n+++ b/libuser.py\n@@ -50,7 +50,7 @@\n     conn.row_factory = sqlite3.Row\r\n     c = conn.cursor()\r\n \r\n-    c.execute(\"UPDATE users SET password = '{}' WHERE username = '{}'\".format(password, username))\r\n+    c.execute(\"UPDATE users SET password = ? WHERE username = ?\", (password, username))\r\n     conn.commit()\r\n \r\n     return True\r\n"
+    },
+    {
+      "target": "vulpy-bad",
+      "id": "db.py::19::9",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "ground truth: benign",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from table and column names, and the data is passed separately as parameters.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "u",
+          "source": "internal"
+        },
+        {
+          "value": "p",
+          "source": "internal"
+        },
+        {
+          "value": "0",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.01,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1137,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "vulpy-bad",
+      "id": "vulpy-ssl.py::13::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VB-5",
+      "verdict": "likely_real",
+      "reason": "The secret value is hardcoded in the code, and the rule is deterministic.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "aaa****",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.12,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1401,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/vulpy-ssl.py\n+++ b/vulpy-ssl.py\n@@ -10,7 +10,7 @@\n import libsession\r\n \r\n app = Flask('vulpy')\r\n-app.config['SECRET_KEY'] = 'aaa****'\r\n+app.config['SECRET_KEY'] = os.environ['SECRET_KEY']\r\n \r\n app.register_blueprint(mod_hello, url_prefix='/hello')\r\n app.register_blueprint(mod_user, url_prefix='/user')\r\n"
+    },
+    {
+      "target": "vulpy-bad",
+      "id": "vulpy.py::16::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VB-4",
+      "verdict": "likely_real",
+      "reason": "The secret value is hardcoded in the code, and the name is a secret word.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "aaa****",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.03,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1731,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/vulpy.py\n+++ b/vulpy.py\n@@ -13,7 +13,7 @@\n from mod_user import mod_user\r\n \r\n app = Flask('vulpy')\r\n-app.config['SECRET_KEY'] = 'aaa****'\r\n+app.config['SECRET_KEY'] = os.environ['SECRET_KEY']\r\n \r\n app.register_blueprint(mod_hello, url_prefix='/hello')\r\n app.register_blueprint(mod_user, url_prefix='/user')\r\n"
+    },
+    {
+      "target": "vulpy-good",
+      "id": "libuser.py::61::5",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VG-1",
+      "verdict": "likely_real",
+      "reason": "The username parameter is derived from a function parameter, which could be user input.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "username",
+          "source": "attacker"
+        },
+        {
+          "value": "''",
+          "source": "constant"
+        },
+        {
+          "value": "''",
+          "source": "constant"
+        },
+        {
+          "value": "0",
+          "source": "constant"
+        },
+        {
+          "value": "0",
+          "source": "constant"
+        },
+        {
+          "value": "''",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.51,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1198,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/libuser.py\n+++ b/libuser.py\n@@ -58,7 +58,7 @@\n     conn.set_trace_callback(print)\r\n     conn.row_factory = sqlite3.Row\r\n     c = conn.cursor()\r\n-    c.execute(\"INSERT INTO users (username, password, salt, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%s', '%d', '%d', '%s')\" %(username, '', '', 0, 0, ''))\r\n+    c.execute(\"INSERT INTO users (username, password, salt, failures, mfa_enabled, mfa_secret) VALUES (?, ?, ?, ?, ?, ?)\", (username, '', '', 0, 0, ''))\r\n     conn.commit()\r\n \r\n     if password:\r\n"
+    },
+    {
+      "target": "vulpy-good",
+      "id": "libapi.py::10::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VG-4",
+      "verdict": "likely_real",
+      "reason": "The secret is hardcoded in the code, and its value is not an obvious placeholder.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "MYS*************",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.04,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1521,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/libapi.py\n+++ b/libapi.py\n@@ -7,7 +7,7 @@\n \r\n from pathlib import Path\r\n \r\n-secret = 'MYS*************'\r\n+secret = os.environ['SECRET']\r\n not_after = 60 # 1 minute\r\n \r\n def keygen(username, password=None, login=True):\r\n"
+    },
+    {
+      "target": "vulpy-good",
+      "id": "libsession.py::9::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VG-5",
+      "verdict": "likely_real",
+      "reason": "The secret is hardcoded in the code, and its value is not an obvious placeholder.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "JHt*****************************************",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.89,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1654,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/libsession.py\n+++ b/libsession.py\n@@ -6,7 +6,7 @@\n from cryptography.fernet import Fernet\r\n \r\n \r\n-key = 'JHt*****************************************'\r\n+key = os.environ['key']\r\n fernet = Fernet(key)\r\n ttl = 7200 # seconds\r\n reader = geoip2.database.Reader('GeoLite2-Country.mmdb')\r\n"
+    },
+    {
+      "target": "vulpy-good",
+      "id": "vulpy-ssl.py::13::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VG-3",
+      "verdict": "likely_real",
+      "reason": "The secret value is hardcoded in the code, and the name 'SECRET_KEY' indicates it's a secret.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "aaa****",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.95,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1401,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/vulpy-ssl.py\n+++ b/vulpy-ssl.py\n@@ -10,7 +10,7 @@\n import libsession\r\n \r\n app = Flask('vulpy')\r\n-app.config['SECRET_KEY'] = 'aaa****'\r\n+app.config['SECRET_KEY'] = os.environ['SECRET_KEY']\r\n \r\n app.register_blueprint(mod_hello, url_prefix='/hello')\r\n app.register_blueprint(mod_user, url_prefix='/user')\r\n"
+    },
+    {
+      "target": "vulpy-good",
+      "id": "vulpy.py::17::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VG-2",
+      "verdict": "likely_real",
+      "reason": "The secret value is hardcoded in the code, and the application uses it.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "123*************************************************************",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.98,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1763,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/vulpy.py\n+++ b/vulpy.py\n@@ -14,7 +14,7 @@\n import libsession\r\n \r\n app = Flask('vulpy')\r\n-app.config['SECRET_KEY'] = '123*************************************************************'\r\n+app.config['SECRET_KEY'] = os.environ['SECRET_KEY']\r\n \r\n app.register_blueprint(mod_hello, url_prefix='/hello')\r\n app.register_blueprint(mod_user, url_prefix='/user')\r\n"
+    },
+    {
+      "target": "vulnerable-flask-app",
+      "id": "app/app.py::265::36",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 9,
+      "label": "tp",
+      "source": "ground truth VF-1",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using %-formatting and a variable `str_query` assigned from a local variable `search_term`.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "%s",
+          "source": "attacker"
+        },
+        {
+          "value": "search_term",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 2.85,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1823,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/app/app.py\n+++ b/app/app.py\n@@ -258,11 +258,8 @@\n                 try:\r\n                     search_term = content['search']\r\n                     print(search_term)\r\n-                    str_query = \"SELECT first_name, last_name, username FROM customer WHERE username = '%s';\" % search_term\r\n-                    # mycust = Customer.query.filter_by(username = search_term).first()\r\n-                    # return jsonify({'Customer': mycust.username, 'First Name': mycust.first_name}),200\r\n-\r\n-                    search_query = db.engine.execute(str_query)\r\n+                    str_query = \"SELECT first_name, last_name, username FROM customer WHERE username = :username\"\r\n+                    search_query = db.engine.execute(str_query, username=search_term)\r\n                     for result in search_query:\r\n                         results.append(list(result))\r\n                     print(results)\r\n"
+    },
+    {
+      "target": "vulnerable-flask-app",
+      "id": "app/app.py::329::17",
+      "rule": "GT-DESER-001",
+      "severity": "critical",
+      "score": 9,
+      "label": "tp",
+      "source": "ground truth VF-2",
+      "verdict": "uncertain",
+      "reason": "The value of `y` is read from a file, but the code does not specify where the file comes from.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "y",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 1.75,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 985,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "vulnerable-flask-app",
+      "id": "app/app.py::28::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VF-5",
+      "verdict": "likely_real",
+      "reason": "The secret key is hardcoded in the code, and the application uses it for authentication and authorization.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "F12****************************",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.83,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 5580,
+      "context_notes": [
+        "enclosing function cut to lines 1-280"
+      ],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/app/app.py\n+++ b/app/app.py\n@@ -25,7 +25,7 @@\n app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'\r\n app.config['SECRET_KEY_HMAC'] = 'sec***'\r\n app.config['SECRET_KEY_HMAC_2'] = 'am0************'\r\n-app.secret_key = 'F12****************************'\r\n+app.secret_key = os.environ['SECRET_KEY']\r\n app.config['STATIC_FOLDER'] = None\r\n \r\n db = SQLAlchemy(app)\r\n"
+    },
+    {
+      "target": "vulnerable-flask-app",
+      "id": "app/app.py::63::9",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth VF-6",
+      "verdict": "likely_real",
+      "reason": "The password is hardcoded and not loaded from the environment, which is the recommended practice.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "adm*****",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.94,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1392,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/app/app.py\n+++ b/app/app.py\n@@ -60,7 +60,7 @@\n     if not User.query.first():\r\n         user = User()\r\n         user.username = 'admin'\r\n-        user.password = 'adm*****'\r\n+        user.password = os.environ['password']\r\n         db.session.add(user)\r\n         db.session.commit()\r\n     if not Customer.query.first():\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "apps/fastapi_app.py::43::9",
+      "rule": "GT-CMDI-001",
+      "severity": "critical",
+      "score": 10,
+      "label": "tp",
+      "source": "ground truth VP-3",
+      "verdict": "likely_real",
+      "reason": "The variable `user_input` is derived from a function parameter, which can come from a user.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "user_input",
+          "source": "attacker"
+        },
+        {
+          "value": "this should be echoed",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 2.72,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1017,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/apps/fastapi_app.py\n+++ b/apps/fastapi_app.py\n@@ -36,10 +36,10 @@\n \r\n @app.get(\"/cmdi\")\r\n def cmdi(user_input: str):\r\n-    cmd = \"echo \" + user_input + \" this should be echoed\"\r\n-    print(\"Started app view\")\r\n+    cmd = 'echo ' + user_input + ' this should be echoed'\r\n+    print('Started app view')\r\n     for i in range(10):\r\n-        print(\"will echo command\")\r\n+        print('will echo command')\r\n         os.system(cmd)\r\n         print(\"about to sleep\")\r\n         sleep(3)\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/cmdi.py::6::12",
+      "rule": "GT-CMDI-001",
+      "severity": "critical",
+      "score": 10,
+      "label": "tp",
+      "source": "ground truth VP-1",
+      "verdict": "likely_real",
+      "reason": "The command parameter is derived from a function parameter, which can come from a request.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "command",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 1.55,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 836,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": false,
+      "fix_problem": "the suggested fix changes nothing",
+      "fix_diff": null
+    },
+    {
+      "target": "vulnpy",
+      "id": "apps/falcon_app.py::29::9",
+      "rule": "GT-CMDI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-4",
+      "verdict": "likely_real",
+      "reason": "The variable `user_input` is derived from the request parameter `req`.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "echo",
+          "source": "constant"
+        },
+        {
+          "value": "user_input[:10]",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.19,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 958,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/apps/falcon_app.py\n+++ b/apps/falcon_app.py\n@@ -25,8 +25,7 @@\n \r\n         digest = hexlify(md5(user_input).digest()).decode(\"utf8\")\r\n \r\n-        cmd = \"echo \" + str(user_input[:10])\r\n-        os.system(cmd)\r\n+        cmd = subprocess.run(['echo', str(user_input[:10])], check=True)\r\n \r\n         resp.status = falcon.HTTP_200\r\n         resp.media = {\"status\": \"ok\", \"md5\": digest}\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "apps/falcon_app.py::64::5",
+      "rule": "GT-CMDI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-5",
+      "verdict": "likely_real",
+      "reason": "The `user_input` variable is derived from a function parameter, which can come from a user.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.82,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1306,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/apps/falcon_app.py\n+++ b/apps/falcon_app.py\n@@ -60,8 +60,7 @@\n             print(\"Context is None\")\r\n             sys.exit(1)\r\n \r\n-    cmd = \"echo \" + str(user_input)\r\n-    os.system(cmd)\r\n+    cmd = ['echo', user_input]; os.system(*cmd)\r\n \r\n     # Do NOT remove this print as it is used in a testing assertion.\r\n     print(\"finished background thread\")\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/cmdi.py::10::15",
+      "rule": "GT-CMDI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-2",
+      "verdict": "likely_real",
+      "reason": "The `command` parameter is passed through unchanged, which can come from a request.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "command",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.66,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 886,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/cmdi.py\n+++ b/src/vulnpy/trigger/cmdi.py\n@@ -7,8 +7,6 @@\n \r\n \r\n def do_subprocess_popen(command):\r\n-    process = subprocess.Popen(\r\n-        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True\r\n-    )\r\n+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)\r\n     stdout, _ = process.communicate()\r\n     return stdout\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/deserialization.py::8::12",
+      "rule": "GT-DESER-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-6",
+      "verdict": "likely_real",
+      "reason": "The `user_input` variable is derived from a function parameter, which can come from a request.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.84,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 763,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/deserialization.py\n+++ b/src/vulnpy/trigger/deserialization.py\n@@ -4,8 +4,7 @@\n \r\n \r\n def do_pickle_load(user_input):\r\n-    user_input = io.BytesIO(user_input.encode(\"utf-8\"))\r\n-    return pickle.load(user_input)\r\n+    return pickle.load(io.BytesIO(user_input.encode('latin1')))\r\n \r\n \r\n def do_pickle_loads(user_input):\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/deserialization.py::12::12",
+      "rule": "GT-DESER-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-7",
+      "verdict": "likely_real",
+      "reason": "The `user_input` parameter is derived from a function parameter, which can come from a user.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.57,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 712,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/deserialization.py\n+++ b/src/vulnpy/trigger/deserialization.py\n@@ -9,7 +9,7 @@\n \r\n \r\n def do_pickle_loads(user_input):\r\n-    return pickle.loads(user_input.encode(\"utf-8\"))\r\n+    return pickle.loads(user_input)\r\n \r\n \r\n def do_yaml_load(user_input):\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/deserialization.py::17::16",
+      "rule": "GT-DESER-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-8",
+      "verdict": "likely_real",
+      "reason": "The Loader=yaml.UnsafeLoader parameter is used with user input, which can come from a request.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.56,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 799,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/deserialization.py\n+++ b/src/vulnpy/trigger/deserialization.py\n@@ -14,7 +14,7 @@\n \r\n def do_yaml_load(user_input):\r\n     try:\r\n-        return yaml.load(user_input, Loader=yaml.UnsafeLoader)\r\n+        return yaml.safe_load(user_input)\r\n     except yaml.constructor.ConstructorError:\r\n         pass\r\n \r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/deserialization.py::23::14",
+      "rule": "GT-DESER-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-9",
+      "verdict": "likely_real",
+      "reason": "The parameter `user_input` is passed through unchanged and its source is an attacker.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.73,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 895,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/deserialization.py\n+++ b/src/vulnpy/trigger/deserialization.py\n@@ -20,7 +20,7 @@\n \r\n \r\n def do_yaml_load_all(user_input):\r\n-    result = yaml.load_all(user_input, Loader=yaml.UnsafeLoader)\r\n+    result = yaml.load_all(user_input, Loader=yaml.SafeLoader)\r\n     # load_all returns a generator so we need to force the load to be evaluated\r\n     try:\r\n         return list(result)\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/sqli.py::37::9",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-10",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using an f-string with a placeholder for user_input.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "EXECUTE_QUERY_FMT",
+          "source": "constant"
+        },
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.09,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 891,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": false,
+      "fix_problem": "the patched file does not parse (line 37): unexpected indent",
+      "fix_diff": null
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/sqli.py::48::9",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-11",
+      "verdict": "uncertain",
+      "reason": "The SQL query is built at run time from a variable assigned from a function parameter.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "EXECUTEMANY_QUERY_FMT.format(user_input)",
+          "source": "unknown"
+        },
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.32,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 920,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/sqli.py\n+++ b/src/vulnpy/trigger/sqli.py\n@@ -44,8 +44,7 @@\n \r\n def do_sqlite3_executemany(user_input):\r\n     def executemany(cursor):\r\n-        sql = EXECUTEMANY_QUERY_FMT.format(user_input)\r\n-        cursor.executemany(sql, [(\"1\")])\r\n+        sql = EXECUTEMANY_QUERY_FMT.format(user_input=user_input); cursor.executemany(sql, (user_input,))\r\n \r\n     return _execute(executemany)\r\n \r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/sqli.py::59::16",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-12",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using an f-string with a placeholder for user_input.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "user_input",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.78,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 928,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/sqli.py\n+++ b/src/vulnpy/trigger/sqli.py\n@@ -55,7 +55,7 @@\n \r\n def do_sqlite3_executescript(user_input):\r\n     def executescript(cursor):\r\n-        sql = EXECUTESCRIPT_QUERY_FMT.format(user_input)\r\n+        sql = EXECUTESCRIPT_QUERY_FMT.bind(user_input=user_input)\r\n         return cursor.executescript(sql)\r\n \r\n     return _execute(executescript)\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py::2::5",
+      "rule": "GT-EVAL-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-13",
+      "verdict": "likely_real",
+      "reason": "The code parameter is passed through unchanged, derived from a function parameter.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "code",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.41,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 639,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": false,
+      "fix_problem": "the suggested fix changes nothing",
+      "fix_diff": null
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py::6::12",
+      "rule": "GT-EVAL-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-14",
+      "verdict": "likely_real",
+      "reason": "The parameter 'code' is passed through unchanged, derived from a function parameter.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "code",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.5,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 646,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/src/vulnpy/trigger/unsafe_code_exec.py\n+++ b/src/vulnpy/trigger/unsafe_code_exec.py\n@@ -3,7 +3,7 @@\n \r\n \r\n def do_eval(code):\r\n-    return eval(code)\r\n+    return ast.literal_eval(code)\r\n \r\n \r\n def do_compile(code):\r\n"
+    },
+    {
+      "target": "vulnpy",
+      "id": "src/vulnpy/trigger/unsafe_code_exec.py::10::12",
+      "rule": "GT-EVAL-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth VP-15",
+      "verdict": "likely_real",
+      "reason": "The code parameter is passed through unchanged, derived from a function parameter.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "code",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.59,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 679,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": false,
+      "fix_problem": "the suggested fix changes nothing",
+      "fix_diff": null
+    },
+    {
+      "target": "dvga",
+      "id": "core/helpers.py::9::10",
+      "rule": "GT-CMDI-001",
+      "severity": "critical",
+      "score": 11,
+      "label": "tp",
+      "source": "ground truth DV-1",
+      "verdict": "likely_real",
+      "reason": "The `cmd` parameter is passed through unchanged, derived from a function parameter.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "cmd",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 1.69,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 931,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/core/helpers.py\n+++ b/core/helpers.py\n@@ -6,7 +6,7 @@\n from core.models import ServerMode\r\n \r\n def run_cmd(cmd):\r\n-  return os.popen(cmd).read()\r\n+  return subprocess.run(cmd, shell=False, check=True).stdout\r\n \r\n def initialize():\r\n   return run_cmd('python3 setup.py')\r\n"
+    },
+    {
+      "target": "dvga",
+      "id": "core/views.py::320::30",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "tp",
+      "source": "ground truth DV-2",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using %-formatting, and the `filter` parameter is not a constant or internal value.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "filter",
+          "source": "attacker"
+        },
+        {
+          "value": "filter",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.54,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1086,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/core/views.py\n+++ b/core/views.py\n@@ -317,7 +317,7 @@\n     result = query.filter_by(public=public, burn=False)\r\n \r\n     if filter:\r\n-      result = result.filter(text(\"title = '%s' or content = '%s'\" % (filter, filter)))\r\n+      result = result.filter(text(\"title = :title or content = :content\", bindparams=[bindparam(\"title\", filter), bindparam(\"content\", filter)]))\r\n \r\n     return result.order_by(Paste.id.desc()).limit(limit)\r\n \r\n"
+    },
+    {
+      "target": "dvga",
+      "id": "app.py::14::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth DV-3",
+      "verdict": "likely_real",
+      "reason": "The secret value is hardcoded in the code, and the application uses it.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "dvg*",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.16,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1598,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/app.py\n+++ b/app.py\n@@ -11,7 +11,7 @@\n app.config[\"SQLALCHEMY_DATABASE_URI\"] = config.SQLALCHEMY_DATABASE_URI\r\n app.config[\"SQLALCHEMY_TRACK_MODIFICATIONS\"] = config.SQLALCHEMY_TRACK_MODIFICATIONS\r\n app.config[\"UPLOAD_FOLDER\"] = config.WEB_UPLOADDIR\r\n-app.config['SECRET_KEY'] = 'dvg*'\r\n+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')\r\n app.config[\"JWT_SECRET_KEY\"] = 'dvg*'\r\n app.config[\"JWT_ACCESS_TOKEN_EXPIRES\"] = 120\r\n app.config[\"JWT_REFRESH_TOKEN_EXPIRES\"] = 30\r\n"
+    },
+    {
+      "target": "dvga",
+      "id": "app.py::15::1",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "ground truth DV-4",
+      "verdict": "likely_real",
+      "reason": "The secret value is hardcoded in the code, and the application itself uses it.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "dvg*",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.74,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1620,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "ctfd",
+      "id": "CTFd/utils/exports/__init__.py::416::29",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 6,
+      "label": "fp",
+      "source": "review: table name from an admin-uploaded backup, rejected if it contains a quote; admin-only import",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from table and column names, which are internal to the application.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "table_name",
+          "source": "internal"
+        },
+        {
+          "value": "id",
+          "source": "internal"
+        },
+        {
+          "value": "table_name",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.13,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 4208,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "ctfd",
+      "id": "CTFd/utils/exports/__init__.py::247::21",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: KILL {proc_id}: the id comes from SHOW PROCESSLIST (database-supplied integer)",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built at run time, but the value `proc_id` is an internal variable, not coming from user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "proc_id",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.68,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 5620,
+      "context_notes": [
+        "enclosing function cut to lines 126-367 plus its signature"
+      ],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "ctfd",
+      "id": "CTFd/config.py::308::5",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: SECRET_KEY = \"AAAA...\" in TestingConfig: a dummy key for the test configuration (new after fix 3; reviewed in the after-tuning run)",
+      "verdict": "likely_real",
+      "reason": "The SECRET_KEY is hardcoded, and the value is not masked.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "SECRET_KEY",
+          "source": "internal"
+        },
+        {
+          "value": "AAA*****************",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 4.82,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 5578,
+      "context_notes": [
+        "enclosing function cut to lines 105-331"
+      ],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/CTFd/config.py\n+++ b/CTFd/config.py\n@@ -305,7 +305,7 @@\n \r\n \r\n class TestingConfig(ServerConfig):\r\n-    SECRET_KEY = \"AAA*****************\"\r\n+    SECRET_KEY = os.environ.get('SECRET_KEY')\r\n     PRESERVE_CONTEXT_ON_EXCEPTION = False\r\n     TESTING = True\r\n     DEBUG = True\r\n"
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::183::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from table and column names, which are internal to the application.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "table_meta.tablename",
+          "source": "internal"
+        },
+        {
+          "value": "table_meta.pk_1",
+          "source": "internal"
+        },
+        {
+          "value": "table_meta.pk_2",
+          "source": "internal"
+        },
+        {
+          "value": "default_pk",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.23,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1680,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::105::21",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_real",
+      "reason": "The variable `group_id` is a parameter of the function `create_household`, which suggests that it can be controlled by an attacker.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "households",
+          "source": "internal"
+        },
+        {
+          "value": "household_preferences",
+          "source": "internal"
+        },
+        {
+          "value": "group_id",
+          "source": "attacker"
+        },
+        {
+          "value": "household_data",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.93,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2152,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::121::41",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from internal data (table and column names) and a parameter passed as a dictionary.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "group_id",
+          "source": "internal"
+        },
+        {
+          "value": "migrated_field_defaults.keys()",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.47,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2191,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::143::21",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "uncertain",
+      "reason": "The value of `preferences_data` is unknown because it is built from `group_preferences` which is fetched from the database, but its contents are not shown.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "group_id",
+          "source": "internal"
+        },
+        {
+          "value": "preferences_data",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.51,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2076,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::24::28",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from table and column names, which are internal to the application.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "source_columns",
+          "source": "internal"
+        },
+        {
+          "value": "table",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.23,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1465,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::33::25",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from internal values (table and column names) and a parameter (id) that is not user-controlled.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "table",
+          "source": "internal"
+        },
+        {
+          "value": "columns",
+          "source": "internal"
+        },
+        {
+          "value": "source_columns",
+          "source": "internal"
+        },
+        {
+          "value": "id_",
+          "source": "internal"
+        },
+        {
+          "value": "id",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.66,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1411,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/schema/recipe/recipe.py::414::17",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: pg_trgm threshold from a class attribute constant",
+      "verdict": "likely_harmless",
+      "reason": "The values are internal constants, not derived from user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "cls._fuzzy_ingredient_similarity_threshold",
+          "source": "internal"
+        },
+        {
+          "value": "cls._fuzzy_similarity_threshold",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.49,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2436,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/schema/recipe/recipe.py::431::29",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: pg_trgm threshold from a class attribute constant",
+      "verdict": "likely_harmless",
+      "reason": "The value comes from a class attribute, which is an internal source.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "cls._fuzzy_similarity_threshold",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.24,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2485,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/services/backups_v2/alchemy_exporter.py::44::41",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: replication role / PRAGMA value from internal state ('origin'/'ON' defaults), not request data",
+      "verdict": "likely_harmless",
+      "reason": "The value 'initial_state' is derived from the object's attribute, which is not user-controlled.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "initial_state",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.83,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1293,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/services/backups_v2/alchemy_exporter.py::47::41",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: replication role / PRAGMA value from internal state ('origin'/'ON' defaults), not request data",
+      "verdict": "likely_harmless",
+      "reason": "The value 'initial_state' is derived from the object's attribute, which is set based on the object's state.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "initial_state",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 1.73,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1278,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::191::25",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from internal values (table and column names) and does not use any user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "assignments",
+          "source": "internal"
+        },
+        {
+          "value": "id",
+          "source": "internal"
+        },
+        {
+          "value": "recipe_id",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.32,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1631,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::207::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from table and column names, which are internal to the application.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "field",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 4.41,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1391,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::211::17",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: migration/maintenance SQL: table and column names from models or constants, values bound as parameters",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is parameterized with :value and :id, which are bound parameters.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "field",
+          "source": "internal"
+        },
+        {
+          "value": "recipes",
+          "source": "internal"
+        },
+        {
+          "value": "id",
+          "source": "internal"
+        },
+        {
+          "value": "value",
+          "source": "internal"
+        },
+        {
+          "value": "id",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.48,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1380,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/core/settings/db_providers.py::38::5",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "review: default Postgres password 'mea***' in code; overridable by env, but a deployment that forgets uses it",
+      "verdict": "likely_harmless",
+      "reason": "The secret is hardcoded in the code, but it's only used for a PostgreSQL database connection, which is not a typical case for user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "mea***",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.35,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2497,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "mealie",
+      "id": "mealie/core/settings/settings.py::290::5",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "tp",
+      "source": "review: default admin password 'MyP*******' shipped in code (documented, must be changed after first login)",
+      "verdict": "likely_real",
+      "reason": "_DEFAULT_PASSWORD is assigned a hardcoded secret; load it from the environment.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "MyP*******",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.7,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 5611,
+      "context_notes": [
+        "enclosing function cut to lines 151-427"
+      ],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    }
+  ]
+}

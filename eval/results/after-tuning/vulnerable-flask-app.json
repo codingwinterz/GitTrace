@@ -90,7 +90,7 @@
         27
       ],
       "severity": "low",
-      "snippet": "26 app.config['SECRET_KEY_HMAC'] = 'secret'"
+      "snippet": "26 app.config['SECRET_KEY_HMAC'] = 'sec***'"
     },
     {
       "tool": "bandit",
@@ -102,7 +102,7 @@
         28
       ],
       "severity": "low",
-      "snippet": "27 app.config['SECRET_KEY_HMAC_2'] = 'am0r3C0mpl3xK3y'"
+      "snippet": "27 app.config['SECRET_KEY_HMAC_2'] = 'am0************'"
     },
     {
       "tool": "bandit",
@@ -188,7 +188,7 @@
         "lines": [
           26
         ],
-        "detail": "app.config['SECRET_KEY_HMAC'] = 'secret' (the key that signs and verifies the JWTs)"
+        "detail": "app.config['SECRET_KEY_HMAC'] = 'sec***' (the key that signs and verifies the JWTs)"
       },
       {
         "id": "VF-4",
@@ -197,7 +197,7 @@
         "lines": [
           27
         ],
-        "detail": "app.config['SECRET_KEY_HMAC_2'] = 'am0r3C0mpl3xK3y'"
+        "detail": "app.config['SECRET_KEY_HMAC_2'] = 'am0************'"
       }
     ],
     "tp_reachable_unauthenticated": 2,

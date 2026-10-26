@@ -152,18 +152,27 @@ class ScanResult:
             "unauthenticated": sum(1 for f in findings if f.unauthenticated),
         }
 
-    def to_dict(self, min_severity: str = "info") -> dict:
+    def to_dict(self, min_severity: str = "info", triage: dict[str, dict] | None = None,
+                llm: dict | None = None) -> dict:
+        """`triage` maps finding ids to the model's triage (gittrace.llm.triage);
+        it sits next to each finding and never changes the rules' fields."""
         shown = self.at_least(min_severity)
         counts = self.analysis.counts()
+        triage = triage or {}
+        summary = {**self.summary(shown), "test_findings": len(self.test_findings)}
+        if llm and llm.get("enabled"):
+            summary["likely_harmless"] = sum(
+                1 for f in shown if (triage.get(f.id) or {}).get("verdict") == "likely_harmless")
         return {
             "project": self.project,
             "graph": self.graph,
             "settings": {"depth": self.depth, "min_severity": min_severity},
             "scanned": {k: counts[k] for k in ("files", "parse_failures", "functions", "endpoints", "calls")},
             "parse_failures": [{"file": f.path, "reason": f.reason} for f in self.analysis.failures],
-            "summary": {**self.summary(shown), "test_findings": len(self.test_findings)},
-            "findings": [f.to_dict() for f in shown],
-            "test_findings": [f.to_dict() for f in self.test_findings],
+            "llm": llm or {"enabled": False},
+            "summary": summary,
+            "findings": [{**f.to_dict(), "triage": triage.get(f.id)} for f in shown],
+            "test_findings": [{**f.to_dict(), "triage": triage.get(f.id)} for f in self.test_findings],
         }
 
 

@@ -4,22 +4,18 @@ gittrace.core.agent — answer a question about a scanned project with the graph
 A generic LiteLLM function-calling loop over TOOL_REGISTRY: the model picks
 tools, the agent runs them against the project's graph (supplying `project`
 itself), and a second turn writes the answer from the results. LLM failures
-raise AgentError; they are never papered over. The model layer proper
-(Ollama by default, explanations, fixes) is Phase 6.
+raise AgentError; they are never papered over. Finding triage, fixes and
+explanations live in gittrace.llm; whether this loop becomes `gittrace ask`
+is not decided yet.
 """
 
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 from gittrace.core.models import AgentResponse, ToolCall, ToolResult
 from gittrace.core.registry import call_tool, tool_schemas
-
-# LiteLLM reads GEMINI_API_KEY for gemini/* models; accept the .env spelling too.
-if os.environ.get("Gemini_API_Key") and not os.environ.get("GEMINI_API_KEY"):
-    os.environ["GEMINI_API_KEY"] = os.environ["Gemini_API_Key"]
 
 _TIMEOUT_S = 60.0
 _SYSTEM = (

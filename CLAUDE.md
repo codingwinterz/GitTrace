@@ -100,6 +100,58 @@ findings and code in plain language using a local LLM.
   target; the untouched, after-tuning and held-out results are kept as
   separately labelled runs. A held-out target is run once and nothing is
   changed because of its results.
+- Model layer (gittrace/llm): `ollama/<name>` is called through LiteLLM's
+  `ollama_chat/` provider (the plain `ollama/` one flattens system and user
+  messages into one prompt). num_ctx 8192, temperature 0.1, seed 7, at most
+  1024 reply tokens, timeout 120 s ($GITTRACE_LLM_TIMEOUT). The pydantic
+  schema is also sent as the JSON schema, so Ollama constrains decoding.
+- Model errors: cannot call the model at all (connection, model not
+  pulled, auth) stops the scan with exit 2; a timeout, a failed call or two
+  invalid replies is an error on that finding, shown next to it, the other
+  findings are still triaged, and errors are never cached.
+- Triage runs on the findings shown (`--min-severity`), not on test-code
+  findings unless `--include-tests`. `--fail-on` reads the rules' severity
+  only; the model's adjustment is shown beside the rules' score, never
+  instead of it. likely_harmless findings get their own report section.
+- Fixes: the model returns replacement text for a fix region (the flagged
+  statement, extended up to the earliest assignment of its `via` variable
+  within 10 lines above); GitTrace re-bases its indentation, builds the
+  unified diff, and checks that the file still parses (when it parsed
+  before) and that `git apply --check` accepts it in a temporary directory.
+  "Valid" means applies cleanly, not correct.
+- Everything copied from the scanned project goes inside the
+  BEGIN_UNTRUSTED_<id> / END_UNTRUSTED_<id> fence (<id> derived from the
+  content); hardcoded secrets are masked in prompts; model text is stripped
+  of control characters. Prompt budget: 3 characters per token, 8192 minus
+  the reply, the system prompt and 256; the enclosing function is cut first.
+- Cache: `<project>/.gittrace/cache`, key sha256 over task, model,
+  PROMPT_VERSION and the prompt's sha256; entries are validated on read;
+  `.gittrace/` holds a `*` .gitignore and discovery skips it. Bump
+  PROMPT_VERSION whenever the system prompt or the prompt layout changes.
+- Triage reply: `values` (each value flowing into the call, with source
+  constant | internal | attacker | unknown) comes before `verdict`;
+  likely_harmless is rejected while any value is attacker or unknown. A
+  hardcoded secret is listed as a value: attacker when the application
+  uses it, constant only when only tests use it. Secret prompts state the
+  real value's length, character classes and distinct characters.
+- Triage evaluation: measured set = the four vulnerable targets, DVGA, CTFd,
+  mealie; held-out set = open-webui, used once and only after any tuning.
+  Prompt versions and their runs: triage-v1 untouched, triage-v2
+  after-tuning-1, triage-v3 after-tuning-2 and held-out (current).
+- Default model: ollama/llama3.1:8b (hid 1 of 35 true positives on the
+  tuning set against qwen2.5-coder:7b's 10, all secrets; 0 flips in the
+  injection probe against 2). It takes 5.6 GiB of VRAM at num_ctx 8192
+  (measured peak 6.7 of 8 GB with the desktop's own use).
+- Out of GPU memory (Ollama only): wait 5 s and retry once at the same
+  num_ctx; if it fails again and the prompt plus reply fit in 4096, retry
+  once with num_ctx 4096. Each recovery is a note on the finding and
+  counted in the summary; a reduced-context reply is not cached. Model
+  errors carry their real attempts and seconds.
+- Eval output never holds a raw secret value: eval/hygiene.py scrubs
+  everything run_eval.py and run_triage.py write and fails the run on a
+  leak; tests/test_eval_hygiene.py checks the committed results against
+  eval/secret_values.sha256 (hashes only). Hash-locked ground-truth files
+  are inputs and keep their text.
 
 ## Backlog (not scheduled; do not start without approval)
 - Routes from Flask-RESTful / Flask-RESTX `Resource` classes
@@ -135,10 +187,18 @@ findings and code in plain language using a local LLM.
   shell commands with dynamic input, unsafe deserialization (pickle, 
   yaml.load), and hardcoded secrets; route-to-sink reachability (bounded 
   depth, unauthenticated routes first); blast radius over callers; Rich output.
-- Phase 5: `gittrace explain`: per-file and per-function summaries and a 
+- Phase 5: LLM layer (Ollama default via LiteLLM) plus scan triage: model
+  chosen by --model, then $GITTRACE_MODEL, then ollama/llama3.1:8b;
+  --no-llm skips every model call; a pydantic schema per task, validated,
+  one retry, then a clear error; scanned code fenced as untrusted data; a
+  token-budgeted context per finding; per finding a verdict (likely_real |
+  likely_harmless | uncertain), a reason and a severity adjustment of -2..+1
+  shown next to the deterministic score; findings are never removed; an
+  optional fix diff checked with `git apply --check` on a temporary copy;
+  responses cached in .gittrace/cache; triage measured on the labelled
+  eval data for qwen2.5-coder:7b and llama3.1:8b.
+- Phase 6: `gittrace explain`: per-file and per-function summaries and a 
   working-flow tree.
-- Phase 6: LLM layer (Ollama default via LiteLLM) for explanations, severity 
-  reasoning, and fix diffs validated with `git apply --check`.
 - Phase 7: A sample vulnerable project in tests/fixtures with planted bugs and 
   expected findings, end-to-end tests, pipx packaging (pyproject.toml with a 
   `gittrace` entry point), and a README that states scope honestly 

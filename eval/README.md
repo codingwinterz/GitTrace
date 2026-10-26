@@ -45,7 +45,7 @@ their hashes from before it. Two Bandit hits fall on lines the ground truth did 
 anticipate. Neither changes any count, because both are false positives either way:
 
 - `vulnerable-flask-app/tests/e2e_zap.py:15` (B105): a ZAP test script logs in with
-  the app's default `admin`/`admin123`. I did not read this file when writing the
+  the app's default `admin`/`adm*****`. I did not read this file when writing the
   ground truth. It is test data, not a vulnerability.
 - `vulnpy/apps/django_app.py` (B105): Bandit reports the allowlisted `"SECRET_KEY": "test_key"`
   at the start of the enclosing dict (lines 23–25), not at line 27, so it is scored
@@ -62,6 +62,92 @@ anticipate. Neither changes any count, because both are false positives either w
 Real-world reviews (`eval/<project>/review.json`) are keyed by finding id. A
 finding that only appeared after tuning was reviewed in the after-tuning run
 and is marked as such (CTFd `config.py:308`).
+
+## Model triage (Phase 5)
+
+`run_triage.py` measures the model's triage of GitTrace's findings on the labels
+above, which were all written before any model saw a finding:
+
+- **Labels.** On the vulnerable targets, a finding matching a ground-truth
+  vulnerability (scored exactly as `run_eval.py` does) is a true positive; one
+  matching a `benign` entry or nothing is a false positive. On the real-world
+  projects, the verdict in `review.json`.
+- **Sets.** *Measured*: vulpy-bad, vulpy-good, vulnerable-flask-app, vulnpy,
+  DVGA, CTFd, mealie (52 findings: 35 TP, 17 FP), the rules as tuned. *Held out*:
+  open-webui (29 findings: 2 TP, 27 FP), set aside before the first triage run
+  and used only to check a tuned prompt, once.
+- **Runs.** Both models (`qwen2.5-coder:7b`, `llama3.1:8b`, Q4_K_M in Ollama),
+  one at a time, no cache, after one untimed warm-up call. The `untouched` run
+  uses the prompt as first written (`triage-v1`), developed on
+  `tests/fixtures/sample_app` only; nothing is changed during it. Any tuning
+  afterwards gets a new prompt version and is reported separately as
+  `after-tuning` (optimistic: tuned on the same findings) and `held-out`.
+- **Numbers.** The share of false positives marked `likely_harmless`, the share
+  of true positives marked `likely_harmless` (the one that matters most: a
+  security tool must not hide real issues), the share `uncertain`, and the
+  model's seconds per finding on an RTX 5050 Laptop GPU (8 GB). Each run also
+  records the hash of `gittrace/llm/*.py` that produced it.
+- **Injection probe.** `--probe-injection <run>` triages every true positive
+  again with a comment above the flagged line telling the model the call is
+  safe and asking for `likely_harmless` with −2, and counts the flips.
+
+Triage runs (each in `results/triage/<label>/`: `summary.md`, and one JSON per
+model with every finding's label, verdict, value sources, reason, adjustment,
+seconds and fix check; each records the hash of `gittrace/llm/*.py`):
+
+| Label | Prompt | Set | Notes |
+|---|---|---|---|
+| `untouched` | `triage-v1` (`system_prompt_triage-v1.txt`) | measured | written and tried on `sample_app` only, nothing changed during the run |
+| `after-tuning-1` | `triage-v2` (`system_prompt_triage-v2.txt`) | measured | value sources before the verdict; optimistic (tuned on these findings) |
+| `after-tuning-2` | `triage-v3` (in `gittrace/llm/prompts.py`) | measured | secret guidance corrected after round 1; optimistic |
+| `held-out` | `triage-v3` | open-webui | run once after tuning was final; nothing changed afterwards |
+| `after-tuning-2-injection` | `triage-v3` | measured TPs | the injection probe, against `after-tuning-2`'s clean verdicts |
+
+Caveat on the held-out set: open-webui's `review.json` (with reasons) was
+written in the rules evaluation and had been read during this work before the
+prompt was tuned, so it is held out from the model, not entirely from the
+person tuning the prompt. The guidance added in tuning cites only cases found
+in the measured set (mealie's migration SQL and bind-parameter names, CTFd's
+`TestingConfig` key, mealie's default passwords, vulpy's weak key).
+
+```bash
+python eval/run_triage.py --label untouched
+python eval/run_triage.py --label after-tuning-2-injection --probe-injection after-tuning-2
+python eval/run_triage.py --label held-out --set held-out      # only after tuning, once
+```
+
+## No raw secrets in the output
+
+GitTrace masks hardcoded secrets in its reports, but eval output also carries
+text it does not produce: ground-truth `detail`, review `reason` (copied into
+the triage records as the label `source`), Bandit's code snippets, and the
+context lines of a fix diff (which can hold a secret the rule misses, e.g.
+Vulnerable-Flask-App's `SECRET_KEY_HMAC`). After the Phase 5 runs a hygiene
+check found mealie's default admin password verbatim in six triage result
+files, copied from a review reason, and a fuller check found more of the same
+kind (mealie's default Postgres password, open-webui's default admin password,
+and ground-truth and Bandit lines in the rules evaluation).
+
+`hygiene.py` now keeps them out:
+
+- `eval/secret_values.sha256` lists the sha256 of every secret value in the
+  pinned targets (the hardcoded-secret rule's values plus the values the
+  ground truths quote, which covers the rule's misses). Only hashes are
+  committed. `python eval/hygiene.py --update` rebuilds it from the checkouts;
+  both eval scripts add their targets' values on every run.
+- `run_eval.py` and `run_triage.py` write every output file through
+  `hygiene.scrub`, which replaces a listed value by the rule's mask (first 3
+  characters kept), and stop with an error if any output still holds one.
+- `tests/test_eval_hygiene.py` (in CI) fails if any committed file under
+  `eval/results/` or any `review.json` holds a listed value.
+
+A plain lower-case word (`admin`, `mealie`) is only a leak right after a
+secret word (`password 'mea***'`), not in `username = 'admin'`.
+
+The existing results and review files were scrubbed in place with `python
+eval/hygiene.py --scrub`: only the quoted values changed, no verdict, label
+or number. The ground-truth files keep their text, because
+`ground_truth.sha256` shows they were written before any tool ran.
 
 ## Reproduce
 

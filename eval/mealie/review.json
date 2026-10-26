@@ -116,11 +116,11 @@
     },
     "mealie/core/settings/db_providers.py::38::5": {
       "verdict": "tp",
-      "reason": "default Postgres password 'mealie' in code; overridable by env, but a deployment that forgets uses it"
+      "reason": "default Postgres password 'mea***' in code; overridable by env, but a deployment that forgets uses it"
     },
     "mealie/core/settings/settings.py::290::5": {
       "verdict": "tp",
-      "reason": "default admin password 'MyPassword' shipped in code (documented, must be changed after first login)"
+      "reason": "default admin password 'MyP*******' shipped in code (documented, must be changed after first login)"
     },
     "mealie/routes/_base/controller.py::15::1": {
       "verdict": "fp",

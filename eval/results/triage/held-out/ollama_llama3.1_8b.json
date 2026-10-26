@@ -1,0 +1,1094 @@
+{
+  "model": {
+    "model": "ollama/llama3.1:8b",
+    "digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+    "quantization": "Q4_K_M",
+    "parameters": "8.0B",
+    "ollama_version": "0.40.11"
+  },
+  "warmup_seconds": 15.52,
+  "wall_seconds": 128.2,
+  "metrics": {
+    "findings": 29,
+    "tp": 2,
+    "fp": 27,
+    "fp_marked_harmless": 0.407,
+    "tp_marked_harmless": 0.0,
+    "uncertain": 0.103,
+    "tp_verdicts": {
+      "likely_real": 2,
+      "uncertain": 0,
+      "likely_harmless": 0,
+      "error": 0
+    },
+    "fp_verdicts": {
+      "likely_real": 12,
+      "uncertain": 3,
+      "likely_harmless": 11,
+      "error": 1
+    },
+    "errors": 1,
+    "retried": 1,
+    "mean_adjustment_tp": 0,
+    "mean_adjustment_fp": 0.11,
+    "fix_offered": 1,
+    "fix_applies": 1,
+    "seconds_mean": 3.99,
+    "seconds_median": 3.33,
+    "seconds_max": 13.88,
+    "tp_hidden": []
+  },
+  "by_target": {
+    "open-webui": {
+      "findings": 29,
+      "tp": 2,
+      "fp": 27,
+      "fp_marked_harmless": 0.407,
+      "tp_marked_harmless": 0.0,
+      "uncertain": 0.103,
+      "tp_verdicts": {
+        "likely_real": 2,
+        "uncertain": 0,
+        "likely_harmless": 0,
+        "error": 0
+      },
+      "fp_verdicts": {
+        "likely_real": 12,
+        "uncertain": 3,
+        "likely_harmless": 11,
+        "error": 1
+      },
+      "errors": 1,
+      "retried": 1,
+      "mean_adjustment_tp": 0,
+      "mean_adjustment_fp": 0.11,
+      "fix_offered": 1,
+      "fix_applies": 1,
+      "seconds_mean": 3.99,
+      "seconds_median": 3.33,
+      "seconds_max": 13.88,
+      "tp_hidden": []
+    }
+  },
+  "records": [
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/models/chats.py::2663::25",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 11,
+      "label": "fp",
+      "source": "review: the f-string inserts a bind-parameter name (:tag_id_N); the value is bound with .params()",
+      "verdict": "likely_real",
+      "reason": "The value 'tag_id' is passed as a parameter from the function delete_all_user_chats, which is reachable from an unauthenticated endpoint.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "tag_id",
+          "source": "attacker"
+        },
+        {
+          "value": "tag_id",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 1.82,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2257,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/models/chats.py::2667::25",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 11,
+      "label": "fp",
+      "source": "review: same: bind-parameter name, value bound",
+      "verdict": "likely_real",
+      "reason": "The value 'tag_ids' is passed as a parameter to the function, which suggests it could be user-controlled.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "tag_id",
+          "source": "internal"
+        },
+        {
+          "value": "param",
+          "source": "internal"
+        },
+        {
+          "value": "tag_ids",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 4.66,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2298,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/utils/plugin.py::242::9",
+      "rule": "GT-EVAL-001",
+      "severity": "critical",
+      "score": 11,
+      "label": "tp",
+      "source": "review: exec() of user-submitted Tool code (load_tool_module_by_id); code execution by design, gated by the workspace.tools permission",
+      "verdict": "likely_real",
+      "reason": "The content variable is derived from a function parameter, and its value is not constant.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "content",
+          "source": "attacker"
+        },
+        {
+          "value": "tool_id",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 2.39,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2222,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/utils/plugin.py::291::9",
+      "rule": "GT-EVAL-001",
+      "severity": "critical",
+      "score": 11,
+      "label": "tp",
+      "source": "review: exec() of user-submitted Function code (load_function_module_by_id); code execution by design, gated by permissions",
+      "verdict": "likely_real",
+      "reason": "The content variable is derived from a function parameter, which can come from a user.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "content",
+          "source": "attacker"
+        },
+        {
+          "value": "function_id",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 2.37,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2420,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/models/chats.py::2488::21",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 10,
+      "label": "fp",
+      "source": "review: SQL assembled from constant JSON-path fragments; chat_ids is an expanding bind parameter",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using an f-string with placeholders, which can be vulnerable to SQL injection.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "chat_ids",
+          "source": "internal"
+        },
+        {
+          "value": "messages",
+          "source": "internal"
+        },
+        {
+          "value": "role",
+          "source": "internal"
+        },
+        {
+          "value": "user_id",
+          "source": "internal"
+        },
+        {
+          "value": "owner_id",
+          "source": "internal"
+        },
+        {
+          "value": "message",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 3.72,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2985,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/routers/search.py::97::16",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 10,
+      "label": "fp",
+      "source": "review: table/key are internal identifiers (the code says so); user input stays a bound LIKE parameter",
+      "verdict": "likely_real",
+      "reason": "The values of `key` and `table` are derived from function parameters, which can come from user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "key",
+          "source": "attacker"
+        },
+        {
+          "value": "table",
+          "source": "attacker"
+        },
+        {
+          "value": "sources",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 2.41,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1825,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/routers/search.py::107::12",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 10,
+      "label": "fp",
+      "source": "review: same as search.py:97",
+      "verdict": "likely_real",
+      "reason": "The SQL query is built at run time using f-strings with placeholders, and the `key` parameter is derived from a function parameter.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "key",
+          "source": "attacker"
+        },
+        {
+          "value": "table",
+          "source": "internal"
+        },
+        {
+          "value": "source",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 2.41,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1672,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/models/chats.py::2284::33",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 9,
+      "label": "fp",
+      "source": "review: bind-parameter names (:tag_id_N), values bound with .params()",
+      "verdict": "likely_real",
+      "reason": "The value 'tag_id' comes from the search_text_words list, which can contain user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "tag_id_{tag_idx}",
+          "source": "internal"
+        },
+        {
+          "value": "tag_id",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 3.66,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 4814,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/models/chats.py::2316::33",
+      "rule": "GT-SQLI-001",
+      "severity": "critical",
+      "score": 9,
+      "label": "fp",
+      "source": "review: same pattern as chats.py:2284",
+      "verdict": "likely_real",
+      "reason": "The value 'tag_id' is passed as a parameter to the SQL query, which is built at run time using an f-string. This suggests that the value could be coming from an attacker.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "tag_id_{tag_idx}",
+          "source": "internal"
+        },
+        {
+          "value": "tag_id",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "critical",
+      "seconds": 4.09,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 4836,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::166::21",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 6,
+      "label": "fp",
+      "source": "review: CREATE TABLE with the configured distance strategy; no request data",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from internal variables and does not contain any user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "self.vector_length",
+          "source": "internal"
+        },
+        {
+          "value": "self.index_m",
+          "source": "internal"
+        },
+        {
+          "value": "self.distance_strategy",
+          "source": "internal"
+        },
+        {
+          "value": "dist",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.0,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2771,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/retrieval/vector/dbs/pgvector.py::237::34",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 6,
+      "label": "fp",
+      "source": "review: CREATE INDEX from configured index name/method/options",
+      "verdict": "uncertain",
+      "reason": "index_options is unknown because its value is not shown, but it could come from a request or a parameter of a function that an endpoint reaches with such data.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "index_name",
+          "source": "internal"
+        },
+        {
+          "value": "index_method",
+          "source": "internal"
+        },
+        {
+          "value": "index_options",
+          "source": "unknown"
+        },
+        {
+          "value": "VECTOR_OPCLASS",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.84,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1953,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::55::28",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration PRAGMA on a table name from the schema",
+      "verdict": "likely_harmless",
+      "reason": "The table name is derived from a function parameter, but the code is a migration script and the table name is likely a constant.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "table_name",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.03,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1534,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::64::33",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration PRAGMA on an index name read from the database",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from internal values (table and column names) and a connection object, which is not user-controlled.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "index_name",
+          "source": "internal"
+        },
+        {
+          "value": "conn",
+          "source": "internal"
+        },
+        {
+          "value": "table_name",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.21,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1525,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/migrations/versions/b10670c03dd5_update_user_table.py::67::26",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: migration DROP INDEX on an index name read from the database",
+      "verdict": "likely_harmless",
+      "reason": "The SQL query is built from internal values (table and column names) and does not use any user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "index_name",
+          "source": "internal"
+        },
+        {
+          "value": "column_name",
+          "source": "internal"
+        },
+        {
+          "value": "conn",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.12,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1444,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::433::25",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: WHERE clause of ? placeholders and a distance-function name; values passed as params",
+      "verdict": "uncertain",
+      "reason": "The SQL query is built at run time from a variable `sql` and its values come from `filter` and `self`.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "sql",
+          "source": "unknown"
+        },
+        {
+          "value": "params",
+          "source": "unknown"
+        },
+        {
+          "value": "filter",
+          "source": "attacker"
+        },
+        {
+          "value": "self",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 5.18,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2403,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/retrieval/vector/dbs/mariadb_vector.py::475::17",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: same: placeholders, values passed as params",
+      "verdict": "likely_real",
+      "reason": "The filter parameter is derived from a function parameter, which can come from user input.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "filter",
+          "source": "attacker"
+        },
+        {
+          "value": "self",
+          "source": "internal"
+        },
+        {
+          "value": "limit",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 6.13,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1630,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::585::25",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: query with bind variables (:query_vector); interpolated parts are internal",
+      "verdict": "uncertain",
+      "reason": "The values of `filter_clause` and `filter_params` are unknown, but the other values are internal.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "filter_clause",
+          "source": "unknown"
+        },
+        {
+          "value": "filter_params",
+          "source": "unknown"
+        },
+        {
+          "value": "collection_name",
+          "source": "internal"
+        },
+        {
+          "value": "vector_blob",
+          "source": "internal"
+        },
+        {
+          "value": "limit",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 5.97,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 3306,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::665::21",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: query built with bind variables, values in params",
+      "verdict": "likely_real",
+      "reason": "The query is built at run time from a variable `query` and a local variable `params` which is assigned from a function parameter `filter`.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "filter",
+          "source": "attacker"
+        },
+        {
+          "value": "limit",
+          "source": "attacker"
+        },
+        {
+          "value": "key",
+          "source": "unknown"
+        },
+        {
+          "value": "value",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 6.26,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2270,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/retrieval/vector/dbs/oracle23ai.py::794::21",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 5,
+      "label": "fp",
+      "source": "review: query built with bind variables, values in params",
+      "verdict": "likely_real",
+      "reason": "The query is built at run time from variables `filter` and `ids` which can come from user input.",
+      "adjustment": 1,
+      "values": [
+        {
+          "value": "filter",
+          "source": "attacker"
+        },
+        {
+          "value": "ids",
+          "source": "attacker"
+        },
+        {
+          "value": "key",
+          "source": "unknown"
+        },
+        {
+          "value": "value",
+          "source": "unknown"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.91,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2102,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/internal/db.py::303::9",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: SQLCipher PRAGMA key from operator configuration",
+      "verdict": "likely_harmless",
+      "reason": "The password is hardcoded in the code, and it's not clear if it's used anywhere else.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "database_password",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.45,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 958,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/internal/db.py::390::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: PRAGMA from an environment setting",
+      "verdict": "likely_harmless",
+      "reason": "The PRAGMAs are being applied based on environment variables, which are internal to the application.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_SYNCHRONOUS",
+          "source": "internal"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_BUSY_TIMEOUT",
+          "source": "internal"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_CACHE_SIZE",
+          "source": "internal"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_TEMP_STORE",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 4.95,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2486,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/internal/db.py::392::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: PRAGMA from an environment setting",
+      "verdict": "likely_harmless",
+      "reason": "The values are all internal configuration variables, not user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_BUSY_TIMEOUT",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.95,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2506,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/internal/db.py::394::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: PRAGMA from an environment setting",
+      "verdict": "likely_harmless",
+      "reason": "The PRAGMA cache_size is a configuration option for SQLite, and the value is determined by the application itself.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_CACHE_SIZE",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.82,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2537,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/internal/db.py::396::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: PRAGMA from an environment setting",
+      "verdict": null,
+      "reason": null,
+      "adjustment": 0,
+      "values": [],
+      "adjusted_severity": "medium",
+      "seconds": 0.0,
+      "attempts": 2,
+      "error": "ollama/llama3.1:8b call failed: InternalServerError: litellm.InternalServerError: Ollama_chatException - {\"error\":\"an error was encountered while running the model: CUDA error: out of memory\\nCUDA error\"}",
+      "context_tokens": 2500,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/internal/db.py::398::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: PRAGMA from an environment setting",
+      "verdict": "likely_harmless",
+      "reason": "All PRAGMA values are internal constants, not user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_BUSY_TIMEOUT",
+          "source": "internal"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_CACHE_SIZE",
+          "source": "internal"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_TEMP_STORE",
+          "source": "internal"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_MMAP_SIZE",
+          "source": "internal"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_JOURNAL_SIZE_LIMIT",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 13.88,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2447,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/internal/db.py::400::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: PRAGMA from an environment setting",
+      "verdict": "likely_harmless",
+      "reason": "All PRAGMA values are configuration constants, not user input.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_CACHE_SIZE",
+          "source": "constant"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_TEMP_STORE",
+          "source": "constant"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_MMAP_SIZE",
+          "source": "constant"
+        },
+        {
+          "value": "DATABASE_SQLITE_PRAGMA_JOURNAL_SIZE_LIMIT",
+          "source": "constant"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 6.88,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 2400,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/migrations/env.py::62::13",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: SQLCipher PRAGMA key from the DATABASE_PASSWORD setting (operator configuration)",
+      "verdict": "likely_real",
+      "reason": "The password is hardcoded and used directly in the SQL query.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "DATABASE_PASSWORD",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 2.48,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1011,
+      "context_notes": [],
+      "fix_offered": true,
+      "fix_valid": true,
+      "fix_problem": null,
+      "fix_diff": "--- a/backend/open_webui/migrations/env.py\n+++ b/backend/open_webui/migrations/env.py\n@@ -59,7 +59,7 @@\n             import sqlcipher3\r\n \r\n             cipher_conn = sqlcipher3.connect(raw_db_path, check_same_thread=False)\r\n-            cipher_conn.execute(f\"PRAGMA key = '{DATABASE_PASSWORD}'\")\r\n+            cipher_conn.execute(\"PRAGMA key = ?\")\r\n             return cipher_conn\r\n \r\n         return create_engine('sqlite://', creator=_sqlite_cipher_creator, echo=False)\r\n"
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/migrations/versions/461111b60977_add_missing_primary_keys_to_legacy_.py::63::22",
+      "rule": "GT-SQLI-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: migration DROP TABLE on a table name from the schema",
+      "verdict": "likely_harmless",
+      "reason": "The table name is generated by the application itself, and the query is used to create a temporary table.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "table_name",
+          "source": "internal"
+        },
+        {
+          "value": "_alembic_tmp_{table_name}",
+          "source": "internal"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 3.01,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 1592,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    },
+    {
+      "target": "open-webui",
+      "id": "backend/open_webui/routers/auths.py::738::9",
+      "rule": "GT-SECRET-001",
+      "severity": "medium",
+      "score": 4,
+      "label": "fp",
+      "source": "review: admin_password = 'adm**' is used only when WEBUI_AUTH is False, where the instance runs without authentication by design",
+      "verdict": "likely_real",
+      "reason": "The secret values are hardcoded in the code, and the application uses them to authenticate users.",
+      "adjustment": 0,
+      "values": [
+        {
+          "value": "adm**",
+          "source": "attacker"
+        },
+        {
+          "value": "adm**",
+          "source": "attacker"
+        }
+      ],
+      "adjusted_severity": "medium",
+      "seconds": 4.2,
+      "attempts": 1,
+      "error": null,
+      "context_tokens": 3275,
+      "context_notes": [],
+      "fix_offered": false,
+      "fix_valid": false,
+      "fix_problem": null,
+      "fix_diff": null
+    }
+  ]
+}

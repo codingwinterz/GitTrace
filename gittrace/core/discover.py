@@ -1,7 +1,7 @@
 """
 gittrace.core.discover — find the source files to scan in a project folder.
 
-Skipped: VCS and tool directories (.git, caches), virtualenvs (by name, and any
+Skipped: VCS and tool directories (.git, caches, GitTrace's own .gittrace), virtualenvs (by name, and any
 directory holding a pyvenv.cfg), node_modules, site-packages, build/dist, and
 anything the project's .gitignore files exclude. Nested .gitignore files apply
 below their own directory, and a deeper file overrides a shallower one, as in
@@ -24,6 +24,7 @@ SKIP_DIRS = frozenset({
     "node_modules", "__pycache__", "site-packages",
     "build", "dist",
     ".tox", ".nox", ".eggs", ".mypy_cache", ".pytest_cache", ".ruff_cache",
+    ".gittrace",
 })
 
 

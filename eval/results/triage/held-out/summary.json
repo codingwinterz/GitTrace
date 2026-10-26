@@ -1,0 +1,159 @@
+{
+  "label": "held-out",
+  "set": "held-out",
+  "targets": [
+    "open-webui"
+  ],
+  "prompt_version": "triage-v3",
+  "llm_code_sha256": "25ef9a865a92fcc68e5c22047181e2e656a6b3c87484db9a7819b255e66cf2ac",
+  "gpu": "NVIDIA GeForce RTX 5050 Laptop GPU, 8151 MiB",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "models": {
+    "ollama/qwen2.5-coder:7b": {
+      "model": {
+        "model": "ollama/qwen2.5-coder:7b",
+        "digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+        "quantization": "Q4_K_M",
+        "parameters": "7.6B",
+        "ollama_version": "0.40.11"
+      },
+      "warmup_seconds": 19.55,
+      "wall_seconds": 86.0,
+      "metrics": {
+        "findings": 29,
+        "tp": 2,
+        "fp": 27,
+        "fp_marked_harmless": 0.444,
+        "tp_marked_harmless": 0.0,
+        "uncertain": 0.0,
+        "tp_verdicts": {
+          "likely_real": 2,
+          "uncertain": 0,
+          "likely_harmless": 0,
+          "error": 0
+        },
+        "fp_verdicts": {
+          "likely_real": 15,
+          "uncertain": 0,
+          "likely_harmless": 12,
+          "error": 0
+        },
+        "errors": 0,
+        "retried": 0,
+        "mean_adjustment_tp": 0,
+        "mean_adjustment_fp": -0.07,
+        "fix_offered": 14,
+        "fix_applies": 10,
+        "seconds_mean": 2.8,
+        "seconds_median": 2.52,
+        "seconds_max": 4.94,
+        "tp_hidden": []
+      },
+      "by_target": {
+        "open-webui": {
+          "findings": 29,
+          "tp": 2,
+          "fp": 27,
+          "fp_marked_harmless": 0.444,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.0,
+          "tp_verdicts": {
+            "likely_real": 2,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 15,
+            "uncertain": 0,
+            "likely_harmless": 12,
+            "error": 0
+          },
+          "errors": 0,
+          "retried": 0,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": -0.07,
+          "fix_offered": 14,
+          "fix_applies": 10,
+          "seconds_mean": 2.8,
+          "seconds_median": 2.52,
+          "seconds_max": 4.94,
+          "tp_hidden": []
+        }
+      }
+    },
+    "ollama/llama3.1:8b": {
+      "model": {
+        "model": "ollama/llama3.1:8b",
+        "digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+        "quantization": "Q4_K_M",
+        "parameters": "8.0B",
+        "ollama_version": "0.40.11"
+      },
+      "warmup_seconds": 15.52,
+      "wall_seconds": 128.2,
+      "metrics": {
+        "findings": 29,
+        "tp": 2,
+        "fp": 27,
+        "fp_marked_harmless": 0.407,
+        "tp_marked_harmless": 0.0,
+        "uncertain": 0.103,
+        "tp_verdicts": {
+          "likely_real": 2,
+          "uncertain": 0,
+          "likely_harmless": 0,
+          "error": 0
+        },
+        "fp_verdicts": {
+          "likely_real": 12,
+          "uncertain": 3,
+          "likely_harmless": 11,
+          "error": 1
+        },
+        "errors": 1,
+        "retried": 1,
+        "mean_adjustment_tp": 0,
+        "mean_adjustment_fp": 0.11,
+        "fix_offered": 1,
+        "fix_applies": 1,
+        "seconds_mean": 3.99,
+        "seconds_median": 3.33,
+        "seconds_max": 13.88,
+        "tp_hidden": []
+      },
+      "by_target": {
+        "open-webui": {
+          "findings": 29,
+          "tp": 2,
+          "fp": 27,
+          "fp_marked_harmless": 0.407,
+          "tp_marked_harmless": 0.0,
+          "uncertain": 0.103,
+          "tp_verdicts": {
+            "likely_real": 2,
+            "uncertain": 0,
+            "likely_harmless": 0,
+            "error": 0
+          },
+          "fp_verdicts": {
+            "likely_real": 12,
+            "uncertain": 3,
+            "likely_harmless": 11,
+            "error": 1
+          },
+          "errors": 1,
+          "retried": 1,
+          "mean_adjustment_tp": 0,
+          "mean_adjustment_fp": 0.11,
+          "fix_offered": 1,
+          "fix_applies": 1,
+          "seconds_mean": 3.99,
+          "seconds_median": 3.33,
+          "seconds_max": 13.88,
+          "tp_hidden": []
+        }
+      }
+    }
+  }
+}

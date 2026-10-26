@@ -26,6 +26,10 @@ DIM = "grey62"
 SEVERITY_STYLE = {
     "critical": RED, "high": PINK, "medium": AMBER, "low": AMBER_DIM, "info": DIM,
 }
+VERDICT_STYLE = {"likely_real": PINK, "uncertain": AMBER, "likely_harmless": TEAL}
+SOURCE_STYLE = {"constant": TEAL, "internal": TEAL, "attacker": RED, "unknown": AMBER}
+VERDICT_LABEL = {"likely_real": "likely real", "uncertain": "uncertain",
+                 "likely_harmless": "likely harmless"}
 _CONTEXT_LINES = 3
 _MAX_ROUTES = 5
 
@@ -103,6 +107,23 @@ def _snippet(finding: dict, functions: dict) -> Syntax:
                   word_wrap=True)
 
 
+def model_line(llm: dict | None) -> Text:
+    if not llm or not llm.get("enabled"):
+        return Text("model triage off (--no-llm): rule findings only", style=DIM)
+    text = Text(f"model {llm['model']}: ", style=LAVENDER)
+    for verdict, count in llm["by_verdict"].items():
+        text.append(f"{count} {VERDICT_LABEL[verdict]}   ", style=VERDICT_STYLE[verdict] if count else DIM)
+    extra = [f"{llm['valid_fixes']} fix(es) that apply cleanly", f"{llm['cached']} cached"]
+    text.append(" · ".join(extra), style=DIM)
+    if llm["errors"]:
+        text.append(f" · {llm['errors']} could not be triaged", style=AMBER)
+    if llm.get("recovered"):
+        text.append(f" · {llm['recovered']} answered after the GPU ran out of memory", style=AMBER)
+        if llm.get("reduced_context"):
+            text.append(f" ({llm['reduced_context']} with a smaller context)", style=AMBER)
+    return text
+
+
 def headline(data: dict) -> Panel:
     summary = data["summary"]
     total, critical = summary["total"], summary["by_severity"]["critical"]
@@ -117,6 +138,7 @@ def headline(data: dict) -> Panel:
     if total == 0:
         return Panel(Group(Text("NO FINDINGS", style=f"bold {TEAL}"), facts),
                      title=f"gittrace scan · {data['project']}", border_style=TEAL)
+    model = model_line(data.get("llm"))
     grid = Table.grid(padding=(0, 6))
     grid.add_row(big_number(total, "bold"), big_number(critical, RED if critical else TEAL))
     grid.add_row(Text("FINDINGS", style="bold"), Text("CRITICAL", style=RED if critical else TEAL))
@@ -128,12 +150,34 @@ def headline(data: dict) -> Panel:
         f"{summary['unauthenticated']} from an unauthenticated endpoint",
         style=RED if summary["unauthenticated"] else AMBER,
     )
-    return Panel(Group(grid, Text(), levels, reach, facts),
+    return Panel(Group(grid, Text(), levels, reach, facts, model),
                  title=f"gittrace scan · {data['project']}",
                  border_style=RED if critical else AMBER)
 
 
-def findings_table(findings: list[dict]) -> Table:
+def _adjusted(t: dict) -> Text:
+    """The model's adjustment next to the rules' score: `-2 -> 9 critical`."""
+    adj = t["severity_adjustment"]
+    if adj == 0:
+        return Text("±0", style=DIM)
+    text = Text(f"{adj:+d} → {t['adjusted_score']} ", style=DIM)
+    text.append(t["adjusted_severity"], style=SEVERITY_STYLE[t["adjusted_severity"]])
+    return text
+
+
+def verdict_text(t: dict | None) -> Text:
+    if t is None:
+        return Text("-", style=DIM)
+    if t["error"]:
+        return Text("error", style=AMBER)
+    text = Text(VERDICT_LABEL[t["verdict"]], style=VERDICT_STYLE[t["verdict"]])
+    if t["severity_adjustment"]:
+        text.append(f" {t['severity_adjustment']:+d}", style=DIM)
+    return text
+
+
+def findings_table(findings: list[dict], start: int = 1, reasons: bool = False) -> Table:
+    triaged = any(f.get("triage") for f in findings)
     table = Table(box=box.SIMPLE_HEAD, header_style="bold", expand=True)
     table.add_column("#", justify="right", style=DIM, no_wrap=True)
     table.add_column("Severity", no_wrap=True)
@@ -141,7 +185,11 @@ def findings_table(findings: list[dict]) -> Table:
     table.add_column("Location", style=LAVENDER, overflow="fold")
     table.add_column("Reached from", overflow="fold")
     table.add_column("Auth", no_wrap=True)
-    for i, f in enumerate(findings, 1):
+    if triaged:
+        table.add_column("Model", no_wrap=True)
+    if reasons:
+        table.add_column("Model's reason", overflow="fold", ratio=2)
+    for i, f in enumerate(findings, start):
         reach = f["reachability"]
         routes = reach["routes"]
         if not reach["applies"]:
@@ -157,8 +205,55 @@ def findings_table(findings: list[dict]) -> Table:
                 reached.append(" ?", style=AMBER)
             auth = Text("NO AUTH", style=RED) if reach["unauthenticated"] else Text("auth", style=AMBER)
         loc = f"{f['location']['file']}:{f['location']['line']}"
-        table.add_row(str(i), severity_text(f["severity"]), f["rule_id"], loc, reached, auth)
+        row = [str(i), severity_text(f["severity"]), f["rule_id"], loc, reached, auth]
+        if triaged:
+            row.append(verdict_text(f.get("triage")))
+        if reasons:
+            t = f.get("triage") or {}
+            row.append(Text(t.get("reason") or t.get("error") or "", style=DIM))
+        table.add_row(*row)
     return table
+
+
+def triage_parts(t: dict | None, f: dict) -> list:
+    """The model's view of one finding, kept apart from the rules' facts."""
+    if t is None:
+        return []
+    head = Text("model ", style="bold")
+    head.append(t["model"] + (" (cached)" if t["cached"] else ""), style=LAVENDER)
+    head.append(": ")
+    if t["error"]:
+        head.append("could not triage this finding: ", style=AMBER)
+        head.append(t["error"], style=AMBER)
+        return [head]
+    head.append(VERDICT_LABEL[t["verdict"]].upper(), style=VERDICT_STYLE[t["verdict"]])
+    head.append(f"  {t['reason']}")
+    parts: list = [head]
+    for note in t.get("call_notes") or ():
+        parts.append(Text(f"model call: {note}", style=AMBER))
+    if t.get("values"):
+        inputs = Text("inputs, as the model sees them: ", style="bold")
+        for i, v in enumerate(t["values"]):
+            if i:
+                inputs.append("  ·  ", style=DIM)
+            inputs.append(v["value"], style=LAVENDER)
+            inputs.append(f" {v['source']}", style=SOURCE_STYLE[v["source"]])
+        parts.append(inputs)
+    sev = Text("severity: rules ", style="bold")
+    sev.append(f"{t['rules_score']} ")
+    sev.append(f["severity"], style=SEVERITY_STYLE[f["severity"]])
+    sev.append("  ·  model adjustment ", style="bold")
+    sev.append_text(_adjusted(t))
+    parts.append(sev)
+    fix = t["fix"]
+    if fix["valid"]:
+        parts.append(Text("suggested fix (applies cleanly with git apply --check; not verified "
+                          "correct; never applied):", style=TEAL))
+        parts.append(Syntax(fix["diff"].rstrip("\n"), "diff", theme="ansi_dark",
+                            background_color="default", word_wrap=True))
+    else:
+        parts.append(Text(f"no valid fix suggested ({fix['problem']})", style=DIM))
+    return parts
 
 
 def finding_detail(index: int, f: dict, functions: dict, blamed: bool) -> Panel:
@@ -176,6 +271,7 @@ def finding_detail(index: int, f: dict, functions: dict, blamed: bool) -> Panel:
             parts.append(Text("uncertain: every deciding route has an unresolved prefix", style=AMBER))
     parts.append(_owner_line(f["owner"], blamed))
     parts.append(Text("severity: " + "; ".join(f["reasons"]), style=DIM))
+    parts.extend(triage_parts(f.get("triage"), f))
     title = Text(f"{index}. ")
     title.append(f["severity"].upper(), style=SEVERITY_STYLE[f["severity"]])
     title.append(f"  {f['rule_id']}  {f['title']}  ")
@@ -184,12 +280,26 @@ def finding_detail(index: int, f: dict, functions: dict, blamed: bool) -> Panel:
                  border_style=SEVERITY_STYLE[f["severity"]].replace("bold ", ""))
 
 
+def _harmless(f: dict) -> bool:
+    return (f.get("triage") or {}).get("verdict") == "likely_harmless"
+
+
 def render_scan(console: Console, data: dict, functions: dict, blamed: bool) -> None:
     console.print(headline(data))
-    findings = data["findings"]
+    findings = [f for f in data["findings"] if not _harmless(f)]
+    harmless = [f for f in data["findings"] if _harmless(f)]
     if findings:
         console.print(findings_table(findings))
         for i, f in enumerate(findings, 1):
+            console.print(finding_detail(i, f, functions, blamed))
+    if harmless:
+        start = len(findings) + 1
+        console.print(Text(
+            f"Likely harmless according to the model: {len(harmless)} finding(s). The rules "
+            "still report them at the severity shown, and --fail-on still counts them; "
+            "check the model's reason.", style=LAVENDER))
+        console.print(findings_table(harmless, start=start, reasons=True))
+        for i, f in enumerate(harmless, start):
             console.print(finding_detail(i, f, functions, blamed))
     tests = data.get("test_findings") or []
     if tests:

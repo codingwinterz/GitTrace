@@ -230,7 +230,7 @@
         "lines": [
           16
         ],
-        "detail": "app.config['SECRET_KEY'] = 'aaaaaaa' (Flask session signing key)"
+        "detail": "app.config['SECRET_KEY'] = 'aaa****' (Flask session signing key)"
       },
       {
         "id": "VB-5",
@@ -239,7 +239,7 @@
         "lines": [
           13
         ],
-        "detail": "app.config['SECRET_KEY'] = 'aaaaaaa'"
+        "detail": "app.config['SECRET_KEY'] = 'aaa****'"
       }
     ],
     "tp_reachable_unauthenticated": 3,

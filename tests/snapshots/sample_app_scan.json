@@ -18,6 +18,9 @@
       "reason": "syntax error at line 3"
     }
   ],
+  "llm": {
+    "enabled": false
+  },
   "summary": {
     "total": 13,
     "by_severity": {
@@ -115,7 +118,8 @@
         "endpoints": 2
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/routers/debug.py::16::12",
@@ -175,7 +179,8 @@
         "endpoints": 1
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/routers/reports.py::16::12",
@@ -236,7 +241,8 @@
         "endpoints": 1
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/routers/reports.py::33::12",
@@ -296,7 +302,8 @@
         "endpoints": 1
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/routers/users.py::27::14",
@@ -356,7 +363,8 @@
         "endpoints": 1
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/utils/shell.py::8::9",
@@ -420,7 +428,8 @@
         "endpoints": 1
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/utils/shell.py::11::12",
@@ -483,7 +492,8 @@
         "endpoints": 1
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/routers/admin.py::11::23",
@@ -542,7 +552,8 @@
         "endpoints": 1
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/services/maintenance.py::19::5",
@@ -591,7 +602,8 @@
         "endpoints": 0
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/services/maintenance.py::29::16",
@@ -638,7 +650,8 @@
         "endpoints": 0
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/auth.py::4::1",
@@ -680,7 +693,8 @@
         "endpoints": 0
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/routers/reports.py::8::1",
@@ -722,7 +736,8 @@
         "endpoints": 0
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     },
     {
       "id": "app/services/maintenance.py::42::9",
@@ -764,7 +779,8 @@
         "endpoints": 0
       },
       "in_tests": false,
-      "owner": null
+      "owner": null,
+      "triage": null
     }
   ],
   "test_findings": []

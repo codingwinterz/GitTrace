@@ -185,7 +185,7 @@ class TestOwner:
 
 class TestCli:
     def _scan(self, *args: str):
-        return runner.invoke(app, ["scan", str(ROOT), "--offline", "--no-blame", *args])
+        return runner.invoke(app, ["scan", str(ROOT), "--offline", "--no-blame", "--no-llm", *args])
 
     def test_exit_code_gates_on_fail_on(self):
         assert self._scan("--format", "json").exit_code == 1               # default: high
@@ -194,13 +194,13 @@ class TestCli:
 
     def test_clean_project_exits_zero(self, tmp_path):
         (tmp_path / "ok.py").write_text('def add(a, b):\n    return a + b\n')
-        out = runner.invoke(app, ["scan", str(tmp_path), "--offline", "--no-blame"])
+        out = runner.invoke(app, ["scan", str(tmp_path), "--offline", "--no-blame", "--no-llm"])
         assert out.exit_code == 0, out.output
         assert "NO FINDINGS" in out.output
 
     def test_threshold_ignores_what_is_below_it(self, tmp_path):
         (tmp_path / "s.py").write_text('API_KEY = "sk_live_51HxQ2vLs9Kd8W"\n')   # one medium
-        base = ["scan", str(tmp_path), "--offline", "--no-blame", "--format", "json"]
+        base = ["scan", str(tmp_path), "--offline", "--no-blame", "--no-llm", "--format", "json"]
         assert runner.invoke(app, base).exit_code == 0
         assert runner.invoke(app, base + ["--fail-on", "medium"]).exit_code == 1
 
@@ -211,7 +211,7 @@ class TestCli:
         assert {f["severity"] for f in data["findings"]} == {"critical"}
 
     def test_bad_path_is_an_error(self, tmp_path):
-        out = runner.invoke(app, ["scan", str(tmp_path / "nope"), "--offline"])
+        out = runner.invoke(app, ["scan", str(tmp_path / "nope"), "--offline", "--no-llm"])
         assert out.exit_code == 2
 
     def test_bad_depth_is_rejected(self):
@@ -224,13 +224,13 @@ class TestCli:
         for needle in ("FINDINGS", "CRITICAL", "7 critical", "GT-SQLI-001", "app/db.py:17",
                        "GET /api/users/{name}", "NO AUTH", "Attack paths",
                        "blast radius: 5", "owner lookup skipped",
-                       "> 17         cursor.execute"):
+                       "> 17         cursor.execute", "model triage off (--no-llm)"):
             assert needle in text, needle
 
 
 class TestJsonSnapshot:
     def test_snapshot(self):
-        out = runner.invoke(app, ["scan", str(ROOT), "--offline", "--no-blame",
+        out = runner.invoke(app, ["scan", str(ROOT), "--offline", "--no-blame", "--no-llm",
                                   "--format", "json", "--fail-on", "none"])
         assert out.exit_code == 0, out.output
         if os.environ.get("GITTRACE_UPDATE_SNAPSHOTS") == "1":
@@ -283,14 +283,14 @@ class TestTestCode:
         root.mkdir()
         (root / "tests").mkdir()
         (root / "tests" / "test_x.py").write_text('API_KEY = "sk_live_51HxQ2vLs9Kd8W"\n')
-        base = ["scan", str(root), "--offline", "--no-blame", "--format", "json", "--fail-on", "medium"]
+        base = ["scan", str(root), "--offline", "--no-blame", "--no-llm", "--format", "json", "--fail-on", "medium"]
         out = runner.invoke(app, base)
         assert out.exit_code == 0, out.output
         assert json.loads(out.stdout)["test_findings"][0]["severity"] == "info"
         assert runner.invoke(app, base + ["--include-tests"]).exit_code == 1
 
     def test_rich_output_has_a_test_section(self, tmp_path):
-        out = runner.invoke(app, ["scan", str(self._project(tmp_path)), "--offline", "--no-blame",
+        out = runner.invoke(app, ["scan", str(self._project(tmp_path)), "--offline", "--no-blame", "--no-llm",
                                   "--fail-on", "none"])
         assert "In test code: 2 finding(s), reported at info" in out.output
         assert "2 more in test code (info)" in out.output
