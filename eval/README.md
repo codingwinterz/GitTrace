@@ -224,13 +224,30 @@ that read or write the database.
 The seconds in the quality runs are not comparable between runs or models
 (battery power, model loads); see the `timing` run.
 
-Timing: the AC pass (`--label timing --require-ac`) has not been run; the
-laptop reported battery power throughout. A battery pass (`timing-battery`,
-both models back to back, the charge falling to 16%) is kept but not used to
-compare the models: the second model ran on a lower charge and was about 2.7x
-slower than in the after-tuning run. In the after-tuning and held-out runs,
-also on battery but at a higher charge, the two models had the same median
-pace (about 2.5 to 3 s per call).
+Timing (`results/explain/timing/`, `--label timing --require-ac`): both
+models back to back on the measured targets, 102 calls each, llama3.1:8b
+first, power plan "Turbo", AC before and after each model. The laptop went
+into Modern Standby twice during the run while plugged in, and each pause
+fell inside one call: llama3.1:8b's microblog `create_app` (recorded 1524 s)
+and qwen2.5-coder:7b's sample_app `version` (331 s); see
+`results/explain/timing/NOTES.md`. The raw `summary.md` includes those two
+calls; the figures here leave them out. Every other call took 1.1 to 8.4 s.
+
+| AC, seconds per call, median (mean) | llama3.1:8b | qwen2.5-coder:7b |
+|---|---|---|
+| function (52 each) | 1.86 (1.95) | 2.04 (2.14) |
+| file (47 each) | 2.31 (2.54) | 2.16 (2.40) |
+| project (2 each) | 7.2 (7.2) | 6.2 (6.2) |
+| every call (101 each) | 2.08 (2.33) | 2.13 (2.34) |
+
+On AC the two models are equally fast (one run, no repeats; the 0.1 to 0.2 s
+differences are not a ranking), and there is no 3x difference. Calls took
+about a quarter less time than in the after-tuning run on battery (median
+2.08 against 2.78 s, 2.13 against 2.76 s).
+
+A battery pass (`timing-battery`, both models back to back, the charge
+falling to 16%) is kept but not used to compare the models: the second model
+ran on a lower charge and was about 2.7x slower than in the after-tuning run.
 
 ## No raw secrets in the output
 

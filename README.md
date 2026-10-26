@@ -404,7 +404,22 @@ The prompt was not changed to avoid jargon, and the models use about as many ter
 - **Grounding check.** It removed 9 mentions after tuning and 10 held out. Almost all were classes or file paths listed where function ids were asked for. One was a real function two calls away (`query_index`, under microblog's `search`), which GitTrace's own "side effects further down" facts had named; the check only allows direct callers and callees, so it removed a correct mention.
 - **Which model.** qwen2.5-coder:7b was ahead in five of the six comparisons above. The exception is the held-out function summaries, where it was one behind (3 against 4 of 7). It never produced a "wrong" summary. That and its smaller memory footprint made it the `explain` default (run back to back, the two were equally fast; see Timing below). With samples this small, the ranking is a tendency, not a measurement.
 
-**Timing (reported apart from quality).** The planned timing pass on AC power has **not been run**: the laptop reported battery power throughout this session. Run it with `python eval/run_explain.py --label timing --require-ac` (it refuses to start on battery). What exists instead, on an RTX 5050 Laptop GPU (8 GB), seconds per model call:
+**Timing (reported apart from quality).** The timing pass ran on AC power (`python eval/run_explain.py --label timing --require-ac`, `results/explain/timing/`): both models back to back on the measured targets (102 calls each, llama3.1:8b first), no cache, one untimed warm-up call per model, RTX 5050 Laptop GPU (8 GB), Windows power plan "Turbo", AC before and after each model. The laptop went into Modern Standby (sleep) twice during the run, still plugged in, and each pause fell inside exactly one call: llama3.1:8b's first microblog call (`create_app`) is recorded at 1524 s and qwen2.5-coder:7b's sample_app `version` at 331 s, against standby periods of 1540 s and 337 s in the Windows event log. The table leaves out those two calls (the raw `summary.md` includes them); every other call took 1.1 to 8.4 s. Seconds per model call, on AC:
+
+| Summary | llama3.1:8b median (mean) | qwen2.5-coder:7b median (mean) |
+|---|---|---|
+| function (52 calls each) | **1.86 (1.95)** | **2.04 (2.14)** |
+| &nbsp;&nbsp;sample_app functions | 1.67 (1.73) | 2.12 (2.21) |
+| &nbsp;&nbsp;microblog functions | 2.06 (2.06) | 2.04 (2.10) |
+| file (47 each) | 2.31 (2.54) | 2.16 (2.40) |
+| project (2 each) | 7.2 (7.2) | 6.2 (6.2) |
+| every call (101 each) | 2.08 (2.33) | 2.13 (2.34) |
+
+- **On AC power the two models are equally fast**, about 2.1 s per call. llama3.1:8b was 0.2 s quicker per function summary and qwen2.5-coder:7b 0.15 s quicker per file summary. That is one run with no repeats, so differences this small are not a ranking. There is no 3x difference: the untouched run's "qwen2.5-coder:7b about 3x faster" compared llama3.1:8b on battery with qwen2.5-coder:7b on AC power, and does not hold.
+- On AC, calls took about a quarter less time than in the after-tuning run on battery (median 2.08 against 2.78 s for llama3.1:8b, 2.13 against 2.76 s for qwen2.5-coder:7b).
+- `explain`'s estimate before a run still uses the after-tuning battery means (3.0 s per call for qwen2.5-coder:7b, 3.7 s for llama3.1:8b), so on AC it overestimates by about a third; a default run on microblog (70 calls) is estimated at about 3.5 minutes and took about 2.8 minutes of model time with either model.
+
+The earlier runs, all on battery, seconds per model call (not used to compare the models):
 
 | Run (all on battery) | Order | llama3.1:8b median (mean) | qwen2.5-coder:7b median (mean) |
 |---|---|---|---|
@@ -412,9 +427,7 @@ The prompt was not changed to avoid jargon, and the models use about as many ter
 | held out, 26 calls each | llama first | 2.5 (3.0) | 2.4 (3.2) |
 | `timing-battery`, 102 calls each | llama first; battery fell to 16%, power plan "Silent" | 3.0 (5.8) | 7.5 (11.0) |
 
-- When the two models ran back to back at a reasonable charge, **they were equally fast** (about 2.5 to 3 s per call). The untouched run's "qwen2.5-coder:7b about 3x faster" compared llama3.1:8b on battery with qwen2.5-coder:7b on AC power, and does not hold.
-- The `timing-battery` pass measures the battery more than the models: qwen2.5-coder:7b ran second, on a lower charge, and was slower from its first calls; the slowest single calls took 262 s (llama3.1:8b) and 215 s (qwen2.5-coder:7b). It is kept (`results/explain/timing-battery/`) but not used to compare the models.
-- `explain`'s estimate before a run uses the after-tuning means (3.0 s per call for qwen2.5-coder:7b, 3.7 s for llama3.1:8b); a default run on microblog (70 calls) is then estimated at about 3.5 minutes.
+The `timing-battery` pass measures the battery more than the models: qwen2.5-coder:7b ran second, on a lower charge, and was slower from its first calls; the slowest single calls took 262 s (llama3.1:8b) and 215 s (qwen2.5-coder:7b).
 
 ## Limitations
 

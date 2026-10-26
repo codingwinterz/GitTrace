@@ -212,9 +212,12 @@ findings and code in plain language using a local LLM.
   references hashed in eval/explain/reference_held_out.sha256 before any
   model ran on it; run once (`--set held-out --label held-out`), nothing
   changed because of it. Timings come from a separate `timing` run with
-  `--require-ac`, reported apart from quality. Not run yet (the laptop
-  never reported AC power); a battery pass (`timing-battery`) was too
-  confounded by the falling charge to compare the models.
+  `--require-ac`, reported apart from quality. Run on AC (`timing`): the
+  models are equally fast (~2.1 s per call; per function 1.86 s llama,
+  2.04 s qwen, medians), two calls interrupted by Modern Standby are left
+  out (eval/results/explain/timing/NOTES.md); a battery pass
+  (`timing-battery`) was too confounded by the falling charge to compare
+  the models.
 
 ## Backlog (not scheduled; do not start without approval)
 - Routes from Flask-RESTful / Flask-RESTX `Resource` classes
