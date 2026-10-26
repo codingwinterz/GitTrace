@@ -1,0 +1,8 @@
+{
+  "fastapi-tdd-docker": {
+    "name": "fastapi-tdd-docker",
+    "repo": "https://github.com/testdrivenio/fastapi-tdd-docker",
+    "commit": "16433b6621e9afd801de8eba9738a6bfefb1f601",
+    "scan_path": "project"
+  }
+}

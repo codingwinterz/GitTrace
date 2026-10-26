@@ -1,0 +1,894 @@
+{
+  "model": {
+    "model": "ollama/qwen2.5-coder:7b",
+    "digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+    "quantization": "Q4_K_M",
+    "parameters": "7.6B",
+    "ollama_version": "0.40.11"
+  },
+  "warmup_seconds": 15.62,
+  "targets": {
+    "fastapi-tdd-docker": {
+      "meta": {
+        "enabled": true,
+        "model": "ollama/qwen2.5-coder:7b",
+        "prompt_version": "explain-v2",
+        "calls": 26,
+        "cached": 0,
+        "errors": 0,
+        "by_level": {
+          "function": 7,
+          "file": 18,
+          "project": 1
+        },
+        "seconds": 82.4,
+        "model_seconds_per_level": {
+          "function": 19.2,
+          "file": 55.3,
+          "project": 7.8
+        },
+        "grounding": {
+          "mentions_kept": 70,
+          "removed": 7
+        },
+        "summaries_with_terms": 18
+      },
+      "records": [
+        {
+          "level": "function",
+          "target": "app/api/ping.py::pong",
+          "text": {
+            "summary": "The function `pong` returns a JSON response indicating that the server is up and running, along with the current environment and testing status.",
+            "inputs": "nothing",
+            "outputs": "A JSON object with keys 'ping', 'environment', and 'testing'.",
+            "side_effects": "none",
+            "role": "This function is an endpoint handler that responds to GET requests to the '/ping' route. It does not interact with any external systems or change any data."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/ping.py::pong"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.68,
+          "attempts": 1,
+          "context_tokens": 337,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/summaries.py::read_summary",
+          "text": {
+            "summary": "Handles GET requests to retrieve a summary by ID.",
+            "inputs": "An integer ID from the URL path.",
+            "outputs": "A summary object if found, otherwise raises an HTTP 404 error.",
+            "side_effects": "none",
+            "role": "Endpoint handler for retrieving a summary."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/crud.py::get",
+              "app/api/summaries.py::read_summary"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.26,
+          "attempts": 1,
+          "context_tokens": 410,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/summaries.py::read_all_summaries",
+          "text": {
+            "summary": "This function handles GET requests to retrieve all summaries.",
+            "inputs": "nothing",
+            "outputs": "a list of SummarySchema objects",
+            "side_effects": "none",
+            "role": "endpoint handler"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/crud.py::get_all"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.65,
+          "attempts": 1,
+          "context_tokens": 352,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/summaries.py::create_summary",
+          "text": {
+            "summary": "Handles creating a new summary by posting data and scheduling a background task to generate the summary.",
+            "inputs": "A SummaryPayloadSchema object containing the summary data and a BackgroundTasks object for scheduling tasks.",
+            "outputs": "A SummaryResponseSchema object containing the ID and URL of the created summary.",
+            "side_effects": "Schedules a background task to generate the summary.",
+            "role": "An endpoint handler that processes incoming POST requests to create summaries and schedules background tasks for summary generation."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/crud.py::post",
+              "app/api/summaries.py::create_summary"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.06,
+          "attempts": 1,
+          "context_tokens": 470,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/summaries.py::update_summary",
+          "text": {
+            "summary": "Handles PUT requests to update a summary.",
+            "inputs": "A summary update payload and an ID of the summary to update.",
+            "outputs": "The updated summary if found, otherwise raises an HTTP 404 error.",
+            "side_effects": "none",
+            "role": "Endpoint handler for updating summaries."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/crud.py::put",
+              "app/api/summaries.py::update_summary"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.31,
+          "attempts": 1,
+          "context_tokens": 447,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/summaries.py::delete_summary",
+          "text": {
+            "summary": "Deletes a summary by ID and returns the deleted summary.",
+            "inputs": "An integer ID of the summary to delete.",
+            "outputs": "The deleted summary as a SummaryResponseSchema object.",
+            "side_effects": "None.",
+            "role": "Handles DELETE requests to remove a summary from the database."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/api/crud.py::get",
+              "app/api/crud.py::delete",
+              "app/api/summaries.py::delete_summary"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.58,
+          "attempts": 1,
+          "context_tokens": 463,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main.py::create_application",
+          "text": {
+            "summary": "Creates and returns a FastAPI application with two routers included.",
+            "inputs": "nothing",
+            "outputs": "a FastAPI application",
+            "side_effects": "none",
+            "role": "entry point for the application, called by tests and the main module"
+          },
+          "terms": [
+            {
+              "term": "router",
+              "definition": "in FastAPI, a group of routes that the app includes, often under a common URL prefix"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main.py::create_application",
+              "tests/conftest.py::test_app",
+              "tests/conftest.py::test_app_with_db"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.62,
+          "attempts": 1,
+          "context_tokens": 412,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/__init__.py",
+          "text": {
+            "summary": "The file `app/__init__.py` is empty and does not contain any code. It is used to mark the directory as a Python package.",
+            "role": "It is not used by any part of the app and does not rely on any other files or libraries."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.62,
+          "attempts": 1,
+          "context_tokens": 192,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/__init__.py",
+          "text": {
+            "summary": "The file `app/api/__init__.py` is empty and does not contain any code. It is likely used to indicate that the `app/api` directory is a Python package.",
+            "role": "This file does not play a role in the app as it is empty and does not contain any code."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.72,
+          "attempts": 1,
+          "context_tokens": 193,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/crud.py",
+          "text": {
+            "summary": "This file contains functions for interacting with the database using Tortoise ORM to perform CRUD operations on text summaries.",
+            "role": "It provides the backend logic for handling requests related to text summaries, such as retrieving, creating, updating, and deleting summaries."
+          },
+          "terms": [
+            {
+              "term": "ORM",
+              "definition": "Object-Relational Mapper: a library that maps Python classes to database tables and writes the SQL"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/crud.py::get",
+              "app/api/crud.py::get_all",
+              "app/api/crud.py::post",
+              "app/api/crud.py::put",
+              "app/api/crud.py::delete"
+            ],
+            "removed": [
+              {
+                "mention": "app/models.tortoise::TextSummary",
+                "reason": "not a function in this project"
+              },
+              {
+                "mention": "app/models.pydantic::SummaryPayloadSchema",
+                "reason": "not a function in this project"
+              },
+              {
+                "mention": "app/models.pydantic::SummaryUpdatePayloadSchema",
+                "reason": "not a function in this project"
+              }
+            ]
+          },
+          "cached": false,
+          "seconds": 3.8,
+          "attempts": 1,
+          "context_tokens": 884,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/ping.py",
+          "text": {
+            "summary": "The file `app/api/ping.py` contains a single endpoint for checking the server's status. It returns a JSON response indicating that the server is up and running, along with the current environment and testing status.",
+            "role": "This file is part of the API layer of the application. It is used by the main application to handle requests to the `/ping` endpoint."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/ping.py::pong"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.48,
+          "attempts": 1,
+          "context_tokens": 437,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/summaries.py",
+          "text": {
+            "summary": "This file contains API endpoints for managing summaries, including creating, reading, updating, and deleting summaries. It uses FastAPI for defining routes and handling HTTP requests.",
+            "role": "It is part of the API layer of the application, handling requests related to summaries and interacting with the database through CRUD operations."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/crud.py::delete",
+              "app/api/crud.py::get",
+              "app/api/crud.py::get_all",
+              "app/api/crud.py::post",
+              "app/api/crud.py::put",
+              "app/api/summaries.py::create_summary",
+              "app/api/summaries.py::delete_summary",
+              "app/api/summaries.py::read_all_summaries",
+              "app/api/summaries.py::read_summary",
+              "app/api/summaries.py::update_summary"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 5.01,
+          "attempts": 1,
+          "context_tokens": 1538,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/config.py",
+          "text": {
+            "summary": "This file contains configuration settings for the application, including environment, testing mode, and database URL. It uses Pydantic for data validation and settings management.",
+            "role": "This file is used by other parts of the application to access configuration settings. It relies on Pydantic for setting up and validating the configuration."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/config.py::get_settings"
+            ],
+            "removed": [
+              {
+                "mention": "app/config.py::Settings",
+                "reason": "not a function in this project"
+              }
+            ]
+          },
+          "cached": false,
+          "seconds": 2.37,
+          "attempts": 1,
+          "context_tokens": 418,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/db.py",
+          "text": {
+            "summary": "This file contains database initialization and schema generation logic for a FastAPI application using Tortoise ORM.",
+            "role": "It is used to set up the database connection and generate the database schema when the file is run directly."
+          },
+          "terms": [
+            {
+              "term": "ORM",
+              "definition": "Object-Relational Mapper: a library that maps Python classes to database tables and writes the SQL"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::generate_schema",
+              "app/db.py::init_db"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.17,
+          "attempts": 1,
+          "context_tokens": 806,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/main.py",
+          "text": {
+            "summary": "This file sets up the main application by creating a FastAPI instance and including routers for API endpoints. It also initializes the database.",
+            "role": "It serves as the entry point for the application, creating and configuring the FastAPI app."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "router",
+              "definition": "in FastAPI, a group of routes that the app includes, often under a common URL prefix"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::init_db",
+              "app/main.py::create_application"
+            ],
+            "removed": [
+              {
+                "mention": "app/api/ping.py::router",
+                "reason": "not a function in this project"
+              },
+              {
+                "mention": "app/api/summaries.py::router",
+                "reason": "not a function in this project"
+              }
+            ]
+          },
+          "cached": false,
+          "seconds": 2.52,
+          "attempts": 1,
+          "context_tokens": 542,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/models/__init__.py",
+          "text": {
+            "summary": "The file `app/models/__init__.py` is empty and does not contain any code. It is used to indicate that the `app/models` directory is a Python package.",
+            "role": "This file is not used by any part of the app and does not rely on any other files or libraries."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.79,
+          "attempts": 1,
+          "context_tokens": 194,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/models/pydantic.py",
+          "text": {
+            "summary": "This file contains Pydantic models for data validation and settings management.",
+            "role": "It is used to define data schemas for various parts of the application, ensuring that data conforms to expected formats before processing."
+          },
+          "terms": [
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.36,
+          "attempts": 1,
+          "context_tokens": 312,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/models/tortoise.py",
+          "text": {
+            "summary": "This file defines a model for text summaries using Tortoise ORM, including fields for URL, summary, and creation timestamp. It also creates a Pydantic schema for serialization.",
+            "role": "This module is part of the data model layer, providing a structured way to represent and interact with text summaries in the application."
+          },
+          "terms": [
+            {
+              "term": "ORM",
+              "definition": "Object-Relational Mapper: a library that maps Python classes to database tables and writes the SQL"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            },
+            {
+              "term": "serialize",
+              "definition": "turn objects into text or bytes (such as JSON) so they can be stored or sent"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/models/tortoise.py::TextSummary.__str__"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.26,
+          "attempts": 1,
+          "context_tokens": 392,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/summarizer.py",
+          "text": {
+            "summary": "This file contains a function to generate a summary of a news article using the NLTK and Newspaper libraries. It updates a database record with the generated summary.",
+            "role": "This file is used by other parts of the application to generate summaries of news articles and store them in the database."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/summarizer.py::generate_summary"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.08,
+          "attempts": 1,
+          "context_tokens": 440,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/models/0_20250421234125_init.py",
+          "text": {
+            "summary": "This file contains database migration scripts for initializing tables in a database using Tortoise ORM. It includes an `upgrade` function to create tables and a `downgrade` function to drop them.",
+            "role": "This file is part of the database migration process. It is used to set up the initial database schema when the application is first deployed or when migrating to a new version."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "ORM",
+              "definition": "Object-Relational Mapper: a library that maps Python classes to database tables and writes the SQL"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/models/0_20250421234125_init.py::upgrade",
+              "migrations/models/0_20250421234125_init.py::downgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.57,
+          "attempts": 1,
+          "context_tokens": 544,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "tests/__init__.py",
+          "text": {
+            "summary": "The file tests/__init__.py is empty and does not contain any code. It is used to indicate that the directory tests/ is a Python package.",
+            "role": "It is not used by any part of the app and does not rely on any other files or libraries."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.6,
+          "attempts": 1,
+          "context_tokens": 192,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "tests/conftest.py",
+          "text": {
+            "summary": "tests/conftest.py contains configuration and setup functions for testing the application. It imports necessary libraries and sets up test clients for both the application and the application with a database.",
+            "role": "This file is used by pytest to configure and run tests. It provides fixtures for setting up and tearing down test environments."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/main.py::create_application",
+              "tests/conftest.py::get_settings_override",
+              "tests/conftest.py::test_app",
+              "tests/conftest.py::test_app_with_db"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.09,
+          "attempts": 1,
+          "context_tokens": 813,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "tests/test_ping.py",
+          "text": {
+            "summary": "This file contains a single test function that checks if the '/ping' endpoint returns the expected response.",
+            "role": "It is part of the test suite for the application, ensuring that the '/ping' endpoint behaves as expected."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "tests/test_ping.py::test_ping"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.62,
+          "attempts": 1,
+          "context_tokens": 286,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "tests/test_summaries.py",
+          "text": {
+            "summary": "This file contains tests for the summary API endpoints. It uses pytest for testing and mocks the summary generation function to isolate the tests.",
+            "role": "It is part of the test suite for the app, ensuring that the summary API works as expected."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "tests/test_summaries.py::test_create_summary",
+              "tests/test_summaries.py::test_create_summaries_invalid_json",
+              "tests/test_summaries.py::test_read_summary",
+              "tests/test_summaries.py::test_read_summary_incorrect_id",
+              "tests/test_summaries.py::test_read_all_summaries",
+              "tests/test_summaries.py::test_remove_summary",
+              "tests/test_summaries.py::test_remove_summary_incorrect_id",
+              "tests/test_summaries.py::test_update_summary",
+              "tests/test_summaries.py::test_update_summary_invalid",
+              "tests/test_summaries.py::test_update_summary_invalid_url"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 6.85,
+          "attempts": 1,
+          "context_tokens": 4012,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "tests/test_summaries_unit.py",
+          "text": {
+            "summary": "This file contains unit tests for the summary-related endpoints in the app. It tests creating, reading, updating, and deleting summaries.",
+            "role": "It is part of the test suite for the app, ensuring that the summary-related functionalities work as expected."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "tests/test_summaries_unit.py::test_create_summary",
+              "tests/test_summaries_unit.py::test_create_summaries_invalid_json",
+              "tests/test_summaries_unit.py::test_read_summary",
+              "tests/test_summaries_unit.py::test_read_summary_incorrect_id",
+              "tests/test_summaries_unit.py::test_read_all_summaries",
+              "tests/test_summaries_unit.py::test_remove_summary",
+              "tests/test_summaries_unit.py::test_remove_summary_incorrect_id",
+              "tests/test_summaries_unit.py::test_update_summary",
+              "tests/test_summaries_unit.py::test_update_summary_invalid",
+              "tests/test_summaries_unit.py::test_update_summary_invalid_url"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 9.41,
+          "attempts": 1,
+          "context_tokens": 4179,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "project",
+          "target": "project",
+          "text": {
+            "summary": "The project is a FastAPI application that provides an API for managing text summaries. It includes endpoints for creating, reading, updating, and deleting summaries, as well as a ping endpoint to check the server's status.",
+            "how_it_works": "When a request is made to one of the endpoints, it is handled by the corresponding function in app/api/summaries.py. For example, a POST request to /summaries/ will call app/api/summaries.py::create_summary, which uses Tortoise ORM to interact with the SQL database. The application initializes the database in app/db.py and uses Pydantic for data validation and settings management."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "ORM",
+              "definition": "Object-Relational Mapper: a library that maps Python classes to database tables and writes the SQL"
+            },
+            {
+              "term": "SQL",
+              "definition": "the language used to read and change data in relational databases"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/summaries.py::create_summary",
+              "app/api/summaries.py::read_all_summaries",
+              "app/api/summaries.py::read_summary",
+              "app/api/summaries.py::update_summary",
+              "app/api/summaries.py::delete_summary",
+              "app/api/ping.py::pong"
+            ],
+            "removed": [
+              {
+                "mention": "app/db.py::create_application",
+                "reason": "not a function in this project"
+              }
+            ]
+          },
+          "cached": false,
+          "seconds": 7.83,
+          "attempts": 1,
+          "context_tokens": 1570,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        }
+      ]
+    }
+  }
+}

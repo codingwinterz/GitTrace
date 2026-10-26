@@ -226,6 +226,8 @@ EFFECT_KINDS = {
     "db_read": "reads the database",
     "db_write": "writes the database",
     "db": "uses the database",
+    "store_read": "reads a search index, cache or queue",
+    "store_write": "writes a search index, cache or queue",
     "network": "calls another service over the network",
     "file_read": "reads files",
     "file_write": "writes or deletes files",

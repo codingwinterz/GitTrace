@@ -1,0 +1,32 @@
+{
+  "written": "2026-10-26, from testdrivenio/fastapi-tdd-docker at 16433b6 (scan path project/), before any `explain` summary existed for this target; only the deterministic facts (the sample draw) had been computed. Held-out: chosen and read after the explain-v2 tuning was final.",
+  "files": {
+    "app/__init__.py": "Empty package marker.",
+    "app/api/__init__.py": "Empty package marker.",
+    "app/api/crud.py": "Database access for text summaries through the Tortoise ORM model TextSummary: get (one row by id as a dict, or None), get_all (all rows as dicts), post (creates a row with the URL and an empty summary, returns its id), put (updates url and summary by id, returns the updated row or None), delete (deletes by id, returns the count).",
+    "app/api/ping.py": "A health-check router: GET /ping returns 'pong!' with the environment name and the testing flag from the settings (injected with Depends(get_settings)).",
+    "app/api/summaries.py": "The summaries router (mounted at /summaries): read one (404 if missing), read all, create (stores the URL through crud.post, then schedules generate_summary as a FastAPI background task, returns id and url with 201), update (404 if missing), delete (404 if missing; returns the deleted summary). All database work goes through crud.",
+    "app/config.py": "Settings read from the environment with pydantic-settings (environment, default 'dev'; testing flag; database_url) and get_settings, which logs and returns Settings, cached with lru_cache so it is built once.",
+    "app/db.py": "Database setup for Tortoise ORM with the URL from $DATABASE_URL: the TORTOISE_ORM config (models and aerich's for migrations), init_db which registers Tortoise on the FastAPI app (no schema generation), and generate_schema, which connects, creates the tables and closes the connections; generate_schema runs when the file is run directly.",
+    "app/main.py": "Entry point: create_application builds the FastAPI app with the ping router and the summaries router under /summaries; at import it creates the app and calls init_db on it.",
+    "app/models/__init__.py": "Empty package marker.",
+    "app/models/pydantic.py": "Pydantic request/response schemas: SummaryPayloadSchema (an http(s) URL), SummaryResponseSchema (adds id), SummaryUpdatePayloadSchema (adds the summary text).",
+    "app/models/tortoise.py": "The Tortoise ORM model TextSummary (url, summary, created_at set on creation; str() is the URL) and SummarySchema, a pydantic schema generated from it for responses.",
+    "app/summarizer.py": "generate_summary: downloads the article at a URL with newspaper's Article, parses it, makes sure NLTK's punkt_tab tokenizer data is present (downloads it if not), runs the article's NLP to get a summary, and stores it in the TextSummary row with that id. Called as a background task after a summary is created.",
+    "migrations/models/0_20250421234125_init.py": "The first aerich migration: upgrade returns the SQL that creates the textsummary table (id, url, summary, created_at) and aerich's own table; downgrade returns empty SQL. The functions return SQL text; they do not execute it themselves.",
+    "tests/__init__.py": "Empty package marker.",
+    "tests/conftest.py": "Pytest fixtures: get_settings_override (testing on, test database URL from $DATABASE_TEST_URL); test_app, a TestClient for the app with the settings overridden; test_app_with_db, the same with Tortoise registered on the test database and the schema generated.",
+    "tests/test_ping.py": "One test: GET /ping returns 200 and the expected JSON (environment dev, testing true).",
+    "tests/test_summaries.py": "Tests of the summaries API against the test database (test_app_with_db), with generate_summary replaced by a mock: create, invalid payloads (422), read one and all, 404 for missing ids, delete, update, and invalid updates (parametrized).",
+    "tests/test_summaries_unit.py": "The same API tests as unit tests: the crud functions (and generate_summary) are replaced with mocks via monkeypatch, so no database is used."
+  },
+  "functions": {
+    "app/api/ping.py::pong": "GET /ping handler: returns {'ping': 'pong!', 'environment': ..., 'testing': ...} from the settings object injected by Depends(get_settings). No database.",
+    "app/api/summaries.py::create_summary": "POST /summaries/ handler: takes a payload with a URL; stores a new summary row (empty summary) via crud.post; schedules generate_summary(summary_id, url) as a background task (it runs after the response); returns {'id', 'url'} with status 201.",
+    "app/api/summaries.py::delete_summary": "DELETE /summaries/{id}/ handler (id > 0): reads the summary via crud.get, 404 if missing, deletes it via crud.delete, and returns the summary as it was before deletion.",
+    "app/api/summaries.py::read_all_summaries": "GET /summaries/ handler: returns every stored summary (crud.get_all reads all rows).",
+    "app/api/summaries.py::read_summary": "GET /summaries/{id}/ handler (id > 0): reads one summary via crud.get; raises a 404 HTTPException if not found; returns it.",
+    "app/api/summaries.py::update_summary": "PUT /summaries/{id}/ handler (id > 0): takes a payload with url and summary, updates the row via crud.put, 404 if no such row, returns the updated summary.",
+    "app/main.py::create_application": "Builds and returns the FastAPI app: includes the ping router (no prefix) and the summaries router under /summaries with the 'summaries' tag. Does not set up the database itself (init_db is called at module level after it). Also used by the test fixtures."
+  }
+}

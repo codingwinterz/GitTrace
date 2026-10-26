@@ -4,11 +4,12 @@ test_explain.py — `gittrace explain`, offline (the model is always mocked).
 Covers:
   1. facts: imports, entry points, side effects, services, important
      functions, request-flow trees, findings linked to files and functions
-  2. the side-effect classifier, call by call
+  2. the side-effect classifier, call by call, and by the type of the
+     object a method is called on
   3. the model layer: bottom-up order, prompts (budget, fence, masking),
-     the grounding check, the cache, errors
+     the grounding check, the cache, errors, the glossary ("Terms used")
   4. the CLI: formats, --out, --file / --function, --no-llm, the estimate
-     and its confirmation
+     and its confirmation, the default model
 
 Run:  pytest tests/test_explain.py -v
 """
@@ -26,12 +27,13 @@ from typer.testing import CliRunner
 import expected_sample_app
 from gittrace.cli import app
 from gittrace.core import explain as facts
+from gittrace.core.glossary import GLOSSARY, prose, terms_in
 from gittrace.core.scan import scan
 from gittrace.languages.base import ArgFact, CallSite
 from gittrace.languages.python.facts import classify
 from gittrace.llm import explain as summaries
 from gittrace.llm.cache import Cache
-from gittrace.llm.client import ModelCallFailed, ModelClient, ModelUnavailable
+from gittrace.llm.client import DEFAULT_EXPLAIN_MODEL, ModelCallFailed, ModelClient, ModelUnavailable
 from gittrace.llm.context import estimate_tokens
 
 ROOT = expected_sample_app.ROOT
@@ -41,6 +43,7 @@ runner = CliRunner()
 @pytest.fixture(autouse=True)
 def _no_model_env(monkeypatch):
     monkeypatch.delenv("GITTRACE_MODEL", raising=False)
+    monkeypatch.delenv("GITTRACE_EXPLAIN_MODEL", raising=False)
 
 
 @pytest.fixture
@@ -251,12 +254,37 @@ def _lit(value):
     (_call("User.query.filter_by", "project"), ("db_read", "SQLAlchemy query (filter_by)")),
     (_call("Post.objects.create", "project"), ("db_write", "Django ORM create")),
     (_call("db.users.insert_one"), ("db_write", "MongoDB insert_one")),
-    (_call("redis_client.set"), ("db_write", "Redis set")),
+    (_call("db.session.rollback"), ("db", "database session rollback")),
+    # Flask-SQLAlchemy helpers on the db object
+    (_call("app.db.paginate", "project"), ("db_read", "Flask-SQLAlchemy paginate")),
+    (_call("app.db.get_or_404", "project"), ("db_read", "Flask-SQLAlchemy get_or_404")),
+    (_call("db.first_or_404"), ("db_read", "Flask-SQLAlchemy first_or_404")),
+    (_call("User.query.get_or_404", "project"), ("db_read", "SQLAlchemy query (get_or_404)")),
+    (_call("db.create_all"), ("db_write", "Flask-SQLAlchemy create_all")),
+    # search indexes, caches and queues
+    (_call("es.search"), ("store_read", "search index search")),
+    (_call("flask.current_app.elasticsearch.index", "import"), ("store_write", "search index index")),
+    (_call("self.opensearch.delete"), ("store_write", "search index delete")),
+    (_call("elasticsearch.helpers.bulk", "import"), ("store_write", "search index bulk")),
+    (_call("redis_client.set"), ("store_write", "Redis set")),
+    (_call("flask.current_app.redis.get", "import"), ("store_read", "Redis get")),
+    (_call("cache.set"), ("store_write", "cache set")),
+    (_call("flask.current_app.task_queue.enqueue", "import"), ("store_write", "task queue enqueue")),
+    (_call("send_report.apply_async", "project"), ("store_write", "task queue apply_async")),
+    (_call("rq.job.Job.fetch", "import"), ("store_read", "task queue job fetch")),
+    # network
     (_call("requests.post", "import"), ("network", "requests.post")),
     (_call("urllib.request.urlopen", "import"), ("network", "urllib.request.urlopen")),
+    (_call("app.mail.send", "project"), ("network", "sends email (send)")),
     (_call("subprocess.Popen", "import"), ("subprocess", "subprocess.Popen")),
+    # files
     (_call("os.remove", "import"), ("file_write", "os.remove")),
     (_call("path.write_text"), ("file_write", ".write_text()")),
+    (_call("aiofiles.open", "import", [ArgFact("param", "p"), _lit("w")]), ("file_write", 'open(..., "w")')),
+    (_call("Path().open", args=[_lit("rb")]), ("file_read", 'Path.open(..., "rb")')),
+    (_call("zipfile.ZipFile", "import", [ArgFact("param", "p")]), ("file_read", 'zipfile.ZipFile(..., "r")')),
+    (_call("flask.send_from_directory", "import"), ("file_read", "sends a file (send_from_directory)")),
+    (_call("flask.request.files.get().save", "import"), ("file_write", "saves an uploaded file")),
 ])
 def test_effects_are_classified(call, expected):
     assert classify(call) == expected
@@ -265,9 +293,61 @@ def test_effects_are_classified(call, expected):
 @pytest.mark.parametrize("call", [
     _call("cache.get_value"), _call("x.get"), _call("form.save"), _call("print", "builtin"),
     _call("json.dumps", "import"), _call("self.items.append"), _call("os.path.join", "import"),
+    # building a client sends nothing; a response's methods are not requests
+    _call("requests.Session", "import"), _call("httpx.AsyncClient", "import"), _call("boto3.client", "import"),
+    _call("requests.get().json", "import"), _call("requests.exceptions.HTTPError", "import"),
+    # Flask's session is a signed cookie, not a database session
+    _call("flask.session.get", "import"),
+    _call("results.paginate"), _call("index.create"),
 ])
 def test_ordinary_calls_have_no_effect(call):
     assert classify(call) is None
+
+
+@pytest.mark.parametrize("dotted, typed, expected", [
+    ("session.get", "requests.Session().get", ("network", "requests.Session().get")),
+    ("client.post", "httpx.AsyncClient().post", ("network", "httpx.AsyncClient().post")),
+    ("s.mount", "requests.Session().mount", None),
+    ("search.delete", "opensearchpy.OpenSearch().delete", ("store_write", "search index delete")),
+    ("db.paginate", "flask_sqlalchemy.SQLAlchemy().paginate", ("db_read", "Flask-SQLAlchemy paginate")),
+    ("q.enqueue", "rq.Queue().enqueue", ("store_write", "task queue enqueue")),
+    ("job.save_meta", "rq.get_current_job().save_meta", ("store_write", "task queue job save_meta")),
+    ("r.hget", "redis.Redis.from_url().hget", ("store_read", "Redis hget")),
+    ("m.send", "flask_mail.Mail().send", ("network", "sends email (send)")),
+])
+def test_the_object_type_beats_the_variable_name(dotted, typed, expected):
+    assert classify(_call(dotted), typed) == expected
+
+
+def test_receiver_types_follow_imports_assignments_and_with(tmp_path):
+    root = _write(tmp_path / "p", {
+        "app/__init__.py": """
+            from flask_sqlalchemy import SQLAlchemy
+            from elasticsearch import Elasticsearch
+            db = SQLAlchemy()
+            es = Elasticsearch("http://localhost:9200")
+        """,
+        "app/views.py": """
+            import httpx
+            import requests
+            from app import db, es
+
+            def page(q):
+                session = requests.Session()
+                session.get("https://example.com")
+                with httpx.Client() as c:
+                    c.post("https://example.com", json={})
+                es.indices.create(index="posts")
+                rows = db.paginate(q)
+                return rows, db.get_or_404(q, 1).to_dict()
+        """,
+    })
+    ex = facts.build(scan(root, offline=True, blame=False))
+    got = [(e.line, e.kind, e.detail) for e in ex.functions["app/views.py::page"].effects]
+    assert got == [(8, "network", "requests.Session().get"), (10, "network", "httpx.Client().post"),
+                   (11, "store_write", "search index create"), (12, "db_read", "Flask-SQLAlchemy paginate"),
+                   (13, "db_read", "Flask-SQLAlchemy get_or_404")]
+    assert {s.name for s in ex.services} >= {"SQL database through Flask-SQLAlchemy", "Elasticsearch"}
 
 
 # ---------------------------------------------------------------------------
@@ -294,11 +374,13 @@ class FakeModel:
 
     def __init__(self, per_level=None, fail=()):
         self.calls: list[tuple[str, str, str]] = []
+        self.models: list[str] = []
         self.per_level = per_level or {}
         self.fail = set(fail)
 
     def __call__(self, client, messages, schema, num_ctx=8192):
         user = messages[1]["content"]
+        self.models.append(client.model)
         level = {"FunctionSummary": "function", "FileSummary": "file", "ProjectSummary": "project"}[schema.__name__]
         self.calls.append((level, messages[0]["content"], user))
         for marker in self.fail:
@@ -429,6 +511,30 @@ class TestModelLayer:
             summaries.Explainer(ex, result.analysis, ModelClient("ollama/m")).execute(
                 summaries.plan(ex, ["app/db.py::connect"], [], False))
 
+    def test_the_example_id_in_the_prompt_is_fake(self, sample):
+        _, ex = sample
+        for system in (summaries.FUNCTION_SYSTEM, summaries.FILE_SYSTEM, summaries.PROJECT_SYSTEM):
+            assert "example/module.py::Example.method" in system
+            assert "app/db.py::Repo.get_user" not in system
+        assert not any(fid.startswith("example/") for fid in ex.functions)
+
+    def test_side_effects_in_the_prompt_include_reads(self):
+        assert "database reads and writes" in summaries.FUNCTION_SYSTEM
+        assert summaries.EXPLAIN_VERSION == "explain-v2"
+
+    def test_summaries_carry_the_glossary_terms_they_use(self, sample, fake):
+        result, ex = sample
+        fake(per_level={"function": function_reply(
+            summary="The route handler for an endpoint; it reads a row with SQL.",
+            role="Called by app/routers/users.py::read_user, after the token check.")})
+        x = summaries.Explainer(ex, result.analysis, ModelClient("ollama/m"))
+        s = x.summarise("function", "app/db.py::Repo.get_user")
+        assert [t.term for t in s.terms] == ["endpoint", "handler", "route", "SQL", "token"]
+        d = s.to_dict()["terms"]
+        assert d[0] == {"term": "endpoint",
+                        "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"}
+        assert x.run.meta()["summaries_with_terms"] == 1
+
     def test_invalid_summaries_are_rejected(self):
         with pytest.raises(ValueError):
             summaries.FunctionSummary.model_validate_json(function_reply(extra_field=1))
@@ -522,11 +628,30 @@ class TestCli:
 
     def test_long_runs_need_confirmation(self, project, fake, monkeypatch):
         model = fake()
-        monkeypatch.setattr(summaries, "SECONDS_PER_CALL", 60.0)       # 32 calls -> 32 minutes
+        monkeypatch.setitem(summaries.MODEL_SECONDS_PER_CALL, DEFAULT_EXPLAIN_MODEL, 60.0)   # 32 calls -> 32 min
         out = _explain(project, "--format", "json")
         assert out.exit_code == 2 and "pass --yes" in out.output and model.calls == []
         out = _explain(project, "--format", "json", "--yes")
         assert out.exit_code == 0 and len(model.calls) == 32
+
+    def test_explain_has_its_own_default_model(self, project, fake, monkeypatch):
+        model = fake()
+        monkeypatch.setenv("GITTRACE_MODEL", "ollama/llama3.1:8b")          # triage's; not explain's
+        _explain(project, "--function", "app/db.py::connect", "--format", "json")
+        assert model.models == ["ollama/qwen2.5-coder:7b"] == [DEFAULT_EXPLAIN_MODEL]
+        monkeypatch.setenv("GITTRACE_EXPLAIN_MODEL", "ollama/llama3.1:8b")
+        _explain(project, "--function", "app/db.py::connect", "--format", "json")
+        _explain(project, "--function", "app/db.py::connect", "--format", "json", "--model", "ollama/other")
+        assert model.models[1:] == ["ollama/llama3.1:8b", "ollama/other"]
+
+    def test_terms_used_are_rendered(self, project, fake):
+        fake(per_level={"file": file_reply(summary="Defines the users router and its endpoints.")})
+        out = _explain(project, "--file", "app/routers/users.py", "--format", "md")
+        assert out.exit_code == 0, out.output
+        assert ("- **Terms used:**\n  - *endpoint*: a URL the app answers, together with its HTTP method "
+                "(GET, POST, ...)\n  - *router*: in FastAPI,") in out.stdout
+        text = " ".join(_explain(project, "--file", "app/routers/users.py").output.split())
+        assert "Terms used:" in text and "endpoint: a URL the app answers" in text
 
     def test_unavailable_model_exits_2(self, project, monkeypatch):
         def down(self, m, s, n=8192):
@@ -534,3 +659,29 @@ class TestCli:
         monkeypatch.setattr(ModelClient, "_call", down)
         out = _explain(project, "--yes")
         assert out.exit_code == 2 and "--no-llm" in out.output
+
+
+# ---------------------------------------------------------------------------
+# 5. The glossary
+# ---------------------------------------------------------------------------
+
+class TestGlossary:
+    def test_terms_are_found_in_prose_in_any_listed_form(self):
+        found = terms_in(["Registers two blueprints and the decorated functions as routes.",
+                          "It commits the session; the ORM writes the SQL."])
+        assert [t.term for t in found] == ["blueprint", "commit", "decorator", "ORM", "route", "session", "SQL"]
+
+    def test_code_like_text_is_not_prose(self):
+        assert terms_in(["Defined in app/auth/routes.py, called by routes.py::login and bp.route, "
+                         "then db.session.commit() and `token_auth`; token_auth checks it."]) == []
+        assert prose("see app/main/routes.py::index now") == "see   now"
+
+    def test_acronyms_must_be_upper_case_and_words_must_be_whole(self):
+        assert terms_in(["the orm and sql in lower case, a queue_name, routers"]) == \
+            [t for t in GLOSSARY if t.term == "router"]
+
+    def test_every_term_has_a_definition_and_matches_itself(self):
+        assert len({t.term for t in GLOSSARY}) == len(GLOSSARY)
+        for t in GLOSSARY:
+            assert t.definition and not t.definition.endswith(".")
+            assert terms_in([f"a {t.term} here"]) == [t], t.term

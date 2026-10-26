@@ -1,6 +1,6 @@
 {
-  "reviewed": "2026-10-26, after the untouched run, against reference.json (written before it) and the code",
-  "criteria": "correct: every statement about the code is true and the main purpose is covered; partly: main purpose right, but a false or misleading detail about the code, or a key point of the reference missing; wrong: main purpose wrong or a central claim false. Generic filler about a file's role (\"used by other parts of the app\") is noted, not penalised. side_effects 'none' for a read-only function is not an error: the prompt defines side effects as what the function changes.",
+  "reviewed": "2026-10-26: untouched after the untouched run, after-tuning after the after-tuning run, both against reference.json (written before any summary) and the code. Rated by an AI (Claude, the coding agent building GitTrace) against reference.json and the code; the owner may spot-check.",
+  "criteria": "correct: every statement about the code is true and the main purpose is covered; partly: main purpose right, but a false or misleading detail about the code, or a key point of the reference missing; wrong: main purpose wrong or a central claim false. Generic filler about a file's role (\"used by other parts of the app\") is noted, not penalised. side_effects 'none' for a read-only function is not an error: the prompt defines side effects as what the function changes. From the after-tuning run on (explain-v2, which defines side effects to include reads): side_effects 'none' for a function that reads or writes the database or a search index is a false detail.",
   "runs": {
     "untouched": {
       "ollama/llama3.1:8b": {
@@ -51,6 +51,58 @@
         "function:app/routers/reports.py::safe": {"level": "function", "rating": "correct", "reason": "reports for a user id from the URL path."},
         "function:app/routers/reports.py::version": {"level": "function", "rating": "correct", "reason": "returns {'version': '1.0'}."},
         "function:app/routers/users.py::ping_user": {"level": "function", "rating": "correct", "reason": "pings the host given as name with subprocess.check_output and returns the output."},
+        "function:app/routers/users.py::remove_user": {"level": "function", "rating": "correct", "reason": "deletes the user, returns {'deleted': id}, POST handler."}
+      }
+    },
+    "after-tuning": {
+      "ollama/llama3.1:8b": {
+        "file:app/__init__.py": {"level": "file", "rating": "wrong", "reason": "again calls the package marker 'the main entry point of the app'; main.py is. The Repo import is right."},
+        "file:app/auth.py": {"level": "file", "rating": "correct", "reason": "authentication, a function to get the current user, a secret API token, fastapi."},
+        "file:app/db.py": {"level": "file", "rating": "correct", "reason": "SQLite data access with Repo and AuditRepo, used by app/routers/users.py. 'relied upon by classes such as Repo and AuditRepo' (they are in the file) is muddled filler."},
+        "file:app/main.py": {"level": "file", "rating": "correct", "reason": "entry point, FastAPI app, includes routers, /health and /me."},
+        "file:app/routers/__init__.py": {"level": "file", "rating": "partly", "reason": "same as untouched: 'no code, only imports and possibly constants or classes' and 'likely used to import and configure routers'; the file is empty."},
+        "file:app/routers/admin.py": {"level": "file", "rating": "partly", "reason": "lists 'rendering report data as a string' as an endpoint beside evaluating expressions and retrieving report data; render is the report endpoint's inner helper. Auth module and /api/admin are right."},
+        "file:app/routers/debug.py": {"level": "file", "rating": "partly", "reason": "the two endpoints are right, but the key point of the file, that main.py never includes this router, is missing; 'used by the app to provide debug functionality' suggests it is live."},
+        "file:app/routers/reports.py": {"level": "file", "rating": "correct", "reason": "the five report routes; relies on app.db for the database (the untouched run's 'ORM' claim is gone)."},
+        "file:app/routers/users.py": {"level": "file", "rating": "correct", "reason": "the four functions and their dependencies (app.db, app.utils.shell)."},
+        "file:app/services/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package initializer."},
+        "file:app/services/maintenance.py": {"level": "file", "rating": "correct", "reason": "cron maintenance jobs, the functions and the Mailer class; relies on the database and the file system. 'check something' is vague."},
+        "file:app/utils/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package initializer."},
+        "file:app/utils/shell.py": {"level": "file", "rating": "correct", "reason": "helpers to run shell commands, run_command and its inner log. Does not say what log does."},
+        "function:app/db.py::Repo.__init__": {"level": "function", "rating": "partly", "reason": "same as untouched: inputs 'path to a SQLite database (from connect)' is false, it takes no argument; the connection is right."},
+        "function:app/db.py::Repo.get_user": {"level": "function", "rating": "correct", "reason": "a user by name, a record or None, reads the database."},
+        "function:app/main.py::me": {"level": "function", "rating": "correct", "reason": "current user from authentication, reads the database, /me handler."},
+        "function:app/routers/admin.py::report": {"level": "function", "rating": "correct", "reason": "takes nothing, returns the report rows rendered as a string; no side effects (load_rows returns a fixed list)."},
+        "function:app/routers/debug.py::run": {"level": "function", "rating": "correct", "reason": "runs the command via os.popen and returns its output."},
+        "function:app/routers/reports.py::count": {"level": "function", "rating": "correct", "reason": "count of reports, reads the database (SQL SELECT)."},
+        "function:app/routers/reports.py::safe": {"level": "function", "rating": "correct", "reason": "reports for a user id, reads the database."},
+        "function:app/routers/reports.py::version": {"level": "function", "rating": "correct", "reason": "returns the version as JSON."},
+        "function:app/routers/users.py::ping_user": {"level": "function", "rating": "wrong", "reason": "same as untouched: 'ping a user ... to check if the user exists'; it pings the host named in the URL with a shell command and returns the output."},
+        "function:app/routers/users.py::remove_user": {"level": "function", "rating": "correct", "reason": "deletes the user via the database, returns {'deleted': id}."}
+      },
+      "ollama/qwen2.5-coder:7b": {
+        "file:app/__init__.py": {"level": "file", "rating": "correct", "reason": "a module of a FastAPI app used in ingestion tests (its docstring), imports the repository. 'provides dependencies for other parts' is filler. Its mention 'app.db::Repo' (a class, not a function id) was removed."},
+        "file:app/auth.py": {"level": "file", "rating": "correct", "reason": "authenticates users with an API token; used as a dependency."},
+        "file:app/db.py": {"level": "file", "rating": "correct", "reason": "SQLite: connect, retrieve and delete users; sqlite3."},
+        "file:app/main.py": {"level": "file", "rating": "correct", "reason": "entry point, FastAPI app, health and user-info routes, includes routers."},
+        "file:app/routers/__init__.py": {"level": "file", "rating": "correct", "reason": "empty, marks a package."},
+        "file:app/routers/admin.py": {"level": "file", "rating": "correct", "reason": "evaluating expressions and reports, with authentication."},
+        "file:app/routers/debug.py": {"level": "file", "rating": "correct", "reason": "environment variables and running commands; not included in the main application."},
+        "file:app/routers/reports.py": {"level": "file", "rating": "correct", "reason": "the five report routes, using the database."},
+        "file:app/routers/users.py": {"level": "file", "rating": "correct", "reason": "read, delete, ping, list files. ('pinging users': it pings the host named in the URL.)"},
+        "file:app/services/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package marker; nothing imports it."},
+        "file:app/services/maintenance.py": {"level": "file", "rating": "correct", "reason": "scheduled maintenance: count users, purge sessions, load cache and config, check; no routes; yaml and pickle."},
+        "file:app/utils/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package marker."},
+        "file:app/utils/shell.py": {"level": "file", "rating": "partly", "reason": "same as untouched: says it logs the commands' output; it logs the command, not the output."},
+        "function:app/db.py::Repo.__init__": {"level": "function", "rating": "correct", "reason": "takes nothing, opens a SQLite connection for the instance."},
+        "function:app/db.py::Repo.get_user": {"level": "function", "rating": "partly", "reason": "same as untouched: outputs 'a dictionary representing the user's data'; fetchone returns a row tuple."},
+        "function:app/main.py::me": {"level": "function", "rating": "correct", "reason": "GET /me, authenticated user, reads the database."},
+        "function:app/routers/admin.py::report": {"level": "function", "rating": "correct", "reason": "GET and POST, authentication, load_rows then render into a string; no side effects."},
+        "function:app/routers/debug.py::run": {"level": "function", "rating": "correct", "reason": "runs the command with os.popen and returns its output. (Adds security commentary the prompt said to leave out.)"},
+        "function:app/routers/reports.py::count": {"level": "function", "rating": "correct", "reason": "counts reports, reads the database, GET handler."},
+        "function:app/routers/reports.py::safe": {"level": "function", "rating": "correct", "reason": "reports for a user id from the database."},
+        "function:app/routers/reports.py::version": {"level": "function", "rating": "correct", "reason": "returns {'version': '1.0'}."},
+        "function:app/routers/users.py::ping_user": {"level": "function", "rating": "correct", "reason": "runs ping through subprocess.check_output with the name from the URL and returns the output. ('a specified user's name': it is a host name; the route calls it a user name.)"},
         "function:app/routers/users.py::remove_user": {"level": "function", "rating": "correct", "reason": "deletes the user, returns {'deleted': id}, POST handler."}
       }
     }

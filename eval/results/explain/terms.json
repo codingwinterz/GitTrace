@@ -1,0 +1,92 @@
+{
+  "untouched": {
+    "ollama/llama3.1:8b": {
+      "summaries": 102,
+      "with_terms": 85,
+      "top_terms": {
+        "endpoint": 41,
+        "handler": 32,
+        "HTTP": 25,
+        "API": 12,
+        "migration": 10,
+        "route": 9,
+        "token": 9,
+        "schema": 9
+      }
+    },
+    "ollama/qwen2.5-coder:7b": {
+      "summaries": 102,
+      "with_terms": 82,
+      "top_terms": {
+        "endpoint": 40,
+        "handler": 25,
+        "route": 15,
+        "API": 10,
+        "migration": 10,
+        "HTTP": 9,
+        "schema": 9,
+        "token": 7
+      }
+    }
+  },
+  "after-tuning": {
+    "ollama/llama3.1:8b": {
+      "summaries": 102,
+      "with_terms": 84,
+      "top_terms": {
+        "endpoint": 40,
+        "handler": 28,
+        "HTTP": 24,
+        "API": 15,
+        "migration": 10,
+        "route": 9,
+        "session": 9,
+        "token": 8
+      }
+    },
+    "ollama/qwen2.5-coder:7b": {
+      "summaries": 102,
+      "with_terms": 86,
+      "top_terms": {
+        "endpoint": 42,
+        "handler": 28,
+        "route": 13,
+        "API": 10,
+        "migration": 10,
+        "schema": 9,
+        "HTTP": 8,
+        "token": 8
+      }
+    }
+  },
+  "held-out": {
+    "ollama/llama3.1:8b": {
+      "summaries": 26,
+      "with_terms": 20,
+      "top_terms": {
+        "endpoint": 8,
+        "API": 8,
+        "HTTP": 7,
+        "schema": 3,
+        "router": 3,
+        "handler": 2,
+        "JSON": 2,
+        "async": 1
+      }
+    },
+    "ollama/qwen2.5-coder:7b": {
+      "summaries": 26,
+      "with_terms": 18,
+      "top_terms": {
+        "endpoint": 12,
+        "handler": 5,
+        "ORM": 5,
+        "API": 5,
+        "schema": 4,
+        "HTTP": 3,
+        "JSON": 2,
+        "route": 2
+      }
+    }
+  }
+}

@@ -150,25 +150,87 @@ a JSON API with token auth, Flask CLI commands, Alembic migrations).
   **wrong** (main purpose wrong, or a central claim false), with a reason
   (`explain/<target>/review.json`).
 - **Untouched first:** the first run (`untouched`) uses the prompts as first
-  written (`explain-v1`, developed on `tests/fixtures/flask_app` only).
+  written (`explain-v1`, developed on `tests/fixtures/flask_app` only; archived
+  in `results/explain/untouched/system_prompts_explain-v1.txt`).
+- **Who rated:** the ratings were made by an AI (Claude, the coding agent
+  building this project) against the pre-written references and the code,
+  plus any spot checks the owner makes; they are not independent human
+  judgments.
+- **After tuning** (`after-tuning`, `explain-v2`): the same targets, sample
+  and protocol after the changes chosen from the untouched results: a fake
+  example id in the prompt, side effects defined to include reads, more
+  side-effect facts (Flask-SQLAlchemy helpers, Elasticsearch/OpenSearch,
+  Redis and task queues as `store_read`/`store_write`, HTTP client objects,
+  email, more file APIs, the object's type from the resolver), and the
+  glossary's "Terms used" attached in code. Optimistic: the changes were
+  chosen from these two targets. The review criteria are unchanged except
+  that `side_effects: none` for a function that reads the database (or a
+  search index) now counts as a false detail, because explain-v2 defines
+  side effects to include reads.
+- **Held out** (`held-out`): [testdrivenio/fastapi-tdd-docker](https://github.com/testdrivenio/fastapi-tdd-docker)
+  at a pinned commit (`explain/targets_held_out.json`), a small FastAPI app
+  (Tortoise ORM, a background summarizer task, pydantic settings, an aerich
+  migration) chosen after tuning was final and not used anywhere else in
+  this project. Its sample (all 7 important functions, `explain/sample_held_out.json`)
+  and its references (`explain/fastapi-tdd-docker/reference.json`) were
+  written and hashed (`explain/reference_held_out.sha256`) before any model
+  ran on it. Run once; nothing was changed because of it. It ran with the
+  same code as `after-tuning` (explain code sha256 `a8aadf04f8c1`); the only
+  later edits under `gittrace/llm/` are the per-model time estimate and a
+  comment, which do not reach any prompt.
+- **Timing** (`timing`): both models on the measured targets with
+  `--require-ac`, which stops unless the laptop is on AC power and records
+  the power state before and after each model. Reported separately from the
+  quality runs, whose seconds are not comparable (`power_at_start`,
+  `power_before`, `power_after` in each `summary.json`).
+- **Plain language:** `--terms` counts, for every run, the summaries whose
+  prose uses a term of GitTrace's glossary (`gittrace/core/glossary.py`),
+  recomputed from the recorded text with the same check for every run.
 
 ```bash
 python eval/run_explain.py --draw-sample          # once
 python eval/run_explain.py --label untouched
 python eval/run_explain.py --score untouched
+python eval/run_explain.py --label after-tuning
+python eval/run_explain.py --terms untouched after-tuning
+python eval/run_explain.py --set held-out --draw-sample          # once, before any model run on it
+python eval/run_explain.py --set held-out --label held-out       # once, after tuning
+python eval/run_explain.py --label timing --require-ac
 ```
 
-Results of `untouched` (`results/explain/untouched/`, ratings in
-`explain/<target>/review.json`; one reviewer, the tool's author):
+Results (`results/explain/<label>/`; ratings in `explain/<target>/review.json`,
+made by an AI against the references, see "Who rated" above):
 
-| Model | Files (47) correct / partly / wrong | Functions (30) correct / partly / wrong | Mentions removed by the grounding check |
-|---|---|---|---|
-| llama3.1:8b | 35 / 10 / 2 | 24 / 5 / 1 | 9 (of 279) |
-| qwen2.5-coder:7b | 42 / 5 / 0 | 28 / 2 / 0 | 6 (of 300) |
+| Run | Model | Files correct / partly / wrong | Functions correct / partly / wrong | Mentions kept / removed |
+|---|---|---|---|---|
+| `untouched` | llama3.1:8b | 35 / 10 / 2 (of 47) | 24 / 5 / 1 (of 30) | 270 / 9 |
+| `untouched` | qwen2.5-coder:7b | 42 / 5 / 0 | 28 / 2 / 0 | 294 / 6 |
+| `after-tuning` | llama3.1:8b | 38 / 8 / 1 | 26 / 3 / 1 | 239 / 6 |
+| `after-tuning` | qwen2.5-coder:7b | 45 / 2 / 0 | 29 / 1 / 0 | 279 / 3 |
+| `held-out` | llama3.1:8b | 14 / 4 / 0 (of 18) | 4 / 3 / 0 (of 7) | 57 / 3 |
+| `held-out` | qwen2.5-coder:7b | 16 / 2 / 0 | 3 / 4 / 0 | 70 / 7 |
 
-Timings are in `summary.md`; they are not comparable between the models (the
-llama3.1:8b run started on battery and ended on AC power, the qwen2.5-coder:7b
-run was on AC power throughout; `power_at_start` / `power_after` record it).
+Glossary terms (`results/explain/terms.json`): summaries whose prose uses at
+least one term, llama3.1:8b / qwen2.5-coder:7b: untouched 85 / 82 of 102,
+after tuning 84 / 86 of 102, held out 20 / 18 of 26. From explain-v2 on,
+every one of them carries GitTrace's definitions ("Terms used").
+
+Held-out finding, not fixed: GitTrace found no side effects at all in
+fastapi-tdd-docker (the Tortoise ORM, newspaper's downloads and
+`nltk.download` are not classified), and 3 (llama3.1:8b) and 4
+(qwen2.5-coder:7b) of the 7 function summaries repeat "none" for handlers
+that read or write the database.
+
+The seconds in the quality runs are not comparable between runs or models
+(battery power, model loads); see the `timing` run.
+
+Timing: the AC pass (`--label timing --require-ac`) has not been run; the
+laptop reported battery power throughout. A battery pass (`timing-battery`,
+both models back to back, the charge falling to 16%) is kept but not used to
+compare the models: the second model ran on a lower charge and was about 2.7x
+slower than in the after-tuning run. In the after-tuning and held-out runs,
+also on battery but at a higher charge, the two models had the same median
+pace (about 2.5 to 3 s per call).
 
 ## No raw secrets in the output
 

@@ -1,7 +1,9 @@
 """
 gittrace.llm.client — one structured model call, through LiteLLM.
 
-    model:    --model, else $GITTRACE_MODEL, else ollama/llama3.1:8b
+    model:    --model, else $GITTRACE_MODEL, else ollama/llama3.1:8b (scan's
+              triage); `explain` has its own: --model, else
+              $GITTRACE_EXPLAIN_MODEL, else ollama/qwen2.5-coder:7b
     options:  num_ctx 8192, temperature 0.1, a fixed seed, at most 1024 reply
               tokens, a timeout ($GITTRACE_LLM_TIMEOUT seconds, default 120)
     output:   the task's pydantic schema, also sent as a JSON schema (Ollama
@@ -46,6 +48,15 @@ from pydantic import BaseModel, ValidationError
 
 DEFAULT_MODEL = "ollama/llama3.1:8b"
 MODEL_ENV = "GITTRACE_MODEL"
+# `explain` defaults to another model than triage: in the explain evaluation
+# qwen2.5-coder:7b's summaries were more often right (untouched: 70 of 77
+# rated summaries correct, none wrong, against llama3.1:8b's 59 and 3 wrong;
+# ahead in 5 of 6 comparisons across the three runs) and it needs less GPU
+# memory. Run back to back, the two were equally fast. Triage stays on
+# llama3.1:8b, which hid far fewer real findings (1 of 35 true positives
+# against 10).
+DEFAULT_EXPLAIN_MODEL = "ollama/qwen2.5-coder:7b"
+EXPLAIN_MODEL_ENV = "GITTRACE_EXPLAIN_MODEL"
 TIMEOUT_ENV = "GITTRACE_LLM_TIMEOUT"
 NUM_CTX = 8192
 FALLBACK_NUM_CTX = 4096
@@ -81,12 +92,17 @@ class InvalidOutput(LLMError):
         self.replies = replies
 
 
-def resolve_model(flag: str | None = None) -> str:
-    """--model, then $GITTRACE_MODEL, then the default."""
-    for candidate in (flag, os.environ.get(MODEL_ENV)):
+def resolve_model(flag: str | None = None, *, env: str = MODEL_ENV, default: str = DEFAULT_MODEL) -> str:
+    """--model, then the environment variable (triage: $GITTRACE_MODEL), then the default."""
+    for candidate in (flag, os.environ.get(env)):
         if candidate and candidate.strip():
             return candidate.strip()
-    return DEFAULT_MODEL
+    return default
+
+
+def resolve_explain_model(flag: str | None = None) -> str:
+    """`explain`: --model, then $GITTRACE_EXPLAIN_MODEL, then qwen2.5-coder:7b."""
+    return resolve_model(flag, env=EXPLAIN_MODEL_ENV, default=DEFAULT_EXPLAIN_MODEL)
 
 
 def resolve_timeout() -> float:

@@ -16,24 +16,49 @@ guessed from names alone where the code says more:
                 full dotted name (aliases expanded by the resolver):
                   subprocess  subprocess.*, os.system/popen/exec*/spawn*, ...
                   network     requests, httpx, aiohttp, urllib.request,
-                              urllib3, http.client, socket, smtplib, boto3, ...
+                              urllib3, http.client, socket, smtplib, boto3,
+                              ...; requests on a client object (a
+                              requests.Session, httpx.Client, aiohttp
+                              ClientSession); email sent with Flask-Mail.
+                              Building a client (`requests.Session()`,
+                              `boto3.client("s3")`) sends nothing and is not
+                              an effect.
                   file_read / file_write
                               open() by its mode literal (read when the mode
-                              is absent or has no w/a/x/+), pathlib's
-                              read_*/write_*, os and shutil file operations
+                              is absent or has no w/a/x/+; also aiofiles,
+                              Path.open, zipfile, tarfile), pathlib's
+                              read_*/write_*, os and shutil file operations,
+                              Flask's send_file / send_from_directory, an
+                              uploaded file's save()
                   db_read / db_write / db
                               `.execute(...)` by its SQL verb when the SQL
                               text is visible (SELECT/WITH read; INSERT,
                               UPDATE, DELETE, CREATE, ... write; otherwise
                               `db`, direction unknown), SQLAlchemy sessions
                               (add/delete/merge/commit write; query/get/
-                              scalars/execute read), `Model.query...`
-                              (Flask-SQLAlchemy) and Django's
-                              `Model.objects...`, cursor fetch*, MongoDB
-                              collection methods, Redis clients.
+                              scalars/execute read; rollback `db`),
+                              Flask-SQLAlchemy (`Model.query...`,
+                              db.paginate / get_or_404 / first_or_404 /
+                              one_or_404 read, db.create_all / drop_all
+                              write), Django's `Model.objects...`, cursor
+                              fetch*, MongoDB collection methods.
+                  store_read / store_write
+                              search indexes, caches and queues:
+                              Elasticsearch / OpenSearch clients (search,
+                              get, count, ... read; index, update, delete,
+                              bulk, ... write), Redis and Flask-Caching
+                              clients, task queues (RQ enqueue*, Job.fetch,
+                              Celery apply_async / send_task).
                 A method called on a local object (`cursor.execute`) is
-                classified by its name only for these database verbs, which
-                are distinctive; `x.get()` or `x.save()` is not an effect.
+                classified by its name only for these verbs, which are
+                distinctive; `x.get()` or `x.save()` is not an effect. When
+                the object was built by a library constructor the resolver
+                can see (`es = Elasticsearch(...)`, `db = SQLAlchemy()`
+                imported from another module, `with httpx.Client() as c`),
+                the call is classified by that type first
+                (receiver_types): `session.get()` on a requests.Session is
+                a network call, not a database read. Flask's `session` is a
+                signed cookie, not a database.
   services      data stores and outside services, from the imported
                 packages (sqlite3, SQLAlchemy, Redis, requests, boto3, ...),
                 plus "files on disk" and "other programs" when effects show
@@ -212,6 +237,20 @@ _REDIS_WRITE = frozenset({"set", "setex", "hset", "hmset", "delete", "lpush", "r
 _REDIS_READ = frozenset({"get", "hget", "hgetall", "mget", "lrange", "smembers", "exists", "keys",
                          "zrange", "ttl"})
 _DJANGO_WRITE = frozenset({"create", "bulk_create", "update", "delete", "get_or_create", "update_or_create"})
+# Flask-SQLAlchemy's helpers on the `db` object (get_or_404 & co. also on Model.query).
+_FSA_READ = frozenset({"paginate", "get_or_404", "first_or_404", "one_or_404"})
+_FSA_WRITE = frozenset({"create_all", "drop_all"})
+_SEARCH_WRITE = frozenset({"index", "create", "update", "delete", "bulk", "streaming_bulk", "parallel_bulk",
+                           "delete_by_query", "update_by_query", "reindex", "put_mapping", "put_settings",
+                           "put_alias", "delete_alias"})
+_SEARCH_READ = frozenset({"search", "get", "mget", "msearch", "count", "scroll", "exists", "get_source",
+                          "search_template", "scan", "get_mapping"})
+_QUEUE_WRITE = frozenset({"enqueue", "enqueue_call", "enqueue_at", "enqueue_in", "enqueue_many",
+                          "apply_async", "send_task"})
+_HTTP_PACKAGES = frozenset({"requests", "httpx", "aiohttp", "urllib3"})
+_HTTP_METHODS = frozenset({"get", "post", "put", "patch", "delete", "head", "options", "request", "send",
+                           "stream", "urlopen", "ws_connect"})
+_CACHE_PACKAGES = ("redis", "aioredis", "flask_caching", "aiocache", "pymemcache", "memcache")
 _STRING_PREFIX = re.compile(r"""^[rRbBuUfF]{0,2}(['"]{1,3})""")
 
 
@@ -235,8 +274,8 @@ def _sql_verb(call: CallSite) -> str | None:
     return word.group(1).lower() if word else None
 
 
-def _open_mode(call: CallSite) -> str:
-    mode = call.argument(1, "mode")
+def _open_mode(call: CallSite, position: int = 1) -> str:
+    mode = call.argument(position, "mode")
     if mode is None:
         return "r"
     if mode.is_literal and isinstance(mode.value, str):
@@ -244,27 +283,59 @@ def _open_mode(call: CallSite) -> str:
     return "?"
 
 
-def classify(call: CallSite) -> tuple[str, str] | None:
-    """(effect kind, detail) for one unresolved call, or None."""
-    d = call.dotted
+def _by_mode(call: CallSite, what: str, position: int = 1) -> tuple[str, str]:
+    mode = _open_mode(call, position)
+    if mode == "?":
+        return "file_read", f"{what} with a mode that is not a constant"
+    write = any(c in mode for c in "wax+")
+    return ("file_write" if write else "file_read"), f'{what[:-2]}(..., "{mode}")'
+
+
+def classify(call: CallSite, typed: str | None = None) -> tuple[str, str] | None:
+    """(effect kind, detail) for one unresolved call, or None. `typed` is the
+    call written with the constructor of the object it is made on, when the
+    resolver knows it (receiver_types): the object's real type beats its
+    variable's name."""
+    if typed is not None:
+        found = _classify(typed, "import", call)
+        if found is not None:
+            return found
+    return _classify(call.dotted, call.origin, call)
+
+
+def _classify(d: str, origin: str, call: CallSite) -> tuple[str, str] | None:
     last = d.rsplit(".", 1)[-1]
     lower = d.lower()
+    segments = [s.removesuffix("()") for s in lower.split(".")]
+    package = segments[0]
     if _SUBPROCESS.match(d):
         return "subprocess", d
+    if package in _HTTP_PACKAGES or package in ("boto3", "botocore"):
+        if last in ("client", "resource") or ("()." not in d and last[:1].isupper()):
+            return None               # builds a client or a session; nothing is sent yet
+        if "()." in d and package in _HTTP_PACKAGES and last not in _HTTP_METHODS:
+            return None               # e.g. session.mount(), response.json()
+        return "network", d
     if _NETWORK.match(d):
         return "network", d
-    if d in ("open", "io.open", "codecs.open", "os.open") and call.origin in ("builtin", "import"):
-        mode = _open_mode(call)
-        if mode == "?":
-            return "file_read", "open() with a mode that is not a constant"
-        write = any(c in mode for c in "wax+")
-        return ("file_write" if write else "file_read"), f'open(..., "{mode}")'
+    if d in ("open", "io.open", "codecs.open", "os.open", "aiofiles.open") and origin in ("builtin", "import"):
+        return _by_mode(call, "open()")
+    if d in ("zipfile.ZipFile", "tarfile.open"):
+        return _by_mode(call, f"{d}()")
+    if last == "open" and segments[-2:-1] in (["path"], ["pathlib"]) and "()." in d:
+        return _by_mode(call, "Path.open()", position=0)
     if _FILE_WRITE.match(d):
         return "file_write", d
     if _FILE_READ.match(d):
         return "file_read", d
-    if call.origin == "builtin":
+    if d in ("flask.send_file", "flask.send_from_directory"):
+        return "file_read", f"sends a file ({last})"
+    if origin == "builtin":
         return None
+    if last == "save" and "request.files" in lower:
+        return "file_write", "saves an uploaded file"
+    if d.startswith(("flask.session", "quart.session")):
+        return None                   # a signed cookie, not a database session
 
     # Methods on objects: database verbs first (distinctive names).
     if last in ("execute", "executemany", "executescript", "exec_driver_sql"):
@@ -276,7 +347,7 @@ def classify(call: CallSite) -> tuple[str, str] | None:
         if last == "executemany":
             return "db_write", "SQL executed for many rows"
         if "session" in lower and verb is None and last == "execute":
-            return "db", f"{d} (statement built elsewhere)"
+            return "db", "database session execute (statement built elsewhere)"
         return "db", "SQL whose text is built elsewhere" if verb is None else f"SQL {verb.upper()}"
     if last in _FETCH:
         return "db_read", f"{d}"
@@ -284,11 +355,29 @@ def classify(call: CallSite) -> tuple[str, str] | None:
         return ("db_write" if last in _DJANGO_WRITE else "db_read"), f"Django ORM {last}"
     if ".query." in d or d.endswith(".query"):                # Flask-SQLAlchemy Model.query...
         return "db_read", f"SQLAlchemy query ({last})"
+    receiver = segments[-2] if len(segments) > 1 else ""
+    if last in _FSA_READ and (last != "paginate" or receiver == "db" or package == "flask_sqlalchemy"):
+        return "db_read", f"Flask-SQLAlchemy {last}"
+    if last in _FSA_WRITE and (receiver == "db" or package == "flask_sqlalchemy"):
+        return "db_write", f"Flask-SQLAlchemy {last}"
+    if any(s.startswith(("elasticsearch", "opensearch")) for s in segments) or segments[0] == "es":
+        if last in _SEARCH_WRITE:
+            return "store_write", f"search index {last}"
+        if last in _SEARCH_READ:
+            return "store_read", f"search index {last}"
+    if last in _QUEUE_WRITE:
+        return "store_write", f"task queue {last}"
+    if package == "rq" and last in ("fetch", "fetch_many"):
+        return "store_read", f"task queue job {last}"
+    if package == "rq" and "()." in d and last in ("save", "save_meta"):
+        return "store_write", f"task queue job {last}"
     if "session" in lower:
         if last in _SESSION_WRITE:
             return "db_write", f"database session {last}"
         if last in _SESSION_READ:
             return "db_read", f"database session {last}"
+        if last == "rollback":
+            return "db", "database session rollback"
     if last == "commit" and re.search(r"\b(?:db|conn|connection|cnx|con|database|transaction)\b",
                                       lower.replace(".", " ")):
         return "db_write", f"{d}"
@@ -297,24 +386,73 @@ def classify(call: CallSite) -> tuple[str, str] | None:
             return "db_write", f"MongoDB {last}"
         if last in _MONGO_READ and last != "distinct":
             return "db_read", f"MongoDB {last}"
-    if "redis" in lower or lower.startswith("cache."):
+    if "redis" in lower or package in _CACHE_PACKAGES or segments[0] == "cache":
+        name = "Redis" if "redis" in lower else "cache"
         if last in _REDIS_WRITE:
-            return "db_write", f"Redis {last}"
+            return "store_write", f"{name} {last}"
         if last in _REDIS_READ:
-            return "db_read", f"Redis {last}"
-    if call.origin == "unknown" and last in _PATH_WRITE and last not in ("replace", "rename", "unlink"):
+            return "store_read", f"{name} {last}"
+    if last in ("send", "send_message") and (package == "flask_mail" or receiver == "mail"):
+        return "network", f"sends email ({last})"
+    if origin == "unknown" and last in _PATH_WRITE and last not in ("replace", "rename", "unlink"):
         return "file_write", f".{last}()"
-    if call.origin == "unknown" and last in _PATH_READ:
+    if origin == "unknown" and last in _PATH_READ:
         return "file_read", f".{last}()"
     return None
 
 
-def effects(calls: Sequence[CallSite]) -> list[EffectFact]:
+def receiver_types(modules: Sequence[PyModule], resolver: Resolver) -> dict[tuple, str]:
+    """For a method called on an object built by a library constructor, the
+    call written with that constructor: `s = requests.Session(); s.get(u)`
+    -> `requests.Session().get`, `db.paginate(...)` with `db = SQLAlchemy()`
+    in another module -> `flask_sqlalchemy.SQLAlchemy().paginate`. Also a
+    name bound by `with Ctor(...) as name` in the same function. Keyed by
+    _site_key; calls the resolver cannot type are absent."""
+    sources = {fn.record.id: fn.record.source for m in modules for fn in m.functions}
+    out: dict[tuple[str, int, int], str] = {}
+    for mod in modules:
+        for raw in mod.calls:
+            parts = raw.call.parts
+            if not parts or len(parts) < 2:
+                continue
+            typed = _typed(resolver, mod, raw, parts, sources.get(raw.caller_id, ""))
+            if typed is not None:
+                out[_site_key(raw.caller_id, raw.call.line, raw.site, ".".join(parts))] = typed
+    return out
+
+
+def _site_key(caller_id: str, line: int, site, dotted: str) -> tuple:
+    """Where a call is. `a.f(x).g()` and its inner `a.f(x)` start at the same
+    column; the last name and the number of calls in the chain tell them apart."""
+    return caller_id, line, site.column if site else 0, dotted.rsplit(".", 1)[-1], dotted.count("()")
+
+
+def _typed(resolver: Resolver, mod: PyModule, raw, parts: tuple[str, ...], source: str) -> str | None:
+    for k in range(len(parts) - 1, 0, -1):
+        prefix = parts[:k]
+        if not all(p.isidentifier() for p in prefix):
+            continue
+        sym = resolver.resolve_ref(mod, raw.scope, prefix).sym
+        if isinstance(sym, VarSym):
+            sym = resolver.deref(sym)
+        if isinstance(sym, ExtInst):
+            return f"{sym.dotted}()." + ".".join(parts[k:])
+        if k == 1 and sym is None and source:
+            m = re.search(rf"\bwith\s+(?:[^\n:]*?,\s*)?([\w.]+)\([^\n]*?\)\s+as\s+{re.escape(parts[0])}\b", source)
+            if m is not None:
+                made = resolver.resolve_ref(mod, raw.scope, tuple(m.group(1).split("."))).sym
+                if isinstance(made, ExtSym) and made.origin == "import":
+                    return f"{made.dotted}()." + ".".join(parts[1:])
+    return None
+
+
+def effects(calls: Sequence[CallSite], typed: dict[tuple, str] | None = None) -> list[EffectFact]:
     out = []
+    typed = typed or {}
     for call in calls:
         if call.resolved or call.origin == "class":
             continue
-        kind = classify(call)
+        kind = classify(call, typed.get(_site_key(call.caller_id, call.line, call.site, call.dotted)))
         if kind is None:
             continue
         file = call.site.file if call.site else _file(call)
@@ -359,6 +497,9 @@ _SERVICES: dict[str, tuple[str, str, str]] = {
     "redis": ("cache", "Redis", "an in-memory key-value store, often used as a cache or a message queue"),
     "aioredis": ("cache", "Redis", "an in-memory key-value store, often used as a cache or a message queue"),
     "elasticsearch": ("search", "Elasticsearch", "a search engine server that indexes text for fast search"),
+    "opensearchpy": ("search", "OpenSearch", "a search engine server that indexes text for fast search"),
+    "flask_caching": ("cache", "Flask-Caching", "keeps computed results for a while so they need not be "
+                                                "computed again"),
     "requests": ("http", "outbound HTTP (requests)", "the app calls other web services over HTTP"),
     "httpx": ("http", "outbound HTTP (httpx)", "the app calls other web services over HTTP"),
     "aiohttp": ("http", "outbound HTTP (aiohttp)", "the app calls other web services over HTTP"),

@@ -1,0 +1,62 @@
+{
+  "reviewed": "2026-10-26, after the single held-out run, against reference.json (written and hashed before it) and the code. Rated by an AI (Claude, the coding agent building GitTrace) against reference.json and the code; the owner may spot-check.",
+  "criteria": "correct: every statement about the code is true and the main purpose is covered; partly: main purpose right, but a false or misleading detail about the code, or a key point of the reference missing; wrong: main purpose wrong or a central claim false. Generic filler about a file's role is noted, not penalised. side_effects 'none' for a function that reads or writes the database is a false detail (explain-v2 defines side effects to include reads), even where GitTrace's facts found none.",
+  "runs": {
+    "held-out": {
+      "ollama/llama3.1:8b": {
+        "file:app/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package initializer."},
+        "file:app/api/__init__.py": {"level": "file", "rating": "correct", "reason": "empty initializer of the API package ('placeholder' is filler)."},
+        "file:app/api/crud.py": {"level": "file", "rating": "partly", "reason": "CRUD on text summaries with get, get_all, post, put, delete: right. But it calls them 'API endpoints'; they are database helpers, the endpoints are in summaries.py."},
+        "file:app/api/ping.py": {"level": "file", "rating": "correct", "reason": "the /ping endpoint returning environment and testing settings; app.config. 'used by other parts of the app' is filler."},
+        "file:app/api/summaries.py": {"level": "file", "rating": "correct", "reason": "read, create, update, delete endpoints using app.api.crud for the database. Does not mention the background summary task."},
+        "file:app/config.py": {"level": "file", "rating": "correct", "reason": "Settings with environment, testing, database URL; get_settings returns it; from the environment."},
+        "file:app/db.py": {"level": "file", "rating": "correct", "reason": "database setup with Tortoise, init_db and generate_schema, used by app/main.py, DATABASE_URL."},
+        "file:app/main.py": {"level": "file", "rating": "correct", "reason": "entry point creating the FastAPI app with the ping and summaries routers (init_db at import not mentioned)."},
+        "file:app/models/__init__.py": {"level": "file", "rating": "partly", "reason": "the same pattern as sample_app's routers/__init__.py: 'does not contain any code, only imports and possibly constants or classes' and a guessed role; the file is empty."},
+        "file:app/models/pydantic.py": {"level": "file", "rating": "correct", "reason": "the three Pydantic schemas for validation."},
+        "file:app/models/tortoise.py": {"level": "file", "rating": "correct", "reason": "the TextSummary Tortoise model with url, summary and creation date."},
+        "file:app/summarizer.py": {"level": "file", "rating": "correct", "reason": "summaries from URLs with newspaper and NLTK, saved to the database."},
+        "file:migrations/models/0_20250421234125_init.py": {"level": "file", "rating": "partly", "reason": "a migration with upgrade and downgrade: right; 'which create and drop database tables' is false: both return SQL text, and downgrade's is empty."},
+        "file:tests/__init__.py": {"level": "file", "rating": "correct", "reason": "empty initializer of the tests package."},
+        "file:tests/conftest.py": {"level": "file", "rating": "correct", "reason": "test fixtures for the app and for the app with a database."},
+        "file:tests/test_ping.py": {"level": "file", "rating": "correct", "reason": "one test of GET /ping, status and JSON."},
+        "file:tests/test_summaries.py": {"level": "file", "rating": "partly", "reason": "tests of create, read, update, delete: right; 'the tests use a mock API to simulate the actual API calls' is false: they call the real API on a test database, only generate_summary is mocked."},
+        "file:tests/test_summaries_unit.py": {"level": "file", "rating": "correct", "reason": "unit tests with the CRUD operations mocked out to isolate the endpoints."},
+        "function:app/api/ping.py::pong": {"level": "function", "rating": "correct", "reason": "GET /ping returning the environment and testing settings; no side effects. (Calls the injected settings 'request data'.)"},
+        "function:app/api/summaries.py::create_summary": {"level": "function", "rating": "partly", "reason": "creates the summary and schedules a task to generate it, returns id and URL: right. side_effects 'none' is false: it writes a row through crud.post. GitTrace's facts found no side effects (Tortoise ORM calls are not classified)."},
+        "function:app/api/summaries.py::delete_summary": {"level": "function", "rating": "correct", "reason": "deletes by id, returns the deleted summary, 404 if missing, writes the database through crud.delete."},
+        "function:app/api/summaries.py::read_all_summaries": {"level": "function", "rating": "partly", "reason": "returns all summaries: right; side_effects 'none' is false (it reads every row through crud.get_all; the facts found none). 'no authentication detected' as an input is odd."},
+        "function:app/api/summaries.py::read_summary": {"level": "function", "rating": "correct", "reason": "reads one summary from the database, 404 if missing."},
+        "function:app/api/summaries.py::update_summary": {"level": "function", "rating": "partly", "reason": "takes the payload and id, updates through another function, returns the summary: right; side_effects 'none' is false (it updates a row through crud.put; the facts found none). The 404 is not mentioned."},
+        "function:app/main.py::create_application": {"level": "function", "rating": "correct", "reason": "creates and returns the FastAPI app with the ping and summaries routers; no side effects."}
+      },
+      "ollama/qwen2.5-coder:7b": {
+        "file:app/__init__.py": {"level": "file", "rating": "correct", "reason": "empty, marks a package."},
+        "file:app/api/__init__.py": {"level": "file", "rating": "correct", "reason": "empty, marks a package."},
+        "file:app/api/crud.py": {"level": "file", "rating": "correct", "reason": "CRUD on text summaries with the Tortoise ORM; the backend for the summary requests. Its mentions of classes (TextSummary, the schemas) were removed: they are not functions."},
+        "file:app/api/ping.py": {"level": "file", "rating": "correct", "reason": "one status endpoint returning the environment and testing flag; included by the main app."},
+        "file:app/api/summaries.py": {"level": "file", "rating": "correct", "reason": "create, read, update, delete endpoints with FastAPI, database through CRUD. Does not mention the background summary task."},
+        "file:app/config.py": {"level": "file", "rating": "correct", "reason": "environment, testing mode, database URL with Pydantic settings."},
+        "file:app/db.py": {"level": "file", "rating": "correct", "reason": "Tortoise database initialisation and schema generation when run directly."},
+        "file:app/main.py": {"level": "file", "rating": "correct", "reason": "entry point: FastAPI instance, routers, database initialisation."},
+        "file:app/models/__init__.py": {"level": "file", "rating": "correct", "reason": "empty, marks a package."},
+        "file:app/models/pydantic.py": {"level": "file", "rating": "partly", "reason": "Pydantic models for data validation: right; 'and settings management' is false for this file (the settings are in app/config.py), and the three schemas are not named."},
+        "file:app/models/tortoise.py": {"level": "file", "rating": "correct", "reason": "the Tortoise text-summary model with url, summary, timestamp, and the generated Pydantic schema."},
+        "file:app/summarizer.py": {"level": "file", "rating": "correct", "reason": "summary of a news article with NLTK and Newspaper, stored in the database record."},
+        "file:migrations/models/0_20250421234125_init.py": {"level": "file", "rating": "partly", "reason": "the initial migration: right; 'a downgrade function to drop them' is false: downgrade returns empty SQL (and both functions only return SQL text)."},
+        "file:tests/__init__.py": {"level": "file", "rating": "correct", "reason": "empty, marks a package."},
+        "file:tests/conftest.py": {"level": "file", "rating": "correct", "reason": "pytest fixtures with test clients for the app and the app with a database."},
+        "file:tests/test_ping.py": {"level": "file", "rating": "correct", "reason": "a single test of the /ping response."},
+        "file:tests/test_summaries.py": {"level": "file", "rating": "correct", "reason": "tests of the summary endpoints with the summary generation mocked."},
+        "file:tests/test_summaries_unit.py": {"level": "file", "rating": "correct", "reason": "unit tests of create, read, update, delete (the mocked crud functions are not mentioned)."},
+        "function:app/api/ping.py::pong": {"level": "function", "rating": "correct", "reason": "returns 'ping', environment and testing; GET /ping; no side effects."},
+        "function:app/api/summaries.py::create_summary": {"level": "function", "rating": "correct", "reason": "creates the summary and schedules the background generation task; returns id and URL. Side effects name only the background task, not the database write (GitTrace's facts found none)."},
+        "function:app/api/summaries.py::delete_summary": {"level": "function", "rating": "partly", "reason": "deletes by id and returns the deleted summary: right; side_effects 'None.' is false and contradicts its own role ('remove a summary from the database'); the facts found no side effects (Tortoise ORM calls are not classified)."},
+        "function:app/api/summaries.py::read_all_summaries": {"level": "function", "rating": "partly", "reason": "returns all summaries: right; side_effects 'none' is false (it reads every row; the facts found none)."},
+        "function:app/api/summaries.py::read_summary": {"level": "function", "rating": "partly", "reason": "returns a summary by id or a 404: right; side_effects 'none' is false (it reads the row; the facts found none)."},
+        "function:app/api/summaries.py::update_summary": {"level": "function", "rating": "partly", "reason": "updates a summary, 404 if missing: right; side_effects 'none' is false (it updates the row; the facts found none)."},
+        "function:app/main.py::create_application": {"level": "function", "rating": "correct", "reason": "creates and returns the FastAPI app with two routers; called by tests and the main module."}
+      }
+    }
+  }
+}

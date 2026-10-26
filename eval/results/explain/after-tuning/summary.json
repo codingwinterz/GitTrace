@@ -1,0 +1,145 @@
+{
+  "label": "after-tuning",
+  "set": "measured",
+  "prompt_version": "explain-v2",
+  "llm_code_sha256": "7f62a40da2708687fb00575a0c97696b97752164e391ace5a92a111049c24073",
+  "explain_code_sha256": "a8aadf04f8c125eedb631b6579011db1bcfe2134ce3997e4ffbd8e2ac4f2d3e6",
+  "gpu": "NVIDIA GeForce RTX 5050 Laptop GPU, 8151 MiB",
+  "power_at_start": "battery",
+  "models": {
+    "ollama/llama3.1:8b": {
+      "warmup_seconds": 22.25,
+      "power_before": "battery",
+      "power_after": "battery",
+      "targets": {
+        "sample_app": {
+          "calls": 32,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 0,
+          "mentions_kept": 76,
+          "mentions_removed": 2,
+          "summaries_with_removals": 2,
+          "seconds": {
+            "function": {
+              "n": 18,
+              "total": 41.8,
+              "mean": 2.32,
+              "max": 3.8
+            },
+            "file": {
+              "n": 13,
+              "total": 33.9,
+              "mean": 2.61,
+              "max": 4.11
+            },
+            "project": {
+              "n": 1,
+              "total": 9.4,
+              "mean": 9.36,
+              "max": 9.36
+            }
+          },
+          "total_seconds": 85.0
+        },
+        "microblog": {
+          "calls": 70,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 1,
+          "mentions_kept": 163,
+          "mentions_removed": 4,
+          "summaries_with_removals": 4,
+          "seconds": {
+            "function": {
+              "n": 35,
+              "total": 170.3,
+              "mean": 4.87,
+              "max": 73.57
+            },
+            "file": {
+              "n": 34,
+              "total": 113.0,
+              "mean": 3.32,
+              "max": 7.6
+            },
+            "project": {
+              "n": 1,
+              "total": 11.5,
+              "mean": 11.53,
+              "max": 11.53
+            }
+          },
+          "total_seconds": 294.8
+        }
+      }
+    },
+    "ollama/qwen2.5-coder:7b": {
+      "warmup_seconds": 16.08,
+      "power_before": "battery",
+      "power_after": "battery",
+      "targets": {
+        "sample_app": {
+          "calls": 32,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 0,
+          "mentions_kept": 85,
+          "mentions_removed": 2,
+          "summaries_with_removals": 2,
+          "seconds": {
+            "function": {
+              "n": 18,
+              "total": 45.6,
+              "mean": 2.53,
+              "max": 4.52
+            },
+            "file": {
+              "n": 13,
+              "total": 32.4,
+              "mean": 2.5,
+              "max": 4.07
+            },
+            "project": {
+              "n": 1,
+              "total": 7.3,
+              "mean": 7.33,
+              "max": 7.33
+            }
+          },
+          "total_seconds": 85.3
+        },
+        "microblog": {
+          "calls": 70,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 1,
+          "mentions_kept": 194,
+          "mentions_removed": 1,
+          "summaries_with_removals": 1,
+          "seconds": {
+            "function": {
+              "n": 35,
+              "total": 96.8,
+              "mean": 2.77,
+              "max": 5.06
+            },
+            "file": {
+              "n": 34,
+              "total": 115.5,
+              "mean": 3.4,
+              "max": 9.7
+            },
+            "project": {
+              "n": 1,
+              "total": 8.1,
+              "mean": 8.1,
+              "max": 8.1
+            }
+          },
+          "total_seconds": 220.4
+        }
+      }
+    }
+  }
+}

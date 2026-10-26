@@ -31,8 +31,8 @@ python -m gittrace explain path/to/project --function app/db.py::Repo.get_user
 ```
 
 `scan` asks a local model to triage each finding, and `explain` to summarise the code.
-Install [Ollama](https://ollama.com) and pull the default model once (`ollama pull llama3.1:8b`),
-or pass `--no-llm`. Replies are cached in `<project>/.gittrace/cache`, so a rerun on unchanged
+Install [Ollama](https://ollama.com) and pull the default models once (`ollama pull llama3.1:8b`
+for triage, `ollama pull qwen2.5-coder:7b` for `explain`), or pass `--no-llm`. Replies are cached in `<project>/.gittrace/cache`, so a rerun on unchanged
 code makes no model calls. `explain` estimates its run time first and asks before anything over
 10 minutes (`--yes` skips the question).
 
@@ -41,7 +41,8 @@ Severity, the rules and the graph model are documented in README.md.
 ## Env vars
 
 See `.env.example`. FalkorDB settings are required except for `scan --offline`.
-`GITTRACE_MODEL` picks the triage model (`--model` wins over it), `GITTRACE_LLM_TIMEOUT`
+`GITTRACE_MODEL` picks the triage model and `GITTRACE_EXPLAIN_MODEL` the `explain` model
+(`--model` wins over both), `GITTRACE_LLM_TIMEOUT`
 the seconds to wait per reply, `OLLAMA_API_BASE` where Ollama listens. Never commit `.env`.
 
 ## Tests

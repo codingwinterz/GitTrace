@@ -1,0 +1,3444 @@
+{
+  "model": {
+    "model": "ollama/qwen2.5-coder:7b",
+    "digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+    "quantization": "Q4_K_M",
+    "parameters": "7.6B",
+    "ollama_version": "0.40.11"
+  },
+  "warmup_seconds": 16.08,
+  "targets": {
+    "sample_app": {
+      "meta": {
+        "enabled": true,
+        "model": "ollama/qwen2.5-coder:7b",
+        "prompt_version": "explain-v2",
+        "calls": 32,
+        "cached": 0,
+        "errors": 0,
+        "by_level": {
+          "function": 18,
+          "file": 13,
+          "project": 1
+        },
+        "seconds": 85.4,
+        "model_seconds_per_level": {
+          "function": 45.6,
+          "file": 32.4,
+          "project": 7.3
+        },
+        "grounding": {
+          "mentions_kept": 85,
+          "removed": 2
+        },
+        "summaries_with_terms": 23
+      },
+      "records": [
+        {
+          "level": "function",
+          "target": "app/db.py::connect",
+          "text": {
+            "summary": "Establishes a connection to an SQLite database.",
+            "inputs": "nothing",
+            "outputs": "a database connection object",
+            "side_effects": "reads the database path from a global variable",
+            "role": "helper function for database operations"
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/db.py::Repo.__init__",
+              "app/db.py::connect",
+              "app/routers/reports.py::by_user",
+              "app/routers/reports.py::count",
+              "app/routers/reports.py::safe"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.52,
+          "attempts": 1,
+          "context_tokens": 313,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/db.py::Repo.__init__",
+          "text": {
+            "summary": "Initializes a new instance of the Repo class by establishing a connection to an SQLite database.",
+            "inputs": "nothing",
+            "outputs": "an instance of the Repo class with a database connection",
+            "side_effects": "establishes a connection to an SQLite database",
+            "role": "called by other functions to create a new Repo instance with a database connection"
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/db.py::Repo.__init__",
+              "app/db.py::connect"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.44,
+          "attempts": 1,
+          "context_tokens": 332,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/db.py::Repo.get_user",
+          "text": {
+            "summary": "Retrieves a user from the database by name.",
+            "inputs": "A string representing the user's name.",
+            "outputs": "A dictionary representing the user's data, or None if no user is found.",
+            "side_effects": "Reads from the database.",
+            "role": "A helper function used by other parts of the application to fetch user data."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/db.py::Repo.get_user",
+              "app/db.py::AuditRepo.get_user",
+              "app/main.py::me",
+              "app/routers/users.py::read_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.92,
+          "attempts": 1,
+          "context_tokens": 371,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main.py::health",
+          "text": {
+            "summary": "The function checks if the application is running and returns a simple response indicating that it is.",
+            "inputs": "nothing",
+            "outputs": "a JSON object with a single key-value pair: {\"ok\": True}",
+            "side_effects": "none",
+            "role": "endpoint handler"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main.py::health"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.93,
+          "attempts": 1,
+          "context_tokens": 275,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main.py::me",
+          "text": {
+            "summary": "Handles HTTP GET requests to retrieve user information.",
+            "inputs": "HTTP GET request to /me, authenticated user data.",
+            "outputs": "User information.",
+            "side_effects": "Reads user data from the database.",
+            "role": "Endpoint handler for retrieving user information."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::Repo.__init__",
+              "app/db.py::Repo.get_user",
+              "app/main.py::me"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.47,
+          "attempts": 1,
+          "context_tokens": 423,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/admin.py::run_expression",
+          "text": {
+            "summary": "Evaluates a Python expression provided in the request and returns the result.",
+            "inputs": "A string containing a Python expression, passed as a POST parameter 'expr'.",
+            "outputs": "A JSON object with a single key 'result' containing the evaluated expression's result.",
+            "side_effects": "none",
+            "role": "Handles a specific API endpoint for evaluating expressions, likely for administrative purposes."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/routers/admin.py::run_expression"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.49,
+          "attempts": 1,
+          "context_tokens": 310,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/admin.py::report",
+          "text": {
+            "summary": "The `report` function handles both GET and POST requests to the `/api/admin/report` endpoint. It requires authentication. The function calls `load_rows` to fetch data and then passes it to `render` to format the data as a string.",
+            "inputs": "nothing",
+            "outputs": "a string formatted from the data returned by `load_rows`",
+            "side_effects": "none",
+            "role": "an endpoint handler that processes requests to generate a report"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/routers/admin.py::report.render",
+              "app/routers/admin.py::load_rows"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.19,
+          "attempts": 1,
+          "context_tokens": 438,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/debug.py::dump_env",
+          "text": {
+            "summary": "Returns the current environment variables as a dictionary.",
+            "inputs": "nothing",
+            "outputs": "a dictionary containing the environment variables",
+            "side_effects": "none",
+            "role": "an endpoint handler that provides debugging information"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "environment variable",
+              "definition": "a setting given to the program by the system it runs on, outside the code"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.55,
+          "attempts": 1,
+          "context_tokens": 288,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/debug.py::run",
+          "text": {
+            "summary": "The function runs a command passed as a parameter and returns the output of that command.",
+            "inputs": "A string representing the command to be executed.",
+            "outputs": "The output of the command as a string.",
+            "side_effects": "Executes an external program using os.popen, which can have security implications.",
+            "role": "An endpoint handler that allows running arbitrary commands, which is not recommended for production use."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.41,
+          "attempts": 1,
+          "context_tokens": 298,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/reports.py::by_user",
+          "text": {
+            "summary": "Handles a GET request to retrieve reports for a specific user.",
+            "inputs": "user_id (str), order (str, default 'name')",
+            "outputs": "A list of reports for the specified user.",
+            "side_effects": "Reads from the database.",
+            "role": "Endpoint handler for retrieving user-specific reports."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::connect"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.18,
+          "attempts": 1,
+          "context_tokens": 420,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/reports.py::count",
+          "text": {
+            "summary": "Counts the number of reports in the database.",
+            "inputs": "nothing",
+            "outputs": "the count of reports",
+            "side_effects": "reads the database",
+            "role": "an endpoint handler that responds to GET requests to count the number of reports"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::connect"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.84,
+          "attempts": 1,
+          "context_tokens": 368,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/reports.py::safe",
+          "text": {
+            "summary": "Retrieves all reports for a given user from the database.",
+            "inputs": "A user ID as a string.",
+            "outputs": "A list of reports.",
+            "side_effects": "Reads data from the database.",
+            "role": "Handles a GET request to retrieve reports for a specific user."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/db.py::connect"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.14,
+          "attempts": 1,
+          "context_tokens": 385,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/reports.py::import_report",
+          "text": {
+            "summary": "The function `import_report` handles a POST request to `/api/reports/import` and attempts to load a YAML document from the request body.",
+            "inputs": "A string representing the YAML document to be loaded.",
+            "outputs": "The result of loading the YAML document.",
+            "side_effects": "none",
+            "role": "This function is an endpoint handler that processes incoming YAML data."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/routers/reports.py::import_report"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.43,
+          "attempts": 1,
+          "context_tokens": 304,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/reports.py::version",
+          "text": {
+            "summary": "The function returns the version of the application.",
+            "inputs": "nothing",
+            "outputs": "a dictionary with the version key and the value '1.0'",
+            "side_effects": "none",
+            "role": "an endpoint handler that responds to GET requests to /api/reports/version"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.81,
+          "attempts": 1,
+          "context_tokens": 297,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/users.py::read_user",
+          "text": {
+            "summary": "Handles a GET request to retrieve a user by name.",
+            "inputs": "A string representing the user's name.",
+            "outputs": "A user object if found, or an error response if not.",
+            "side_effects": "Reads data from the database.",
+            "role": "An endpoint handler that interacts with the database to fetch user information."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::Repo.__init__",
+              "app/db.py::Repo.get_user",
+              "app/routers/users.py::read_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.76,
+          "attempts": 1,
+          "context_tokens": 430,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/users.py::remove_user",
+          "text": {
+            "summary": "Removes a user from the database.",
+            "inputs": "A user ID (int) from the request path.",
+            "outputs": "A dictionary with the key 'deleted' and the value of the user ID.",
+            "side_effects": "Deletes a user from the database.",
+            "role": "Handles the deletion of a user via an HTTP POST request."
+          },
+          "terms": [
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::Repo.__init__",
+              "app/db.py::Repo.delete_user",
+              "app/routers/users.py::remove_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.83,
+          "attempts": 1,
+          "context_tokens": 440,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/users.py::ping_user",
+          "text": {
+            "summary": "The function `ping_user` sends a ping request to a specified user's name and returns the response.",
+            "inputs": "A string `name` representing the user's name.",
+            "outputs": "A dictionary containing the output of the ping command.",
+            "side_effects": "Runs the `ping` command using `subprocess.check_output`, which is a side effect.",
+            "role": "This function is an endpoint handler that responds to GET requests to `/api/users/{name}/ping`."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/routers/users.py::ping_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.85,
+          "attempts": 1,
+          "context_tokens": 354,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/routers/users.py::list_files",
+          "text": {
+            "summary": "The function lists files in a directory specified by the user's name.",
+            "inputs": "A string representing the user's name.",
+            "outputs": "A response from the 'ls' command listing files in the specified directory.",
+            "side_effects": "Runs another program (app/utils/shell.py::run_command) to execute the 'ls' command.",
+            "role": "Handles HTTP GET requests to retrieve files for a specific user."
+          },
+          "terms": [
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/routers/users.py::list_files",
+              "app/utils/shell.py::run_command"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.81,
+          "attempts": 1,
+          "context_tokens": 365,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/__init__.py",
+          "text": {
+            "summary": "This file is a module for a FastAPI application used in ingestion tests. It imports a database repository module.",
+            "role": "It is not used or run directly; it provides dependencies for other parts of the application."
+          },
+          "terms": [
+            {
+              "term": "dependency",
+              "definition": "in FastAPI, a function that runs before a route's handler and passes it a value (often the logged-in user)"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": [
+              {
+                "mention": "app.db::Repo",
+                "reason": "not a function in this project"
+              }
+            ]
+          },
+          "cached": false,
+          "seconds": 1.64,
+          "attempts": 1,
+          "context_tokens": 260,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/auth.py",
+          "text": {
+            "summary": "This file contains a function for authenticating users based on an API token.",
+            "role": "It is used as a dependency in other parts of the application to ensure that requests are authenticated."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "dependency",
+              "definition": "in FastAPI, a function that runs before a route's handler and passes it a value (often the logged-in user)"
+            },
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth.py::get_current_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.56,
+          "attempts": 1,
+          "context_tokens": 352,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/db.py",
+          "text": {
+            "summary": "This file contains functions for interacting with an SQLite database, including connecting to the database, retrieving users, and deleting users.",
+            "role": "This file is used by other parts of the app to perform database operations. It relies on the sqlite3 library from the standard library."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/db.py::connect",
+              "app/db.py::Repo.__init__",
+              "app/db.py::Repo.get_user",
+              "app/db.py::Repo.delete_user",
+              "app/db.py::Repo.delete_user.build_query",
+              "app/db.py::Repo._log",
+              "app/db.py::AuditRepo.get_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.54,
+          "attempts": 1,
+          "context_tokens": 896,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/main.py",
+          "text": {
+            "summary": "This file sets up the FastAPI application and includes routes for health checks and user information retrieval.",
+            "role": "It serves as the entry point for the application, defining the FastAPI instance and including routers for different functionalities."
+          },
+          "terms": [
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            },
+            {
+              "term": "router",
+              "definition": "in FastAPI, a group of routes that the app includes, often under a common URL prefix"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main.py::health",
+              "app/main.py::me"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.09,
+          "attempts": 1,
+          "context_tokens": 678,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/routers/__init__.py",
+          "text": {
+            "summary": "The file `app/routers/__init__.py` is empty and does not contain any code. It is likely used to indicate that the directory `app/routers` is a Python package.",
+            "role": "This file does not play a role in the app as it is empty and does not contain any functions or logic."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.82,
+          "attempts": 1,
+          "context_tokens": 194,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/routers/admin.py",
+          "text": {
+            "summary": "This file defines admin-related routes for a FastAPI application, including an endpoint to evaluate Python expressions and another to generate reports.",
+            "role": "It is part of the app's backend, handling requests related to administrative tasks. It relies on authentication and uses FastAPI's routing capabilities."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/routers/admin.py::run_expression",
+              "app/routers/admin.py::report",
+              "app/routers/admin.py::report.render",
+              "app/routers/admin.py::load_rows"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.91,
+          "attempts": 1,
+          "context_tokens": 844,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/routers/debug.py",
+          "text": {
+            "summary": "This file contains debug endpoints for an application, providing access to environment variables and running commands.",
+            "role": "It is a standalone module that defines two endpoints for debugging purposes, which are not included in the main application."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "environment variable",
+              "definition": "a setting given to the program by the system it runs on, outside the code"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/routers/debug.py::dump_env",
+              "app/routers/debug.py::run"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.04,
+          "attempts": 1,
+          "context_tokens": 531,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/routers/reports.py",
+          "text": {
+            "summary": "This file contains routes for handling reports, including retrieving reports by user, counting reports, retrieving safe reports, importing reports, and getting the application version.",
+            "role": "It defines endpoints that interact with the database to perform various operations related to reports."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::connect",
+              "app/routers/reports.py::by_user",
+              "app/routers/reports.py::count",
+              "app/routers/reports.py::import_report",
+              "app/routers/reports.py::safe",
+              "app/routers/reports.py::version"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.44,
+          "attempts": 1,
+          "context_tokens": 1163,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/routers/users.py",
+          "text": {
+            "summary": "This file defines routes for user-related operations, including retrieving user information, deleting users, pinging users, and listing files in a directory.",
+            "role": "It is part of the app's routing layer, handling HTTP requests and responses for user-related endpoints."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/db.py::Repo.__init__",
+              "app/db.py::Repo.delete_user",
+              "app/db.py::Repo.get_user",
+              "app/routers/users.py::list_files",
+              "app/routers/users.py::ping_user",
+              "app/routers/users.py::read_user",
+              "app/routers/users.py::remove_user",
+              "app/utils/shell.py::run_command"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.84,
+          "attempts": 1,
+          "context_tokens": 1005,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/services/__init__.py",
+          "text": {
+            "summary": "The file `app/services/__init__.py` is empty and does not contain any code. It is used to indicate that the `app/services` directory is a Python package.",
+            "role": "This file is not used by any part of the app and does not rely on any other files or libraries."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.77,
+          "attempts": 1,
+          "context_tokens": 195,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/services/maintenance.py",
+          "text": {
+            "summary": "This file contains maintenance functions that run on a schedule, such as counting users and purging old sessions. It also includes utility functions for loading cache and configuration files, and a simple check function.",
+            "role": "This module is used by cron jobs to perform periodic maintenance tasks. It does not have any routes and relies on external libraries like yaml and pickle."
+          },
+          "terms": [
+            {
+              "term": "cache",
+              "definition": "a store of recent results kept so they need not be computed or fetched again"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            },
+            {
+              "term": "session",
+              "definition": "either what a web app remembers about a visitor between requests (often in a cookie), or, in SQLAlchemy, a unit of work with the database that holds changes until they are committed"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/services/maintenance.py::count_users",
+              "app/services/maintenance.py::purge",
+              "app/services/maintenance.py::nightly",
+              "app/services/maintenance.py::load_cache",
+              "app/services/maintenance.py::load_config",
+              "app/services/maintenance.py::check",
+              "app/services/maintenance.py::Mailer.__init__"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.07,
+          "attempts": 1,
+          "context_tokens": 923,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/utils/__init__.py",
+          "text": {
+            "summary": "The file `app/utils/__init__.py` is empty and does not contain any code. It is likely used to indicate that the `app/utils` directory is a Python package.",
+            "role": "This file does not play a role in the app as it is empty and does not contain any functions or code."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.8,
+          "attempts": 1,
+          "context_tokens": 194,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/utils/shell.py",
+          "text": {
+            "summary": "This file contains helper functions for running shell commands and logging their output.",
+            "role": "It provides utility functions that can be used by other parts of the application to execute shell commands and record the results."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/utils/shell.py::run_command",
+              "app/utils/shell.py::run_command.log"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.92,
+          "attempts": 1,
+          "context_tokens": 384,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "project",
+          "target": "sample_app",
+          "text": {
+            "summary": "sample_app is a web application built with FastAPI that provides various endpoints for managing users, reports, and system information. It includes authentication, database operations, and debug utilities.",
+            "how_it_works": "When a request is made to a specific endpoint, it is handled by the corresponding function in the app's routers. For example, a POST request to /api/admin/eval is handled by app/routers/admin.py::run_expression. The function processes the request, performs necessary operations (like database queries or shell commands), and returns a response. Data is stored in an SQLite database, and the app can start other programs on the machine."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "query",
+              "definition": "a request for data sent to a database (or a search index)"
+            },
+            {
+              "term": "router",
+              "definition": "in FastAPI, a group of routes that the app includes, often under a common URL prefix"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main.py::health",
+              "app/main.py::me",
+              "app/routers/admin.py::run_expression",
+              "app/routers/admin.py::report",
+              "app/routers/reports.py::by_user",
+              "app/routers/reports.py::count",
+              "app/routers/reports.py::import_report",
+              "app/routers/reports.py::safe",
+              "app/routers/reports.py::version",
+              "app/routers/users.py::read_user",
+              "app/routers/users.py::list_files",
+              "app/routers/users.py::ping_user",
+              "app/routers/users.py::remove_user",
+              "app/routers/debug.py::dump_env",
+              "app/routers/debug.py::run"
+            ],
+            "removed": [
+              {
+                "mention": "app/db.py",
+                "reason": "not a function in this project"
+              }
+            ]
+          },
+          "cached": false,
+          "seconds": 7.33,
+          "attempts": 1,
+          "context_tokens": 1419,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        }
+      ]
+    },
+    "microblog": {
+      "meta": {
+        "enabled": true,
+        "model": "ollama/qwen2.5-coder:7b",
+        "prompt_version": "explain-v2",
+        "calls": 70,
+        "cached": 0,
+        "errors": 0,
+        "by_level": {
+          "function": 35,
+          "file": 34,
+          "project": 1
+        },
+        "seconds": 220.5,
+        "model_seconds_per_level": {
+          "function": 96.8,
+          "file": 115.5,
+          "project": 8.1
+        },
+        "grounding": {
+          "mentions_kept": 194,
+          "removed": 1
+        },
+        "summaries_with_terms": 63
+      },
+      "records": [
+        {
+          "level": "function",
+          "target": "app/__init__.py::create_app",
+          "text": {
+            "summary": "Creates and configures a Flask application.",
+            "inputs": "A configuration class.",
+            "outputs": "A configured Flask application.",
+            "side_effects": "Writes files (os.mkdir).",
+            "role": "Entry point for the application, initializes various extensions and blueprints."
+          },
+          "terms": [
+            {
+              "term": "blueprint",
+              "definition": "in Flask, a group of related routes that is registered on the app as one unit"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/__init__.py::create_app",
+              "app/tasks.py::<module>",
+              "microblog.py::<module>",
+              "tests.py::UserModelCase.setUp"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 5.06,
+          "attempts": 1,
+          "context_tokens": 1457,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/errors.py::error_response",
+          "text": {
+            "summary": "Generates an error response payload.",
+            "inputs": "status_code (int), message (str, optional)",
+            "outputs": "payload (dict), status_code (int)",
+            "side_effects": "none",
+            "role": "Handles error responses in the API."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/auth.py::basic_auth_error",
+              "app/api/auth.py::token_auth_error",
+              "app/api/errors.py::bad_request",
+              "app/api/errors.py::error_response",
+              "app/api/errors.py::handle_exception",
+              "app/errors/handlers.py::internal_error",
+              "app/errors/handlers.py::not_found_error"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.45,
+          "attempts": 1,
+          "context_tokens": 462,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/tokens.py::get_token",
+          "text": {
+            "summary": "Generates and returns a token for the authenticated user.",
+            "inputs": "nothing",
+            "outputs": "a dictionary containing the token",
+            "side_effects": "writes to the database",
+            "role": "endpoint handler for creating a token"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.59,
+          "attempts": 1,
+          "context_tokens": 389,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/tokens.py::revoke_token",
+          "text": {
+            "summary": "Deletes a token for the currently authenticated user.",
+            "inputs": "nothing",
+            "outputs": "an empty string with a 204 status code",
+            "side_effects": "writes to the database",
+            "role": "an endpoint handler that requires authentication"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.67,
+          "attempts": 1,
+          "context_tokens": 390,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/users.py::get_user",
+          "text": {
+            "summary": "Retrieves a user's information from the database and returns it as a dictionary.",
+            "inputs": "An integer ID representing the user to retrieve.",
+            "outputs": "A dictionary containing the user's information.",
+            "side_effects": "Reads the database to fetch the user's data.",
+            "role": "Handles HTTP GET requests to retrieve a user's information, requiring authentication."
+          },
+          "terms": [
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.16,
+          "attempts": 1,
+          "context_tokens": 351,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/models.py::PaginatedAPIMixin.to_collection_dict",
+          "text": {
+            "summary": "Converts a database query result into a dictionary format suitable for API responses, including pagination metadata and links.",
+            "inputs": "A database query, current page number, items per page, an endpoint URL, and additional keyword arguments.",
+            "outputs": "A dictionary containing the paginated items, pagination metadata, and navigation links.",
+            "side_effects": "Reads data from the database using Flask-SQLAlchemy's paginate method.",
+            "role": "A utility method used by API endpoints to format and return paginated data."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "query",
+              "definition": "a request for data sent to a database (or a search index)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/users.py::get_followers",
+              "app/api/users.py::get_following",
+              "app/api/users.py::get_users",
+              "app/models.py::PaginatedAPIMixin.to_collection_dict"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.0,
+          "attempts": 1,
+          "context_tokens": 705,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/users.py::get_users",
+          "text": {
+            "summary": "Handles GET requests to retrieve a list of users, including pagination metadata.",
+            "inputs": "nothing",
+            "outputs": "A dictionary containing a list of users and pagination metadata.",
+            "side_effects": "reads the database",
+            "role": "an endpoint handler that retrieves and returns user data"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/users.py::get_users",
+              "app/models.py::PaginatedAPIMixin.to_collection_dict"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.34,
+          "attempts": 1,
+          "context_tokens": 531,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/users.py::get_followers",
+          "text": {
+            "summary": "Retrieves and returns the followers of a user.",
+            "inputs": "The user ID (int) from the URL and pagination parameters (page and per_page) from the request.",
+            "outputs": "A dictionary containing the followers of the user, formatted for API response, including pagination metadata.",
+            "side_effects": "Reads the database to fetch the user and their followers.",
+            "role": "Handles the GET request to retrieve a user's followers."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/users.py::get_followers",
+              "app/models.py::PaginatedAPIMixin.to_collection_dict"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.09,
+          "attempts": 1,
+          "context_tokens": 592,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/users.py::get_following",
+          "text": {
+            "summary": "Retrieves and returns a list of users that the specified user is following, including pagination metadata.",
+            "inputs": "The user ID (int) from the URL and optional pagination parameters (page and per_page) from the request query string.",
+            "outputs": "A dictionary containing the list of users being followed and pagination metadata.",
+            "side_effects": "Reads data from the database to fetch the user and their following list.",
+            "role": "Handles the GET request to retrieve the following list for a specific user."
+          },
+          "terms": [
+            {
+              "term": "query",
+              "definition": "a request for data sent to a database (or a search index)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/users.py::get_following",
+              "app/models.py::PaginatedAPIMixin.to_collection_dict"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.4,
+          "attempts": 1,
+          "context_tokens": 592,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/users.py::create_user",
+          "text": {
+            "summary": "Creates a new user based on the data provided in the request.",
+            "inputs": "JSON data from the request, including 'username', 'email', and 'password'.",
+            "outputs": "A dictionary representing the created user and a 201 status code with a 'Location' header.",
+            "side_effects": "Reads from and writes to the database to check for existing usernames and emails, and to add the new user.",
+            "role": "Handles the creation of new users through a POST request to '/api/users'."
+          },
+          "terms": [
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/errors.py::bad_request",
+              "app/api/users.py::create_user",
+              "app/models.py::User.from_dict",
+              "app/models.py::User.to_dict"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.98,
+          "attempts": 1,
+          "context_tokens": 830,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/api/users.py::update_user",
+          "text": {
+            "summary": "Updates a user's information if the authenticated user is the owner.",
+            "inputs": "The user ID in the URL and JSON data in the request body.",
+            "outputs": "The updated user's information in JSON format.",
+            "side_effects": "Reads and writes to the database to update user information.",
+            "role": "Handles PUT requests to update user details."
+          },
+          "terms": [
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/errors.py::bad_request",
+              "app/api/users.py::update_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.71,
+          "attempts": 1,
+          "context_tokens": 743,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/auth/routes.py::login",
+          "text": {
+            "summary": "Handles user login requests, authenticates users, and redirects them to the appropriate page.",
+            "inputs": "GET or POST request to /auth/login, with form data including username, password, and remember_me.",
+            "outputs": "Redirects to the home page if the user is already authenticated; otherwise, renders the login template or redirects to a specified next page.",
+            "side_effects": "Reads from the database to check user credentials and logs the user in if credentials are valid.",
+            "role": "Endpoint handler for user login, part of the authentication system."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "template",
+              "definition": "an HTML file with placeholders that the app fills in before sending the page"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth/routes.py::login"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.28,
+          "attempts": 1,
+          "context_tokens": 691,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/auth/routes.py::logout",
+          "text": {
+            "summary": "Handles user logout by logging out the user and redirecting to the main index page.",
+            "inputs": "nothing",
+            "outputs": "redirects to the main index page",
+            "side_effects": "logs out the user",
+            "role": "endpoint handler"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.65,
+          "attempts": 1,
+          "context_tokens": 316,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/models.py::User.set_password",
+          "text": {
+            "summary": "Hashes a password and stores it in the user's model.",
+            "inputs": "A password string.",
+            "outputs": "None.",
+            "side_effects": "Writes the hashed password to the user's model.",
+            "role": "Handles password storage for user models."
+          },
+          "terms": [
+            {
+              "term": "hash",
+              "definition": "a fixed-length fingerprint of some data; a password hash cannot be turned back into the password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth/routes.py::register",
+              "app/models.py::User.from_dict",
+              "app/models.py::User.set_password",
+              "tests.py::UserModelCase.test_password_hashing"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.59,
+          "attempts": 1,
+          "context_tokens": 340,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/auth/routes.py::register",
+          "text": {
+            "summary": "Handles user registration, creating a new user account if the form is valid.",
+            "inputs": "GET or POST request, with form data including username, email, and password.",
+            "outputs": "Redirects to the login page upon successful registration or renders the registration form with errors.",
+            "side_effects": "Writes a new user record to the database.",
+            "role": "Endpoint handler for user registration."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth/routes.py::register",
+              "app/models.py::User.set_password"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.7,
+          "attempts": 1,
+          "context_tokens": 663,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/auth/routes.py::reset_password_request",
+          "text": {
+            "summary": "Handles user requests to reset their password. It checks if the user is already authenticated and redirects if so. It validates the form, searches the database for the user, sends a password reset email, and provides feedback to the user.",
+            "inputs": "HTTP request method (GET or POST), form data (email).",
+            "outputs": "HTTP redirect or rendered template.",
+            "side_effects": "Reads from the database, sends a network request to another service.",
+            "role": "Endpoint handler for password reset requests."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            },
+            {
+              "term": "template",
+              "definition": "an HTML file with placeholders that the app fills in before sending the page"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth/email.py::send_password_reset_email",
+              "app/auth/routes.py::reset_password_request"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.33,
+          "attempts": 1,
+          "context_tokens": 702,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/auth/routes.py::reset_password",
+          "text": {
+            "summary": "Handles password reset requests. It checks if the user is authenticated, verifies the reset token, validates the form, updates the user's password, and redirects to the login page.",
+            "inputs": "A token (GET) or form data (POST) containing a new password.",
+            "outputs": "Redirects to the login page with a success message.",
+            "side_effects": "Writes to the database to update the user's password.",
+            "role": "Handles user password reset functionality."
+          },
+          "terms": [
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth/routes.py::reset_password",
+              "app/models.py::User.verify_reset_password_token"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.15,
+          "attempts": 1,
+          "context_tokens": 663,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/cli.py::translate",
+          "text": {
+            "summary": "A command-line Flask CLI group for translation and localization commands.",
+            "inputs": "nothing",
+            "outputs": "nothing",
+            "side_effects": "none",
+            "role": "entry point for translation and localization commands"
+          },
+          "terms": [
+            {
+              "term": "CLI",
+              "definition": "a command-line interface: commands typed in a terminal"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/cli.py::translate"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.58,
+          "attempts": 1,
+          "context_tokens": 303,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/cli.py::init",
+          "text": {
+            "summary": "Initializes a new language by extracting messages and creating translation files.",
+            "inputs": "A language code as a command-line argument.",
+            "outputs": "None, but raises an error if the initialization fails.",
+            "side_effects": "Runs external programs (pybabel) and deletes files (messages.pot).",
+            "role": "A command-line interface function for setting up a new language in the application."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.33,
+          "attempts": 1,
+          "context_tokens": 463,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/cli.py::update",
+          "text": {
+            "summary": "The function updates all languages by running translation extraction and update commands and then deleting a temporary file.",
+            "inputs": "nothing",
+            "outputs": "nothing",
+            "side_effects": "runs other programs (os.system), writes or deletes files (os.remove)",
+            "role": "command-line Flask CLI command `update`"
+          },
+          "terms": [
+            {
+              "term": "CLI",
+              "definition": "a command-line interface: commands typed in a terminal"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/cli.py::update"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.08,
+          "attempts": 1,
+          "context_tokens": 441,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/cli.py::compile",
+          "text": {
+            "summary": "Compiles all languages using the pybabel command.",
+            "inputs": "nothing",
+            "outputs": "nothing",
+            "side_effects": "runs other programs (os.system)",
+            "role": "command-line Flask CLI command"
+          },
+          "terms": [
+            {
+              "term": "CLI",
+              "definition": "a command-line interface: commands typed in a terminal"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/cli.py::compile"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.59,
+          "attempts": 1,
+          "context_tokens": 345,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::index",
+          "text": {
+            "summary": "Handles GET and POST requests for the home page, allowing users to post new content and view their following's posts.",
+            "inputs": "GET/POST requests, form data from 'PostForm'",
+            "outputs": "HTML rendered by 'index.html'",
+            "side_effects": "Writes to the database (adds and commits a new post), reads from the database (paginates user's following's posts)",
+            "role": "Endpoint handler for the home page, requires authentication"
+          },
+          "terms": [
+            {
+              "term": "commit",
+              "definition": "making the pending changes to a database permanent"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.83,
+          "attempts": 1,
+          "context_tokens": 919,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::explore",
+          "text": {
+            "summary": "The `explore` function handles the '/explore' endpoint, displaying a paginated list of posts sorted by timestamp in descending order.",
+            "inputs": "GET request with optional 'page' parameter from the URL.",
+            "outputs": "HTML rendered by 'index.html' template with posts and pagination controls.",
+            "side_effects": "Reads from the database to fetch posts.",
+            "role": "Handles user requests to view a list of posts."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "template",
+              "definition": "an HTML file with placeholders that the app fills in before sending the page"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::explore"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.79,
+          "attempts": 1,
+          "context_tokens": 597,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::user",
+          "text": {
+            "summary": "The function handles GET requests to the /user/<username> endpoint, displaying a user's profile and posts.",
+            "inputs": "username (from the URL), page (from the request query parameters)",
+            "outputs": "HTML rendered by the 'user.html' template",
+            "side_effects": "reads from the database to fetch user and posts",
+            "role": "endpoint handler for displaying a user's profile and posts"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "query",
+              "definition": "a request for data sent to a database (or a search index)"
+            },
+            {
+              "term": "template",
+              "definition": "an HTML file with placeholders that the app fills in before sending the page"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.7,
+          "attempts": 1,
+          "context_tokens": 681,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::user_popup",
+          "text": {
+            "summary": "This function handles a GET request to display a popup for a user's profile. It requires authentication.",
+            "inputs": "A username (from the URL) and a form (from the request data).",
+            "outputs": "A rendered HTML template for the user popup.",
+            "side_effects": "Reads data from the database to fetch the user's information.",
+            "role": "Handles a specific route for displaying user profiles in a popup format."
+          },
+          "terms": [
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            },
+            {
+              "term": "template",
+              "definition": "an HTML file with placeholders that the app fills in before sending the page"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::user_popup"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.68,
+          "attempts": 1,
+          "context_tokens": 407,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::edit_profile",
+          "text": {
+            "summary": "Handles GET and POST requests to edit a user's profile. It updates the user's username and about me information if the form is submitted and valid.",
+            "inputs": "GET requests have no additional parameters. POST requests include form data for username and about me.",
+            "outputs": "Redirects to the edit profile page with a success message if the form is valid and submitted. Renders the edit profile template with the form if the request method is GET.",
+            "side_effects": "Writes to the database to update the user's information.",
+            "role": "Handles user profile editing functionality, including displaying the form and processing form submissions."
+          },
+          "terms": [
+            {
+              "term": "template",
+              "definition": "an HTML file with placeholders that the app fills in before sending the page"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/forms.py::EditProfileForm.__init__",
+              "app/main/routes.py::edit_profile"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.87,
+          "attempts": 1,
+          "context_tokens": 661,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::follow",
+          "text": {
+            "summary": "Handles user following another user. It checks if the user exists and if the current user is not trying to follow themselves. If valid, it updates the database to reflect the follow relationship and shows a success message.",
+            "inputs": "username (from the URL), form data (from POST request)",
+            "outputs": "redirects to the user's profile page with a flash message",
+            "side_effects": "reads from and writes to the database",
+            "role": "endpoint handler for following a user"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::follow"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.98,
+          "attempts": 1,
+          "context_tokens": 680,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::unfollow",
+          "text": {
+            "summary": "Handles the unfollow action for a user. It checks if the user exists, if the current user is not trying to unfollow themselves, and then updates the database to reflect the unfollow action.",
+            "inputs": "username (from the URL), form data (from POST request)",
+            "outputs": "redirects to the user's profile page with a flash message",
+            "side_effects": "reads from and writes to the database",
+            "role": "endpoint handler for unfollowing a user"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.88,
+          "attempts": 1,
+          "context_tokens": 686,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::translate_text",
+          "text": {
+            "summary": "Handles a POST request to translate text from one language to another.",
+            "inputs": "A JSON object containing 'text', 'source_language', and 'dest_language'.",
+            "outputs": "A JSON object with the translated text.",
+            "side_effects": "Calls another service over the network to perform the translation.",
+            "role": "An endpoint handler that processes translation requests."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::translate_text",
+              "app/translate.py::translate"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.55,
+          "attempts": 1,
+          "context_tokens": 441,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::search",
+          "text": {
+            "summary": "Handles the search functionality, validating the search form and querying the database for posts that match the search expression.",
+            "inputs": "nothing",
+            "outputs": "renders a search results page",
+            "side_effects": "reads the database and a search index",
+            "role": "endpoint handler for the search route"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "query",
+              "definition": "a request for data sent to a database (or a search index)"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/models.py::SearchableMixin.search"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.19,
+          "attempts": 1,
+          "context_tokens": 660,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::send_message",
+          "text": {
+            "summary": "Handles sending a message to a user. It reads the recipient's user object from the database, validates a form, creates a new message, adds it to the database, updates the recipient's unread message count, and redirects to the recipient's profile page.",
+            "inputs": "recipient (from URL), form data (from POST request)",
+            "outputs": "redirects to the recipient's profile page",
+            "side_effects": "reads from and writes to the database, updates a user's unread message count",
+            "role": "handles user messaging functionality"
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::send_message"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.25,
+          "attempts": 1,
+          "context_tokens": 739,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::messages",
+          "text": {
+            "summary": "Handles GET requests to /messages, updating the user's last message read time, clearing unread message notifications, and fetching paginated messages received by the user.",
+            "inputs": "no parameters",
+            "outputs": "HTML template rendered with messages and pagination URLs",
+            "side_effects": "writes to the database, reads from the database",
+            "role": "endpoint handler for fetching user messages"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "template",
+              "definition": "an HTML file with placeholders that the app fills in before sending the page"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::messages"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.55,
+          "attempts": 1,
+          "context_tokens": 731,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::export_posts",
+          "text": {
+            "summary": "Handles the '/export_posts' endpoint, allowing authenticated users to export their posts. It checks if a task is already in progress and either flashes a message or launches a new export task.",
+            "inputs": "nothing",
+            "outputs": "redirects to the user's profile page",
+            "side_effects": "writes to the database",
+            "role": "endpoint handler"
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::export_posts"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.38,
+          "attempts": 1,
+          "context_tokens": 481,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/main/routes.py::notifications",
+          "text": {
+            "summary": "The function retrieves notifications for the current user since a specified timestamp.",
+            "inputs": "A GET request to '/notifications' with an optional 'since' parameter (default is 0.0).",
+            "outputs": "A list of notifications, each containing 'name', 'data', and 'timestamp'.",
+            "side_effects": "Reads data from the database.",
+            "role": "Handles the '/notifications' endpoint, fetching and returning notifications for the authenticated user."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::notifications"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.76,
+          "attempts": 1,
+          "context_tokens": 537,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "function",
+          "target": "app/models.py::User.is_following",
+          "text": {
+            "summary": "Checks if the current user is following another user.",
+            "inputs": "A User object representing the user to check.",
+            "outputs": "True if the current user is following the specified user, False otherwise.",
+            "side_effects": "Reads from the database to check the following relationship.",
+            "role": "Used by other functions to determine if a user is following another user."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/models.py::User.follow",
+              "app/models.py::User.unfollow",
+              "tests.py::UserModelCase.test_follow"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.67,
+          "attempts": 1,
+          "context_tokens": 367,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/__init__.py",
+          "text": {
+            "summary": "app/__init__.py initializes and configures a Flask application, setting up extensions and registering blueprints.",
+            "role": "This file is the entry point for the Flask application, creating and configuring the app instance."
+          },
+          "terms": [
+            {
+              "term": "blueprint",
+              "definition": "in Flask, a group of related routes that is registered on the app as one unit"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/__init__.py::create_app",
+              "app/__init__.py::get_locale"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.7,
+          "attempts": 1,
+          "context_tokens": 1759,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/__init__.py",
+          "text": {
+            "summary": "This file initializes a Flask Blueprint for the API and imports other API-related modules.",
+            "role": "It sets up the API structure and makes the API endpoints available."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "blueprint",
+              "definition": "in Flask, a group of related routes that is registered on the app as one unit"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/__init__.py::<module>"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.54,
+          "attempts": 1,
+          "context_tokens": 252,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/auth.py",
+          "text": {
+            "summary": "This file contains authentication logic for the app, including functions to verify passwords and tokens using HTTP Basic and Token authentication.",
+            "role": "It is used by the app to authenticate users before granting access to protected endpoints."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            },
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/auth.py::verify_password",
+              "app/api/auth.py::basic_auth_error",
+              "app/api/auth.py::verify_token",
+              "app/api/auth.py::token_auth_error",
+              "app/api/errors.py::error_response",
+              "app/models.py::User.check_token"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.93,
+          "attempts": 1,
+          "context_tokens": 713,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/errors.py",
+          "text": {
+            "summary": "This file contains functions for generating error responses in the API. It includes a generic error response function and specific handlers for bad requests and exceptions.",
+            "role": "It is used by the API endpoints to return error responses when something goes wrong. It relies on the `werkzeug` library for HTTP status codes and exception handling."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "HTTP",
+              "definition": "the protocol browsers and apps use to request pages and data from a web server"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/auth.py::basic_auth_error",
+              "app/api/auth.py::token_auth_error",
+              "app/api/errors.py::<module>",
+              "app/api/errors.py::bad_request",
+              "app/api/errors.py::error_response",
+              "app/api/errors.py::handle_exception",
+              "app/api/users.py::create_user",
+              "app/api/users.py::update_user",
+              "app/errors/handlers.py::internal_error",
+              "app/errors/handlers.py::not_found_error"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.29,
+          "attempts": 1,
+          "context_tokens": 597,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/tokens.py",
+          "text": {
+            "summary": "This file contains two endpoints for managing authentication tokens. The `get_token` endpoint generates and returns a token for the authenticated user, while the `revoke_token` endpoint deletes a token for the currently authenticated user.",
+            "role": "This file is part of the API module and is used to handle token-related requests. It relies on authentication decorators to ensure that only authenticated users can access these endpoints."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "decorator",
+              "definition": "a line starting with @ above a function; it wraps the function or registers it, for example as a route"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/tokens.py::get_token",
+              "app/api/tokens.py::revoke_token"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.82,
+          "attempts": 1,
+          "context_tokens": 579,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/api/users.py",
+          "text": {
+            "summary": "This file contains API endpoints for managing users, including retrieving user information, creating new users, and updating existing users. It handles both authenticated and unauthenticated requests.",
+            "role": "It is part of the Flask application's API layer, handling requests related to users and interacting with the database through SQLAlchemy ORM."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "ORM",
+              "definition": "Object-Relational Mapper: a library that maps Python classes to database tables and writes the SQL"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/users.py::get_user",
+              "app/api/users.py::get_users",
+              "app/api/users.py::get_followers",
+              "app/api/users.py::get_following",
+              "app/api/users.py::create_user",
+              "app/api/users.py::update_user"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.11,
+          "attempts": 1,
+          "context_tokens": 2100,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/auth/__init__.py",
+          "text": {
+            "summary": "This file initializes a Flask Blueprint for authentication routes and imports the routes module.",
+            "role": "It sets up the authentication part of the app, making it available for other parts of the application."
+          },
+          "terms": [
+            {
+              "term": "blueprint",
+              "definition": "in Flask, a group of related routes that is registered on the app as one unit"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth/__init__.py::<module>"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.6,
+          "attempts": 1,
+          "context_tokens": 249,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/auth/email.py",
+          "text": {
+            "summary": "This file contains a function to send a password reset email to a user. It imports necessary modules and uses the `send_email` function from another module to send the email.",
+            "role": "This file is used in the authentication process to handle sending password reset emails. It relies on the `send_email` function from the `app.email` module."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/auth/email.py::send_password_reset_email"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.33,
+          "attempts": 1,
+          "context_tokens": 493,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/auth/forms.py",
+          "text": {
+            "summary": "This file contains forms for user authentication, including registration, login, and password reset. It includes validation methods for usernames and emails to ensure uniqueness.",
+            "role": "It is part of the authentication system, used in views to handle user input and validate it before processing."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/auth/forms.py::RegistrationForm.validate_username",
+              "app/auth/forms.py::RegistrationForm.validate_email"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.55,
+          "attempts": 1,
+          "context_tokens": 1109,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/auth/routes.py",
+          "text": {
+            "summary": "Handles user authentication, registration, and password reset requests. It includes routes for login, logout, registration, and password reset.",
+            "role": "This file is part of the authentication module, providing endpoints for user interactions related to authentication."
+          },
+          "terms": [
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/auth/routes.py::login",
+              "app/auth/routes.py::logout",
+              "app/auth/routes.py::register",
+              "app/auth/routes.py::reset_password_request",
+              "app/auth/routes.py::reset_password",
+              "app/auth/email.py::send_password_reset_email",
+              "app/models.py::User.set_password",
+              "app/models.py::User.verify_reset_password_token"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.25,
+          "attempts": 1,
+          "context_tokens": 2395,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/cli.py",
+          "text": {
+            "summary": "app/cli.py contains command-line interface (CLI) commands for translation and localization using Flask and Click. It includes commands to initialize languages, update translations, and compile translations.",
+            "role": "This file defines the CLI interface for translation and localization, allowing users to interact with the application through command-line commands."
+          },
+          "terms": [
+            {
+              "term": "CLI",
+              "definition": "a command-line interface: commands typed in a terminal"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/cli.py::translate",
+              "app/cli.py::init",
+              "app/cli.py::update",
+              "app/cli.py::compile"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.94,
+          "attempts": 1,
+          "context_tokens": 973,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/email.py",
+          "text": {
+            "summary": "This file contains functions for sending emails in the application. It includes both synchronous and asynchronous email sending methods.",
+            "role": "It is used by other parts of the application to send emails, such as password reset emails. It relies on Flask-Mail for email functionality and threading for asynchronous sending."
+          },
+          "terms": [
+            {
+              "term": "async",
+              "definition": "code that can wait for something slow (the network, a database) without stopping other work"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/email.py::send_async_email",
+              "app/email.py::send_email"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.32,
+          "attempts": 1,
+          "context_tokens": 588,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/errors/__init__.py",
+          "text": {
+            "summary": "This file initializes a Flask Blueprint for handling errors and imports error handling functions.",
+            "role": "It sets up the error handling part of the Flask application, making it available for use in other parts of the app."
+          },
+          "terms": [
+            {
+              "term": "blueprint",
+              "definition": "in Flask, a group of related routes that is registered on the app as one unit"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/errors/__init__.py::<module>"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.66,
+          "attempts": 1,
+          "context_tokens": 253,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/errors/handlers.py",
+          "text": {
+            "summary": "This file contains error handlers for a Flask application. It defines functions to handle 404 (Not Found) and 500 (Internal Server Error) errors, and checks if the client prefers a JSON response.",
+            "role": "It is part of the error handling module and is used by the main application to manage error responses."
+          },
+          "terms": [
+            {
+              "term": "handler",
+              "definition": "the function that runs when a request (or another event) arrives"
+            },
+            {
+              "term": "JSON",
+              "definition": "a text format for structured data (names and values), used by most web APIs"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/api/errors.py::error_response",
+              "app/errors/handlers.py::internal_error",
+              "app/errors/handlers.py::not_found_error",
+              "app/errors/handlers.py::wants_json_response"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.18,
+          "attempts": 1,
+          "context_tokens": 634,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/main/__init__.py",
+          "text": {
+            "summary": "This file initializes a Flask Blueprint for the main application and imports routes.",
+            "role": "It sets up the main Blueprint and organizes the application structure."
+          },
+          "terms": [
+            {
+              "term": "blueprint",
+              "definition": "in Flask, a group of related routes that is registered on the app as one unit"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/__init__.py::<module>"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.44,
+          "attempts": 1,
+          "context_tokens": 249,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/main/forms.py",
+          "text": {
+            "summary": "This file contains forms used in the application, including forms for editing user profiles, posting messages, and searching. It imports necessary modules and defines classes for each form, with methods for validation where needed.",
+            "role": "This file is used in the app to handle user input through forms. It is used in routes like edit_profile to validate user data before processing it."
+          },
+          "terms": [
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/forms.py::EditProfileForm.__init__",
+              "app/main/forms.py::EditProfileForm.validate_username",
+              "app/main/forms.py::SearchForm.__init__"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.32,
+          "attempts": 1,
+          "context_tokens": 1119,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/main/routes.py",
+          "text": {
+            "summary": "This file contains routes for handling various user interactions in a web application, including posting content, exploring posts, viewing user profiles, editing profiles, following/unfollowing users, sending messages, exporting posts, and managing notifications.",
+            "role": "It is part of the Flask web application, handling user requests and interacting with the database through SQLAlchemy ORM."
+          },
+          "terms": [
+            {
+              "term": "ORM",
+              "definition": "Object-Relational Mapper: a library that maps Python classes to database tables and writes the SQL"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::before_request",
+              "app/main/routes.py::index",
+              "app/main/routes.py::explore",
+              "app/main/routes.py::user",
+              "app/main/routes.py::user_popup",
+              "app/main/routes.py::edit_profile",
+              "app/main/routes.py::follow",
+              "app/main/routes.py::unfollow",
+              "app/main/routes.py::translate_text",
+              "app/main/routes.py::search",
+              "app/main/routes.py::send_message",
+              "app/main/routes.py::messages",
+              "app/main/routes.py::export_posts",
+              "app/main/routes.py::notifications"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 7.99,
+          "attempts": 1,
+          "context_tokens": 5892,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/models.py",
+          "text": {
+            "summary": "app/models.py contains models for the application, including User, Post, Message, and Notification. It provides methods for database operations, password handling, and user interactions.",
+            "role": "This file is essential for the application's data layer, providing the structure and behavior for database entities and related operations."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/models.py::SearchableMixin.search",
+              "app/models.py::SearchableMixin.before_commit",
+              "app/models.py::SearchableMixin.after_commit",
+              "app/models.py::SearchableMixin.reindex",
+              "app/models.py::PaginatedAPIMixin.to_collection_dict",
+              "app/models.py::User.__repr__",
+              "app/models.py::User.set_password",
+              "app/models.py::User.check_password",
+              "app/models.py::User.avatar",
+              "app/models.py::User.follow",
+              "app/models.py::User.unfollow",
+              "app/models.py::User.is_following",
+              "app/models.py::User.followers_count",
+              "app/models.py::User.following_count",
+              "app/models.py::User.following_posts",
+              "app/models.py::User.get_reset_password_token",
+              "app/models.py::User.verify_reset_password_token",
+              "app/models.py::User.unread_message_count",
+              "app/models.py::User.add_notification",
+              "app/models.py::User.launch_task"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 9.7,
+          "attempts": 1,
+          "context_tokens": 2002,
+          "context_notes": [
+            "file source left out"
+          ],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/search.py",
+          "text": {
+            "summary": "This file contains functions for interacting with an Elasticsearch search index, including adding, removing, and querying documents.",
+            "role": "It provides utility functions for managing search functionality in the application, which is used by other parts of the app to index and search data."
+          },
+          "terms": [
+            {
+              "term": "query",
+              "definition": "a request for data sent to a database (or a search index)"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/search.py::add_to_index",
+              "app/search.py::remove_from_index",
+              "app/search.py::query_index"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 4.59,
+          "attempts": 1,
+          "context_tokens": 732,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/tasks.py",
+          "text": {
+            "summary": "This file contains background tasks for the application, including setting task progress and exporting user posts.",
+            "role": "It is used by the application to perform tasks asynchronously, such as exporting user posts and updating task progress."
+          },
+          "terms": [
+            {
+              "term": "async",
+              "definition": "code that can wait for something slow (the network, a database) without stopping other work"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/__init__.py::create_app",
+              "app/email.py::send_email",
+              "app/tasks.py::_set_task_progress",
+              "app/tasks.py::export_posts"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.68,
+          "attempts": 1,
+          "context_tokens": 1148,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "app/translate.py",
+          "text": {
+            "summary": "This file contains a function to translate text using Microsoft Translator API.",
+            "role": "It is used by the app to provide translation functionality."
+          },
+          "terms": [
+            {
+              "term": "API",
+              "definition": "a set of URLs (or functions) that other programs call to use this one"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/main/routes.py::translate_text"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.58,
+          "attempts": 1,
+          "context_tokens": 580,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "config.py",
+          "text": {
+            "summary": "config.py is a configuration file that sets up environment variables and default values for the application. It imports necessary libraries, defines a configuration class with various settings, and loads environment variables from a .env file.",
+            "role": "This file is used by other parts of the application to access configuration settings. It relies on the dotenv library to load environment variables and the os library to handle file paths and environment-related operations."
+          },
+          "terms": [
+            {
+              "term": "environment variable",
+              "definition": "a setting given to the program by the system it runs on, outside the code"
+            }
+          ],
+          "grounding": {
+            "kept": [],
+            "removed": [
+              {
+                "mention": "config.py::Config",
+                "reason": "not a function in this project"
+              }
+            ]
+          },
+          "cached": false,
+          "seconds": 2.6,
+          "attempts": 1,
+          "context_tokens": 610,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "microblog.py",
+          "text": {
+            "summary": "microblog.py initializes the Flask app and sets up a shell context for interactive development.",
+            "role": "This file is part of the app initialization process. It imports necessary modules and sets up the Flask app instance."
+          },
+          "terms": [],
+          "grounding": {
+            "kept": [
+              "app/__init__.py::create_app",
+              "microblog.py::make_shell_context"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 1.93,
+          "attempts": 1,
+          "context_tokens": 419,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/env.py",
+          "text": {
+            "summary": "This file contains functions to run database migrations in 'offline' and 'online' modes using Alembic, SQLAlchemy, and Flask. It configures the migration environment based on the Flask app's configuration.",
+            "role": "This file is part of the database migration process in the app. It is imported and called by the Flask app to perform migrations when the app starts."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/env.py::run_migrations_offline",
+              "migrations/env.py::run_migrations_online"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.3,
+          "attempts": 1,
+          "context_tokens": 1595,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/2b017edaa91f_add_language_to_posts.py",
+          "text": {
+            "summary": "This file contains database migration scripts for adding and removing a 'language' column from the 'post' table.",
+            "role": "It is part of the database migration process, used to alter the structure of the database schema."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/2b017edaa91f_add_language_to_posts.py::downgrade",
+              "migrations/versions/2b017edaa91f_add_language_to_posts.py::upgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.86,
+          "attempts": 1,
+          "context_tokens": 688,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/37f06a334dbf_new_fields_in_user_model.py",
+          "text": {
+            "summary": "This file contains database migration scripts for adding new fields to the 'user' table in the database. It includes an 'upgrade' function to add 'about_me' and 'last_seen' columns, and a 'downgrade' function to remove these columns.",
+            "role": "It is part of the database migration process, used to update the database schema when changes are made to the user model."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/37f06a334dbf_new_fields_in_user_model.py::upgrade",
+              "migrations/versions/37f06a334dbf_new_fields_in_user_model.py::downgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.73,
+          "attempts": 1,
+          "context_tokens": 742,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/780739b227a7_posts_table.py",
+          "text": {
+            "summary": "This file contains database migration scripts for creating and dropping a 'post' table in a database using Alembic, a database migration tool.",
+            "role": "It is used to manage changes to the database schema over time, ensuring that the database structure is consistent with the application's requirements."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/780739b227a7_posts_table.py::upgrade",
+              "migrations/versions/780739b227a7_posts_table.py::downgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.21,
+          "attempts": 1,
+          "context_tokens": 877,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/834b1a697901_user_tokens.py",
+          "text": {
+            "summary": "This file contains database migration scripts for adding and removing user tokens and their expiration times.",
+            "role": "It is used by Alembic, a database migration tool, to update the database schema when changes are made to the application code."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            },
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/834b1a697901_user_tokens.py::downgrade",
+              "migrations/versions/834b1a697901_user_tokens.py::upgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.92,
+          "attempts": 1,
+          "context_tokens": 708,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/ae346256b650_followers.py",
+          "text": {
+            "summary": "This file contains database migration scripts for creating and dropping a 'followers' table. The 'upgrade' function adds the table, and the 'downgrade' function removes it.",
+            "role": "This file is part of the database migration process. It is used by Alembic, a database migration tool, to manage changes to the database schema over time."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/ae346256b650_followers.py::downgrade",
+              "migrations/versions/ae346256b650_followers.py::upgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.38,
+          "attempts": 1,
+          "context_tokens": 702,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/c81bac34faab_tasks.py",
+          "text": {
+            "summary": "This file contains database migration scripts for creating and dropping a 'task' table. It uses Alembic, a database migration tool, to define the structure of the 'task' table and its associated index.",
+            "role": "This file is part of the database migration process. It is used to update the database schema when changes are made to the application's data model. The 'upgrade' function adds the 'task' table and its index, while the 'downgrade' function removes them."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/c81bac34faab_tasks.py::downgrade",
+              "migrations/versions/c81bac34faab_tasks.py::upgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.81,
+          "attempts": 1,
+          "context_tokens": 776,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/d049de007ccf_private_messages.py",
+          "text": {
+            "summary": "This file contains database migration scripts for creating and dropping tables related to private messages and updating user tables.",
+            "role": "It is used by the Alembic tool to manage database schema changes over time."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/d049de007ccf_private_messages.py::downgrade",
+              "migrations/versions/d049de007ccf_private_messages.py::upgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 2.83,
+          "attempts": 1,
+          "context_tokens": 1117,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/e517276bb1c2_users_table.py",
+          "text": {
+            "summary": "This file contains database migration scripts for creating and dropping a 'user' table in a database. It uses Alembic, a database migration tool, to define the changes needed to the database schema.",
+            "role": "This file is part of the database migration process. It is used to create the 'user' table with necessary columns and indexes, and to drop the table when needed. It relies on Alembic for executing the database schema changes."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/e517276bb1c2_users_table.py::downgrade",
+              "migrations/versions/e517276bb1c2_users_table.py::upgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.82,
+          "attempts": 1,
+          "context_tokens": 852,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "migrations/versions/f7ac3d27bb1d_notifications.py",
+          "text": {
+            "summary": "This file contains database migration scripts for creating and dropping a 'notification' table. It uses Alembic, a database migration tool, to define changes to the database schema.",
+            "role": "This file is part of the database migration process. It is used to update the database schema when changes are made to the application's data model."
+          },
+          "terms": [
+            {
+              "term": "migration",
+              "definition": "a script that changes the structure of the database (tables, columns) one step at a time"
+            },
+            {
+              "term": "schema",
+              "definition": "a description of the shape of some data: which fields it has and of which types"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "migrations/versions/f7ac3d27bb1d_notifications.py::downgrade",
+              "migrations/versions/f7ac3d27bb1d_notifications.py::upgrade"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 3.32,
+          "attempts": 1,
+          "context_tokens": 981,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "file",
+          "target": "tests.py",
+          "text": {
+            "summary": "tests.py contains unit tests for the User model and its associated methods, including password hashing, avatar generation, following functionality, and following posts. It sets up a test environment, runs the tests, and tears down the environment.",
+            "role": "This file is part of the test suite for the application. It imports the necessary modules and classes, defines a test configuration, and includes test cases that exercise various functionalities of the User model."
+          },
+          "terms": [
+            {
+              "term": "hash",
+              "definition": "a fixed-length fingerprint of some data; a password hash cannot be turned back into the password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/__init__.py::create_app",
+              "app/models.py::User.avatar",
+              "app/models.py::User.check_password",
+              "app/models.py::User.follow",
+              "app/models.py::User.followers_count",
+              "app/models.py::User.following_count",
+              "app/models.py::User.following_posts",
+              "app/models.py::User.is_following",
+              "app/models.py::User.set_password",
+              "app/models.py::User.unfollow",
+              "tests.py::UserModelCase.setUp",
+              "tests.py::UserModelCase.tearDown",
+              "tests.py::UserModelCase.test_avatar",
+              "tests.py::UserModelCase.test_follow",
+              "tests.py::UserModelCase.test_follow_posts",
+              "tests.py::UserModelCase.test_password_hashing"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 7.3,
+          "attempts": 1,
+          "context_tokens": 2211,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        },
+        {
+          "level": "project",
+          "target": "microblog",
+          "text": {
+            "summary": "microblog is a social media application where users can post messages, follow others, and interact with content. It includes features like user authentication, password reset, and message sending.",
+            "how_it_works": "A request starts at the entry point defined in app/__init__.py::create_app, which initializes the Flask application. The request then moves through various routes and endpoints, such as app/main/routes.py::index for handling posts and app/api/tokens.py::get_token for generating authentication tokens. Data is stored in a SQL database through Flask-SQLAlchemy, and Redis is used for caching. The application also interacts with Elasticsearch for search functionality and sends emails using Flask-Mail. Background tasks are handled by RQ, a task queue on Redis."
+          },
+          "terms": [
+            {
+              "term": "cache",
+              "definition": "a store of recent results kept so they need not be computed or fetched again"
+            },
+            {
+              "term": "endpoint",
+              "definition": "a URL the app answers, together with its HTTP method (GET, POST, ...)"
+            },
+            {
+              "term": "queue",
+              "definition": "a list of jobs waiting for a background worker to run them"
+            },
+            {
+              "term": "route",
+              "definition": "a URL pattern linked to the function that handles it"
+            },
+            {
+              "term": "SQL",
+              "definition": "the language used to read and change data in relational databases"
+            },
+            {
+              "term": "token",
+              "definition": "a string that proves who a user is, sent with requests instead of a password"
+            }
+          ],
+          "grounding": {
+            "kept": [
+              "app/__init__.py::create_app",
+              "app/main/routes.py::index",
+              "app/api/tokens.py::get_token"
+            ],
+            "removed": []
+          },
+          "cached": false,
+          "seconds": 8.1,
+          "attempts": 1,
+          "context_tokens": 3723,
+          "context_notes": [],
+          "call_notes": [],
+          "error": null
+        }
+      ]
+    }
+  }
+}

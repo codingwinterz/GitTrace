@@ -1,0 +1,38 @@
+{
+  "seed": 7,
+  "method": "random.sample of the important functions (default `explain`), drawn before any model run",
+  "targets": {
+    "fastapi-tdd-docker": {
+      "important": 7,
+      "files": [
+        "app/__init__.py",
+        "app/api/__init__.py",
+        "app/api/crud.py",
+        "app/api/ping.py",
+        "app/api/summaries.py",
+        "app/config.py",
+        "app/db.py",
+        "app/main.py",
+        "app/models/__init__.py",
+        "app/models/pydantic.py",
+        "app/models/tortoise.py",
+        "app/summarizer.py",
+        "migrations/models/0_20250421234125_init.py",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "tests/test_ping.py",
+        "tests/test_summaries.py",
+        "tests/test_summaries_unit.py"
+      ],
+      "sample": [
+        "app/api/ping.py::pong",
+        "app/api/summaries.py::create_summary",
+        "app/api/summaries.py::delete_summary",
+        "app/api/summaries.py::read_all_summaries",
+        "app/api/summaries.py::read_summary",
+        "app/api/summaries.py::update_summary",
+        "app/main.py::create_application"
+      ]
+    }
+  }
+}

@@ -15,7 +15,9 @@ Test-code findings are not triaged unless --include-tests. With --fix it
 also asks for a fix and shows it as a checked diff (never applied).
 
 `explain` describes the project in plain language (gittrace.core.explain for
-the facts, gittrace.llm.explain for the summaries). It needs no FalkorDB.
+the facts, gittrace.llm.explain for the summaries). It needs no FalkorDB. Its
+model is chosen separately (--model, else $GITTRACE_EXPLAIN_MODEL, else
+ollama/qwen2.5-coder:7b; see gittrace.llm.client for why).
 
 Exit codes: 0 ok; 1 `scan` found something at or above --fail-on (default
 high), so it can gate CI; the gate reads the rules' severity, never the
@@ -240,7 +242,8 @@ def explain(
                                     help="A function called from at least this many functions is important."),
     depth: int = typer.Option(4, "--depth", min=1, max=10, help="How deep the request-flow trees go."),
     model: str = typer.Option(None, "--model",
-                              help="LiteLLM model (default: $GITTRACE_MODEL, else ollama/llama3.1:8b)."),
+                              help="LiteLLM model (default: $GITTRACE_EXPLAIN_MODEL, else "
+                                   "ollama/qwen2.5-coder:7b; triage's $GITTRACE_MODEL does not apply)."),
     no_llm: bool = typer.Option(False, "--no-llm", help="Facts only: no model summaries."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask before a run estimated over 10 minutes."),
 ) -> None:
@@ -311,18 +314,18 @@ def _summarise(ex, analysis, fns, files, project, model, yes):
 
     from gittrace.llm import explain as summaries
     from gittrace.llm.cache import Cache
-    from gittrace.llm.client import LLMError, ModelClient, ModelUnavailable, resolve_model
+    from gittrace.llm.client import LLMError, ModelClient, ModelUnavailable, resolve_explain_model
 
     try:
-        client = ModelClient(resolve_model(model))
+        client = ModelClient(resolve_explain_model(model))
     except LLMError as exc:
         _fail(str(exc))
     plan = summaries.plan(ex, fns, files, project)
-    estimate = summaries.estimate_seconds(len(plan))
+    estimate = summaries.estimate_seconds(len(plan), client.model)
     stderr = Console(stderr=True, highlight=False)
     stderr.print(f"[{render.LAVENDER}]explain[/] {client.model}: {len(plan)} model calls "
                  f"({len(fns)} functions, {len(files)} files{', the project' if project else ''}), "
-                 f"about {estimate / 60:.0f} min at {summaries.SECONDS_PER_CALL:g} s per call "
+                 f"about {estimate / 60:.0f} min at {summaries.seconds_per_call(client.model):g} s per call "
                  "(cached replies take no time)")
     if estimate > CONFIRM_ABOVE_S and not yes:
         if not sys.stdin.isatty():

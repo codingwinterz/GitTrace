@@ -101,6 +101,12 @@ def _summary_block(s: dict | None, fields) -> list:
             line = Text(f"{label}: ", style="bold")
             line.append(s["text"][key])
             out.append(line)
+    if s.get("terms"):
+        out.append(Text("Terms used:", style="bold"))
+        for t in s["terms"]:
+            line = Text(f"  {t['term']}: ", style=LAVENDER)
+            line.append(t["definition"], style=DIM)
+            out.append(line)
     for m in s["grounding"]["removed"]:
         out.append(Text(f"removed unverified mention `{m['mention']}`: {m['reason']}", style=AMBER))
     for note in s["call_notes"]:
@@ -270,6 +276,9 @@ def _md_summary(s: dict | None, fields, indent: str = "") -> list[str]:
     for key, label in fields:
         if key in s["text"]:
             out.append(f"{indent}- **{label}:** {s['text'][key]}")
+    if s.get("terms"):
+        out.append(f"{indent}- **Terms used:**")
+        out += [f"{indent}  - *{t['term']}*: {t['definition']}" for t in s["terms"]]
     for m in s["grounding"]["removed"]:
         out.append(f"{indent}- *Removed unverified mention `{m['mention']}`: {m['reason']}.*")
     for note in s["call_notes"]:
@@ -300,7 +309,8 @@ def to_markdown(data: dict) -> str:
             f"({c['important_functions']} important), {c['endpoints']} endpoints. {_llm_line(data['llm'])}.",
             "", "Facts (entry points, endpoints, calls, side effects, findings) come from GitTrace's analysis "
             "of the code. Summaries come from a language model and can be wrong; function mentions in them "
-            "were checked against the call graph.", ""]
+            "were checked against the call graph. The \"Terms used\" under a summary are GitTrace's own "
+            "definitions of the technical terms it uses, not the model's.", ""]
     if data["scope"]:
         out += [f"Scope: {data['scope']}.", ""]
     ps = data["project_summary"]

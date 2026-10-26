@@ -1,0 +1,85 @@
+{
+  "label": "held-out",
+  "set": "held-out",
+  "prompt_version": "explain-v2",
+  "llm_code_sha256": "7f62a40da2708687fb00575a0c97696b97752164e391ace5a92a111049c24073",
+  "explain_code_sha256": "a8aadf04f8c125eedb631b6579011db1bcfe2134ce3997e4ffbd8e2ac4f2d3e6",
+  "gpu": "NVIDIA GeForce RTX 5050 Laptop GPU, 8151 MiB",
+  "power_at_start": "battery",
+  "models": {
+    "ollama/llama3.1:8b": {
+      "warmup_seconds": 21.67,
+      "power_before": "battery",
+      "power_after": "battery",
+      "targets": {
+        "fastapi-tdd-docker": {
+          "calls": 26,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 0,
+          "mentions_kept": 57,
+          "mentions_removed": 3,
+          "summaries_with_removals": 3,
+          "seconds": {
+            "function": {
+              "n": 7,
+              "total": 20.0,
+              "mean": 2.86,
+              "max": 4.14
+            },
+            "file": {
+              "n": 18,
+              "total": 49.4,
+              "mean": 2.74,
+              "max": 8.26
+            },
+            "project": {
+              "n": 1,
+              "total": 9.5,
+              "mean": 9.48,
+              "max": 9.48
+            }
+          },
+          "total_seconds": 78.9
+        }
+      }
+    },
+    "ollama/qwen2.5-coder:7b": {
+      "warmup_seconds": 15.62,
+      "power_before": "battery",
+      "power_after": "battery",
+      "targets": {
+        "fastapi-tdd-docker": {
+          "calls": 26,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 0,
+          "mentions_kept": 70,
+          "mentions_removed": 7,
+          "summaries_with_removals": 4,
+          "seconds": {
+            "function": {
+              "n": 7,
+              "total": 19.2,
+              "mean": 2.74,
+              "max": 4.68
+            },
+            "file": {
+              "n": 18,
+              "total": 55.3,
+              "mean": 3.07,
+              "max": 9.41
+            },
+            "project": {
+              "n": 1,
+              "total": 7.8,
+              "mean": 7.83,
+              "max": 7.83
+            }
+          },
+          "total_seconds": 82.3
+        }
+      }
+    }
+  }
+}

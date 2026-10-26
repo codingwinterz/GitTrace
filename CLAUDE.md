@@ -184,7 +184,37 @@ findings and code in plain language using a local LLM.
   purpose covered) / partly (main purpose right, a false or misleading
   detail or a missing key point) / wrong (main purpose wrong or a central
   claim false). The first run is `untouched`; any tuning gets a new
-  EXPLAIN_VERSION and a separately labelled run.
+  EXPLAIN_VERSION and a separately labelled run. Ratings are made by an AI
+  against the pre-written references, plus the owner's spot checks.
+- explain-v2 (the `after-tuning` run): the prompt's example id is the fake
+  `example/module.py::Example.method` (v1's was a real sample_app id and a
+  model copied it); side effects include reads, as in the facts. Effect
+  kinds add store_read / store_write (search indexes, caches, queues; Redis
+  moved there from db_*). Flask-SQLAlchemy helpers (db.paginate,
+  get_or_404, first_or_404, one_or_404 read; create_all / drop_all write),
+  session rollback (db), Elasticsearch / OpenSearch, RQ / Celery, Flask-Mail,
+  HTTP client objects, aiofiles / Path.open / zipfile / tarfile,
+  send_file and uploaded-file save() are classified. A method on an object
+  built by a library constructor is classified by that type first
+  (facts.receiver_types: module or local assignment, import, `with ... as`);
+  building a client is not an effect; Flask's `session` is not a database.
+- Glossary (gittrace/core/glossary.py): a fixed list of terms with plain
+  definitions; every summary gets the terms its prose uses ("Terms used"),
+  computed from the reply after the grounding check, never cached, never
+  from the model. Code-like text (paths, ids, dotted names, backticks) is
+  ignored; acronyms must be upper case.
+- `explain` model: --model, else $GITTRACE_EXPLAIN_MODEL, else
+  ollama/qwen2.5-coder:7b (more summaries right in 5 of 6 comparisons,
+  less VRAM; equally fast when run back to back). $GITTRACE_MODEL and
+  llama3.1:8b stay triage's.
+- Explain held-out target: testdrivenio/fastapi-tdd-docker at 16433b6
+  (eval/explain/targets_held_out.json), all 7 important functions sampled;
+  references hashed in eval/explain/reference_held_out.sha256 before any
+  model ran on it; run once (`--set held-out --label held-out`), nothing
+  changed because of it. Timings come from a separate `timing` run with
+  `--require-ac`, reported apart from quality. Not run yet (the laptop
+  never reported AC power); a battery pass (`timing-battery`) was too
+  confounded by the falling charge to compare the models.
 
 ## Backlog (not scheduled; do not start without approval)
 - Routes from Flask-RESTful / Flask-RESTX `Resource` classes
@@ -206,6 +236,16 @@ findings and code in plain language using a local LLM.
   pattern (`get_verified_user`), secrets passed as keyword arguments
   (`User(password="...")`) or in dict literals, and secret names ending in
   `HMAC` (`SECRET_KEY_HMAC`).
+- Found in the explain held-out run (fastapi-tdd-docker), not fixed: no
+  side effects for the Tortoise ORM (`Model.filter(...).first()`, `.save()`,
+  `.update()`, `.delete()`, `Model.all()`) or for downloads done by
+  libraries (newspaper's `Article.download`, `nltk.download`), so summaries
+  say "side effects: none" for handlers that use the database.
+- Grounding check vs. the facts: a function's prompt names the functions
+  further down that cause its side effects (effects_via, up to five hops),
+  but a mention is only kept for direct callers and callees, so a correct
+  mention of such a function is removed (microblog's `search` ->
+  `query_index`).
 
 ## Phases (stop and report after each; do not start the next without approval)
 - Phase 1: Fix existing bugs in the current code.

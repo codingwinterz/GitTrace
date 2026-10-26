@@ -61,6 +61,7 @@ pip install -r requirements.txt
 docker compose up -d falkordb                       # or a FalkorDB Cloud instance
 cp .env.example .env                                # FALKORDB_HOST=localhost, FALKORDB_PORT=6379, empty password
 ollama pull llama3.1:8b                             # the triage model (https://ollama.com); or scan with --no-llm
+ollama pull qwen2.5-coder:7b                        # the explain model; or explain with --no-llm
 python -m gittrace scan tests/fixtures/sample_app
 ```
 
@@ -95,6 +96,7 @@ python -m gittrace blast-radius <function-id> [--project PATH] [--depth N] [--fo
 | `FALKORDB_HOST` / `FALKORDB_PORT` | yes (not with `--offline`) | FalkorDB instance |
 | `FALKORDB_USER` / `FALKORDB_PASSWORD` | cloud only | Instance credentials |
 | `GITTRACE_MODEL` | no | Triage model (default `ollama/llama3.1:8b`); `--model` wins |
+| `GITTRACE_EXPLAIN_MODEL` | no | `explain` model (default `ollama/qwen2.5-coder:7b`); `--model` wins; `GITTRACE_MODEL` does not apply to `explain` |
 | `GITTRACE_LLM_TIMEOUT` | no | Seconds to wait for one reply (default 120) |
 | `OLLAMA_API_BASE` | no | Where Ollama listens (default `http://localhost:11434`) |
 
@@ -160,15 +162,19 @@ After the rules and the severity table, `scan` asks a model about each finding i
 
 - **Entry points:** `if __name__ == "__main__":`, click, Typer and Flask CLI commands (`@bp.cli.command()`), argparse parsers, and FastAPI / Flask application objects created at import time or by a factory function.
 - **Endpoints** (method, path, auth, handler), **modules by folder** (with each file's docstring), **third-party libraries** (and the files importing them), and **data stores and outside services**, each with a one-line explanation: from the imports (sqlite3, SQLAlchemy, Redis, Elasticsearch, requests, Flask-Mail, RQ, boto3, OpenAI, ...) plus "files on disk" and "other programs" when the code writes files or runs commands.
-- **Side effects per function**, from its call sites: database reads and writes (the SQL verb when the SQL text is visible, SQLAlchemy sessions, `Model.query`, Django's `objects`, MongoDB and Redis clients), network calls, file reads and writes (`open()` by its mode), and subprocesses; plus the side effects in the project functions it calls, within five hops.
+- **Side effects per function**, from its call sites: database reads and writes (the SQL verb when the SQL text is visible, SQLAlchemy sessions, Flask-SQLAlchemy's `Model.query`, `db.paginate`, `get_or_404` and `first_or_404`, Django's `objects`, MongoDB), search indexes, caches and queues (Elasticsearch / OpenSearch, Redis, RQ and Celery), network calls (HTTP libraries and client objects, email), file reads and writes (`open()` by its mode, pathlib, zip and tar files, uploads), and subprocesses; plus the side effects in the project functions it calls, within five hops. A method called on an object made by a library constructor is classified by that object's type when the resolver can see it (`session = requests.Session(); session.get(url)` is a network call, not a database read). Not covered (found on the held-out project): the Tortoise ORM, and libraries that download as a side job (newspaper's `Article.download`, `nltk.download`).
 - **A request-flow tree per endpoint:** the handler and the project functions it calls, `--depth` levels deep (default 4), library calls collapsed onto one line per function, a function already shown not expanded again.
 - **Security:** the rule findings in each file and function, with their severity (the same rules as `scan`, run offline).
 
-**Model summaries** (`gittrace/llm/explain.py`), built bottom-up so no prompt exceeds the context window: the important functions first, leaves before their callers, each prompt carrying the function's facts, its source and the summaries already written for the functions it calls; then every file, from its facts, its functions' summaries (or docstrings) and its source when it fits; then the project, from the file summaries. Each function summary says what it does, its inputs, outputs, side effects and its role in the app; the system prompt asks for plain sentences and a few words of explanation for every technical term. What does not fit is cut in a fixed order and the result says so.
+**Model summaries** (`gittrace/llm/explain.py`), built bottom-up so no prompt exceeds the context window: the important functions first, leaves before their callers, each prompt carrying the function's facts, its source and the summaries already written for the functions it calls; then every file, from its facts, its functions' summaries (or docstrings) and its source when it fits; then the project, from the file summaries. Each function summary says what it does, its inputs, outputs, side effects (what it reads or changes outside itself, database reads included) and its role in the app; the system prompt asks for plain sentences and a few words of explanation for every technical term. What does not fit is cut in a fixed order and the result says so.
+
+**Terms used.** The models rarely explain their jargon, so GitTrace does it in code: `gittrace/core/glossary.py` holds a fixed glossary (API, blueprint, endpoint, handler, route, router, ORM, migration, middleware, decorator, session, token, ...) with one plain definition each, and every summary gets a short "Terms used" list with the definition of each glossary term its text uses. It is computed from the reply on every run, not written by the model; code-like text (paths, function ids, `bp.route`) does not count.
+
+**Model.** `explain` has its own default, `ollama/qwen2.5-coder:7b` (`--model`, then `$GITTRACE_EXPLAIN_MODEL`); triage keeps `llama3.1:8b`. On the summaries the two are close, with qwen2.5-coder:7b ahead on every run but one (the held-out function summaries; see [Explain results](#5-explain-phase-6)); it needs less GPU memory, and run back to back the two were equally fast. Triage is a different job: there llama3.1:8b hid far fewer real findings (1 of 35 true positives against 10).
 
 **Grounding check.** Every summary lists the project functions it mentions. GitTrace keeps a mention only if it is the code being described or is directly called from or calls it (for a file: any of its functions, their callers and callees); a function id written in the text is checked the same way and replaced by "[unverified reference removed]". Removed mentions are shown next to the summary with the reason, and counted in the run's summary line. This checks the functions a summary names, not every claim in it.
 
-**Scope and speed.** By default: every file, the project, and the important functions (route handlers, entry points, and functions called from at least `--min-callers` other functions, default 3); `--all` summarises every function, `--file PATH` one file and all its functions, `--function ID` one function. Before starting, `explain` estimates the time from the number of model calls (8 s per call: llama3.1:8b's pace in the evaluation, partly on battery power, so usually an overestimate; the progress bar's ETA follows the real pace) and asks for confirmation above 10 minutes unless `--yes` (without a terminal it stops and says to pass `--yes`). A progress bar shows the ETA. Replies are cached in `<project>/.gittrace/cache` like triage replies.
+**Scope and speed.** By default: every file, the project, and the important functions (route handlers, entry points, and functions called from at least `--min-callers` other functions, default 3); `--all` summarises every function, `--file PATH` one file and all its functions, `--function ID` one function. Before starting, `explain` estimates the time from the number of model calls and the model's measured pace (see [Explain results](#5-explain-phase-6); 8 s per call for a model that was not measured; the progress bar's ETA follows the real pace) and asks for confirmation above 10 minutes unless `--yes` (without a terminal it stops and says to pass `--yes`). A progress bar shows the ETA. Replies are cached in `<project>/.gittrace/cache` like triage replies.
 
 **Output.** `--format rich` (default), `md` or `json`; `--out EXPLAIN.md` writes the Markdown version to a file and prints a one-line note. The scanned code is fenced as untrusted data and hardcoded secrets are masked in the prompts and the output, as in `scan`.
 
@@ -358,20 +364,57 @@ On the held-out set both models recognised about 4 in 10 false positives and kep
 
 ### 5. Explain (Phase 6)
 
-`python eval/run_explain.py` (see `eval/README.md`) ran `explain`'s default summaries (every file, the project, the important functions) on `tests/fixtures/sample_app` and on [microblog](https://github.com/miguelgrinberg/microblog), a small real-world Flask app not used anywhere else in this project, with both models, no cache. Reference notes for every file and for 30 functions drawn at random from the important ones were written and hashed before any summary existed. Every file summary and the 30 function summaries were then rated against them and the code: **correct** (every statement true, main purpose covered), **partly** (main purpose right, but a false or misleading detail or a missing key point), **wrong** (main purpose wrong or a central claim false). This is the `untouched` run: the prompts as first written, developed on another fixture; nothing has been tuned. One reviewer (the author of the tool) did all the rating, so treat the split between "correct" and "partly" as a judgment call.
+`python eval/run_explain.py` (see `eval/README.md`) runs `explain`'s default summaries (every file, the project, the important functions) with both models, no cache, and records every summary. Three runs, each rated summary by summary:
 
-| Model | Files (47): correct / partly / wrong | Functions (30): correct / partly / wrong | Grounding: mentions kept / removed | Model time, 102 calls | s per function summary |
+- **`untouched`** (prompt `explain-v1`, as first written): `tests/fixtures/sample_app` and [microblog](https://github.com/miguelgrinberg/microblog), a small real-world Flask app not used anywhere else in this project. Reference notes for every file and for 30 functions drawn at random from the important ones were written and hashed before any summary existed.
+- **`after-tuning`** (`explain-v2`): the same targets, references and sample, after the changes listed below. Optimistic: the changes were chosen by looking at the untouched results on these targets.
+- **`held-out`** (`explain-v2`): [fastapi-tdd-docker](https://github.com/testdrivenio/fastapi-tdd-docker), a small FastAPI app (Tortoise ORM, a background task, 18 files) chosen after tuning was final. Its references (every file, all 7 important functions) were written and hashed before any model ran on it; it was run once and nothing was changed because of it.
+
+Each summary is rated **correct** (every statement true, main purpose covered), **partly** (main purpose right, but a false or misleading detail or a missing key point) or **wrong** (main purpose wrong or a central claim false), against the pre-written reference and the code. **The ratings were made by an AI** (Claude, the coding agent building this project), not by an independent human reviewer, plus whatever spot checks the owner makes (`eval/explain/<target>/review.json` has a reason for every rating). Treat the line between "correct" and "partly" as a judgment call. **The samples are small**: 47 file and 30 function summaries per model on the tuning targets, 18 and 7 on the held-out one.
+
+| Run | Prompt | Model | Files: correct / partly / wrong | Functions: correct / partly / wrong | Grounding: mentions kept / removed |
 |---|---|---|---|---|---|
-| llama3.1:8b | 35 / 10 / **2** | 24 / 5 / **1** | 270 / 9 | 868 s | 6.4 (sample_app), 8.0 (microblog)* |
-| qwen2.5-coder:7b | 42 / 5 / **0** | 28 / 2 / **0** | 294 / 6 | 257 s | 1.8, 2.0* |
+| untouched | `explain-v1` | llama3.1:8b | 35 / 10 / **2** (of 47) | 24 / 5 / **1** (of 30) | 270 / 9 |
+| untouched | `explain-v1` | qwen2.5-coder:7b | 42 / 5 / **0** | 28 / 2 / **0** | 294 / 6 |
+| after tuning | `explain-v2` | llama3.1:8b | 38 / 8 / **1** | 26 / 3 / **1** | 239 / 6 |
+| after tuning | `explain-v2` | qwen2.5-coder:7b | 45 / 2 / **0** | 29 / 1 / **0** | 279 / 3 |
+| **held out** | `explain-v2` | llama3.1:8b | 14 / 4 / **0** (of 18) | 4 / 3 / **0** (of 7) | 57 / 3 |
+| **held out** | `explain-v2` | qwen2.5-coder:7b | 16 / 2 / **0** | 3 / 4 / **0** | 70 / 7 |
 
-\* Not comparable between the models: the laptop was on battery when the llama3.1:8b run started and on AC power by its end, and the qwen2.5-coder:7b run was entirely on AC power. A timing run with both models on AC power has not been made.
+**What changed between untouched and after tuning** (`explain-v2`):
 
-- **What went wrong.** The wrong summaries: llama3.1:8b called sample_app's package `__init__.py` "the main entry point", described microblog's `microblog.py` backwards (as if `app/__init__.py` called a `create_app` defined there), and said `ping_user` pings "to check if the user exists" (it pings a host named in the URL). The "partly" ratings are mostly one false detail: a table called `posts` instead of `post`, a call direction reversed, "logs them in" after a password reset (it redirects to the login page), a `main` blueprint called "the entry point" by both models, a missing key point (that `search` queries Elasticsearch; both models missed it).
-- **Grounding check.** It removed 15 mentions in 204 summaries; none had been written into the summaries' text. Most were harmless: file or module paths and classes listed where function ids were asked for (11), a real connected function misspelled (`Repo.__init`, 2), a library function (1). One was a genuine invention: qwen2.5-coder:7b's summary of microblog's `create_app` mentioned `app/db.py::Repo.get_user`, which does not exist there; it is the example id in the system prompt.
-- **Plain language: not achieved.** The system prompt asks for every technical term to be explained the first time. Neither model did this: "Blueprint" appears 13 times and is explained 0 times, "endpoint" 84 times and explained 4 times, "Alembic" 27 times and explained 9 times (8 by qwen2.5-coder:7b). The facts tables explain their terms ("Endpoints (URLs the app answers)"); the summaries mostly do not.
-- **Facts the summaries inherit.** Database reads through Flask-SQLAlchemy helpers (`db.paginate`, `db.get_or_404`, `db.first_or_404`) and calls on `current_app.elasticsearch` are not classified as side effects, so the facts said "none found" and both models repeated it; that is also why neither said `search` uses Elasticsearch. The side-effects field is defined as what a function *changes*, so "none" for a read-only function is not counted as an error, but the facts and the prompt disagree on whether reads are side effects.
-- **Which model for `explain`.** On these two projects qwen2.5-coder:7b's summaries were more often right (70 of 77 correct against 59 of 77, no wrong ones) and its calls were shorter. The default stays llama3.1:8b, the model chosen for triage; whether `explain` should default to another model is open. Two projects and 77 rated summaries per model are a small sample.
+1. The example function id in the system prompt is now a fake one (`example/module.py::Example.method`). The untouched prompt's example was a real sample_app id, and qwen2.5-coder:7b copied it into a summary of microblog. No summary in the later runs contains the new one.
+2. Side effects. The facts now cover Flask-SQLAlchemy helpers, Elasticsearch/OpenSearch, Redis and task queues (as "reads/writes a search index, cache or queue"), HTTP client objects, email and more file APIs, using the object's type where the resolver knows it. The prompt now defines side effects to include reads, like the facts do. On microblog, `search` now says it reads a search index (both models missed it before), and read-only views say they read the database.
+3. Plain language is enforced in code, through the glossary's "Terms used" (above).
+
+**Plain language: how many summaries use a glossary term** (recomputed from the recorded text with the same check for every run):
+
+| Run | llama3.1:8b | qwen2.5-coder:7b | Definitions attached |
+|---|---|---|---|
+| untouched | 85 of 102 | 82 of 102 | none (the models defined almost none themselves: "blueprint" 0 of 13 times, "endpoint" 4 of 84) |
+| after tuning | 84 of 102 | 86 of 102 | every one of them, by GitTrace |
+| held out | 20 of 26 | 18 of 26 | every one of them, by GitTrace |
+
+The prompt was not changed to avoid jargon, and the models use about as many terms as before ("endpoint", "handler", "HTTP", "API" most often). The difference is that a reader now gets a definition for each one.
+
+**What the numbers say:**
+
+- **The tuning gains are small.** One to three more correct summaries per model per level. With temperature 0.1 and a fixed seed, most mistakes came back word for word: llama3.1:8b still calls sample_app's package `__init__.py` "the main entry point", still says `ping_user` pings "to check if the user exists", still names microblog's tables `posts` and `users`; qwen2.5-coder:7b still says `get_user` returns "a dictionary". What improved: `search` and Elasticsearch, qwen2.5-coder:7b no longer calling the `main` blueprint the entry point, llama3.1:8b no longer describing `microblog.py` backwards. No rating got worse because of the stricter side-effect rule.
+- **Held out, the file summaries held up** (llama3.1:8b 14 of 18 correct, qwen2.5-coder:7b 16 of 18, none wrong). **The function summaries did not**: 3 and 4 of the 7 say "side effects: none" for a handler that reads or writes the database. The cause is GitTrace's facts, not the model: the project uses the Tortoise ORM, which the side-effect classifier does not know, so the facts said "none found" for all 18 files, and the models repeated it. The classifier was tuned on what the tuning targets use. Its held-out coverage is the weakest number here, and it is not fixed (held-out rule).
+- **Grounding check.** It removed 9 mentions after tuning and 10 held out. Almost all were classes or file paths listed where function ids were asked for. One was a real function two calls away (`query_index`, under microblog's `search`), which GitTrace's own "side effects further down" facts had named; the check only allows direct callers and callees, so it removed a correct mention.
+- **Which model.** qwen2.5-coder:7b was ahead in five of the six comparisons above. The exception is the held-out function summaries, where it was one behind (3 against 4 of 7). It never produced a "wrong" summary. That and its smaller memory footprint made it the `explain` default (run back to back, the two were equally fast; see Timing below). With samples this small, the ranking is a tendency, not a measurement.
+
+**Timing (reported apart from quality).** The planned timing pass on AC power has **not been run**: the laptop reported battery power throughout this session. Run it with `python eval/run_explain.py --label timing --require-ac` (it refuses to start on battery). What exists instead, on an RTX 5050 Laptop GPU (8 GB), seconds per model call:
+
+| Run (all on battery) | Order | llama3.1:8b median (mean) | qwen2.5-coder:7b median (mean) |
+|---|---|---|---|
+| after tuning, 102 calls each | llama first, then qwen, at a higher charge | 2.8 (3.7) | 2.8 (3.0) |
+| held out, 26 calls each | llama first | 2.5 (3.0) | 2.4 (3.2) |
+| `timing-battery`, 102 calls each | llama first; battery fell to 16%, power plan "Silent" | 3.0 (5.8) | 7.5 (11.0) |
+
+- When the two models ran back to back at a reasonable charge, **they were equally fast** (about 2.5 to 3 s per call). The untouched run's "qwen2.5-coder:7b about 3x faster" compared llama3.1:8b on battery with qwen2.5-coder:7b on AC power, and does not hold.
+- The `timing-battery` pass measures the battery more than the models: qwen2.5-coder:7b ran second, on a lower charge, and was slower from its first calls; the slowest single calls took 262 s (llama3.1:8b) and 215 s (qwen2.5-coder:7b). It is kept (`results/explain/timing-battery/`) but not used to compare the models.
+- `explain`'s estimate before a run uses the after-tuning means (3.0 s per call for qwen2.5-coder:7b, 3.7 s for llama3.1:8b); a default run on microblog (70 calls) is then estimated at about 3.5 minutes.
 
 ## Limitations
 
@@ -391,7 +434,7 @@ On the held-out set both models recognised about 4 in 10 false positives and kep
 - **Rules are pattern rules.** A finding means the dangerous pattern is there, not that it is exploitable: a query formatted from trusted schema names is still reported, with a lower severity when no route reaches it.
 - **Auth detection is name-based** and only sees obvious dependencies and decorators; checks inside the handler body (e.g. signature verification) are not recognised, and names outside the pattern (open-webui's `get_verified_user`) make an authenticated route look unauthenticated.
 - **Secrets are only checked where they are bound to a name**, an attribute or a string subscript; a password passed as a keyword argument (`User(password="...")`) or held in a dict literal is not reported.
-- **The model's triage is an opinion from a 7–8B local model**, measured below on 52 labelled findings; it is shown next to the rules' result, never instead of it. Its fixes are checked to apply and parse, not to be correct. Prompt-injection defences reduce, not remove, the chance that a comment in the scanned code steers it; the gate and the findings list do not depend on it. `explain`'s summaries come from the same models and can be wrong; its facts do not depend on them; the agent loop in `gittrace.core.agent` is a generic, experimental shell.
+- **The model's triage is an opinion from a 7–8B local model**, measured below on 52 labelled findings; it is shown next to the rules' result, never instead of it. Its fixes are checked to apply and parse, not to be correct. Prompt-injection defences reduce, not remove, the chance that a comment in the scanned code steers it; the gate and the findings list do not depend on it. `explain`'s summaries come from the same models and can be wrong (rated by an AI against pre-written references, on small samples); its side-effect facts miss libraries they were not written for (the Tortoise ORM on the held-out project), and a summary repeats a fact's "none found"; its facts do not depend on the model; the agent loop in `gittrace.core.agent` is a generic, experimental shell.
 
 ## AI assistance disclosure (Rule 11)
 

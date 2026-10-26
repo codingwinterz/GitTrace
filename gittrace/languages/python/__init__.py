@@ -74,7 +74,7 @@ class PythonPlugin(LanguagePlugin):
     def project_facts(self, parsed: ParsedProject, calls: Sequence[CallSite]) -> ProjectFacts:
         assert isinstance(parsed, PythonProject)
         imports = facts.imports(parsed.modules, parsed.resolver)
-        effects = facts.effects(calls)
+        effects = facts.effects(calls, facts.receiver_types(parsed.modules, parsed.resolver))
         return ProjectFacts(imports=imports,
                             entry_points=facts.entry_points(parsed.modules, parsed.resolver, calls),
                             effects=effects, services=facts.services(imports, effects))
