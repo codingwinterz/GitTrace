@@ -57,6 +57,7 @@ anticipate. Neither changes any count, because both are false positives either w
 |---|---|---|---|
 | `untouched` | the four vulnerable targets, CTFd, mealie | as committed in Phase 4 (94af77b) | first run; ground truth written before it |
 | `after-tuning` | the same | fixes 1-8 approved after `untouched` | optimistic: the fixes were chosen from these targets |
+| `after-reachability` | the four vulnerable targets, CTFd, mealie | the tuned rules plus Flask-RESTful/RESTX routes and auth checks at the top of handler bodies | detection rules unchanged; the body-check condition rule was tightened after a first run of this label showed 401/403 guards on a form field, a user limit and feature flags, so it is tuned on these targets; held-out targets not re-run (run once) |
 | `held-out` | DVGA, open-webui | the tuned rules (`held_out_code.sha256`) | chosen and read only after the fixes were final; run once with `--targets held-out`, nothing changed afterwards; the open-webui review was folded in with `--review-only`, without re-scanning |
 
 Real-world reviews (`eval/<project>/review.json`) are keyed by finding id. A
