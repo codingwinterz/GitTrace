@@ -115,10 +115,16 @@ def _guard(fn):
     """Turn the tools' expected failures into {"error": ...} results."""
     @functools.wraps(fn)
     def wrapped(*args, **kwargs) -> dict[str, Any]:
+        from redis.exceptions import RedisError
+
         try:
             return fn(*args, **kwargs)
         except (ToolError, ValueError) as exc:
             return {"error": str(exc)}
+        except RedisError as exc:               # driver errors quote the host
+            from gittrace.graph import connection
+            return {"error": f"the {connection.location()} FalkorDB failed: "
+                             f"{type(exc).__name__}: {connection.redact(str(exc))}"}
     return wrapped
 
 

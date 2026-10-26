@@ -166,8 +166,8 @@ class TestOwner:
         res = scan(tmp_path, offline=True, blame=True)
         assert [f.owner for f in res.findings] == [None]
 
-    @pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
-    def test_real_repository(self, tmp_path):
+    @staticmethod
+    def _repository(tmp_path):
         (tmp_path / "app.py").write_text('import os\n\ndef run(cmd):\n    os.system(cmd)\n')
         git = ["git", "-C", str(tmp_path), "-c", "user.name=Grace Hopper",
                "-c", "user.email=grace@example.com", "-c", "commit.gpgsign=false"]
@@ -176,6 +176,28 @@ class TestOwner:
         subprocess.run(git + ["commit", "-q", "-m", "Add run"], check=True)
         with (tmp_path / "app.py").open("a") as fh:
             fh.write("\ndef again(cmd):\n    os.system(cmd)\n")
+
+    @pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+    def test_email_is_shown_only_with_show_email(self, tmp_path):
+        self._repository(tmp_path)
+
+        def run(*extra):
+            out = runner.invoke(app, ["scan", str(tmp_path), "--offline", "--no-llm", "--fail-on", "none", *extra],
+                                env={"COLUMNS": "200"})
+            assert out.exit_code == 0, out.output
+            return out
+
+        rich = run().output
+        assert "owner: Grace Hopper" in rich and "grace@example.com" not in rich
+        assert "Grace Hopper <grace@example.com>" in run("--show-email").output
+        owner = json.loads(run("--format", "json").stdout)["findings"][0]["owner"]
+        assert owner["author"] == "Grace Hopper" and "email" not in owner
+        owner = json.loads(run("--format", "json", "--show-email").stdout)["findings"][0]["owner"]
+        assert owner["email"] == "grace@example.com"
+
+    @pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+    def test_real_repository(self, tmp_path):
+        self._repository(tmp_path)
         res = scan(tmp_path, offline=True, blame=True)
         owners = {f.line: f.owner for f in res.findings}
         assert (owners[4].status, owners[4].author, owners[4].email, owners[4].summary) == (

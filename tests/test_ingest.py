@@ -491,7 +491,7 @@ class TestEntryPoint:
                                    "endpoints": 16, "calls": 82}
         assert data["parse_failures"] == [
             {"file": "scripts/half_merged.py", "reason": "syntax error at line 3"}]
-        assert "half_merged.py" in out.stderr     # logged as a warning too
+        assert "half_merged.py" not in out.stderr   # reported once, in the summary, not also logged
 
     def test_missing_path_is_an_error(self, tmp_path):
         out = self._scan(tmp_path / "nope")

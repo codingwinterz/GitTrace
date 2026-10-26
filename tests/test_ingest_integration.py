@@ -31,6 +31,8 @@ from gittrace.graph import connection, store
 
 
 def _db_reachable() -> bool:
+    if not connection.is_local():       # never write test graphs to a remote database
+        return False
     try:
         connection.get_db().connection.ping()
         return True
@@ -42,14 +44,14 @@ _REACHABLE = _db_reachable()
 
 if not _REACHABLE and os.environ.get("GITTRACE_REQUIRE_FALKORDB") == "1":
     raise RuntimeError(
-        "GITTRACE_REQUIRE_FALKORDB=1 but FalkorDB is unreachable at "
-        f"{connection.FALKORDB_HOST}:{connection.FALKORDB_PORT}"
+        f"GITTRACE_REQUIRE_FALKORDB=1 but the {connection.location()} FalkorDB is unreachable "
+        "or not local (these tests write graphs; they only run against local Docker)"
     )
 
 pytestmark = pytest.mark.skipif(
     not _REACHABLE,
-    reason="FalkorDB unreachable (start it with `docker compose up -d falkordb` "
-           "or check FALKORDB_HOST / credentials)",
+    reason="no local FalkorDB (start it with `docker compose up -d falkordb`; a remote "
+           "FALKORDB_HOST is never used by these tests, which write graphs)",
 )
 
 FLASK_ROOT = Path(__file__).resolve().parent / "fixtures" / "flask_app"

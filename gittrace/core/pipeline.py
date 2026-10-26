@@ -82,7 +82,7 @@ def analyze(root: str | os.PathLike) -> Analysis:
             try:
                 sources.append(SourceFile(rel, (root / rel).read_bytes()))
             except OSError as exc:
-                log.warning("skipping %s: %s", rel, exc)
+                log.debug("skipping %s: %s", rel, exc)        # reported in the summary
                 result.failures.append(ParseFailure(rel, f"unreadable: {exc}"))
         parsed = plugin.parse(sources)
         result.files.extend(parsed.files)
@@ -102,10 +102,14 @@ def analyze(root: str | os.PathLike) -> Analysis:
     return result
 
 
-def ingest(root: str | os.PathLike, db=None, graph_name: str | None = None) -> tuple[Analysis, str]:
-    """Analyze `root` and rebuild its graph. Returns the analysis and the graph name."""
+def ingest(root: str | os.PathLike, db=None, graph_name: str | None = None,
+           allow_remote: bool = False) -> tuple[Analysis, str]:
+    """Analyze `root` and rebuild its graph. Returns the analysis and the graph name.
+    The configured FalkorDB must be local unless `allow_remote` (see gittrace.core.scan)."""
     from gittrace.graph import connection, store
 
+    if db is None:
+        connection.require_local_or_allowed(allow_remote)
     analysis = analyze(root)
     if db is None:
         db = connection.get_db()

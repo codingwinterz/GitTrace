@@ -281,8 +281,10 @@ class ContextBuilder:
             "Rule description:",
             self.rule_docs.get(finding.rule_id, "(no description)"),
             "",
-            f"Deterministic severity: {finding.severity} (score {finding.score}); "
-            + "; ".join(finding.reasons),
+            f"Deterministic severity: {finding.severity} (score {finding.score}), from "
+            + (finding.reasons[0] if finding.reasons else "the rule's base severity") + ".",
+            "Already scored (do not count these again in severity_adjustment): "
+            + ("; ".join(finding.reasons[1:]) or "nothing beyond the base severity") + ".",
             f"Reachability: {reach}.",
             fix,
         ])

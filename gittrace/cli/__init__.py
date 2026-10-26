@@ -19,6 +19,11 @@ the facts, gittrace.llm.explain for the summaries). It needs no FalkorDB. Its
 model is chosen separately (--model, else $GITTRACE_EXPLAIN_MODEL, else
 ollama/qwen2.5-coder:7b; see gittrace.llm.client for why).
 
+`gittrace` with no arguments (or only --no-anim) in a terminal opens the
+interactive mode (gittrace.cli.interactive, Textual) with the same commands
+as slash commands. Without a terminal (a pipe, CI) it prints this help, as
+before; every other invocation is the CLI unchanged.
+
 Exit codes: 0 ok; 1 `scan` found something at or above --fail-on (default
 high), so it can gate CI; the gate reads the rules' severity, never the
 model's adjustment; 2 an error (bad arguments, no graph, FalkorDB down, the
@@ -45,7 +50,9 @@ from gittrace.core.reachability import DEFAULT_DEPTH, MAX_DEPTH
 from gittrace.rules.base import severity_rank
 
 app = typer.Typer(add_completion=False, no_args_is_help=True,
-                  help="Find vulnerabilities reachable from your API routes.")
+                  help="Find vulnerabilities reachable from your API routes. "
+                       "Run `gittrace` with no arguments in a terminal for the interactive mode "
+                       "(`gittrace --no-anim`: without the logo animation).")
 
 EXIT_FINDINGS = 1
 EXIT_ERROR = 2
@@ -122,6 +129,11 @@ def scan(
         False, "--fix",
         help="Also ask the model for a fix per finding, shown as a diff checked with "
              "git apply --check (never applied). Slower."),
+    allow_remote: bool = typer.Option(
+        False, "--allow-remote",
+        help="Allow writing the graph to a remote FalkorDB (FALKORDB_HOST other than localhost)."),
+    show_email: bool = typer.Option(False, "--show-email",
+                                    help="Show the git blame author's email next to the name."),
 ) -> None:
     """Scan a Python project: rule findings, attack paths from routes, blast radius, owner,
     and a model's triage of each finding."""
@@ -132,15 +144,17 @@ def scan(
         _fail(f"not a directory: {path}")
     if fix and no_llm:
         _fail("--fix asks the model for fixes; it cannot be combined with --no-llm")
+    if not offline:
+        _remote_check(allow_remote)
     try:
         result = run_scan(path, depth=depth, blame=not no_blame, offline=offline,
-                          include_tests=include_tests)
+                          include_tests=include_tests, allow_remote=allow_remote)
     except RuntimeError as exc:          # FalkorDB unreachable, misconfigured, ...
         _fail(f"{exc} (use --offline to scan without FalkorDB)")
     triage = llm = None
     if not no_llm:
         triage, llm = _triage(result, result.at_least(min_severity.value), model, fix)
-    data = result.to_dict(min_severity.value, triage=triage, llm=llm)
+    data = result.to_dict(min_severity.value, triage=triage, llm=llm, show_email=show_email)
     if format is Format.json:
         _print_json(data)
     else:
@@ -148,6 +162,22 @@ def scan(
         render.render_scan(_console(), data, functions, blamed=not no_blame)
     if fail_on is not FailOn.none and result.at_least(fail_on.value):
         raise typer.Exit(EXIT_FINDINGS)
+
+
+REMOTE_WARNING = ("warning: FALKORDB_HOST is a remote FalkorDB; scan writes this project's graph, "
+                  "including its source code, there")
+
+
+def _remote_check(allow_remote: bool) -> None:
+    """One line before a graph write leaves the machine; refuse without --allow-remote."""
+    from gittrace.graph import connection
+
+    if connection.is_local():
+        return
+    Console(stderr=True, highlight=False, soft_wrap=True).print(Text(REMOTE_WARNING, style=render.AMBER))
+    if not allow_remote:
+        _fail("pass --allow-remote to write to it, or --offline to write nothing "
+              "(or point FALKORDB_HOST at local Docker: localhost)")
 
 
 def _triage(result, findings, model: str | None, fix: bool) -> tuple[dict, dict]:
@@ -352,6 +382,15 @@ def _summarise(ex, analysis, fns, files, project, model, yes):
     return run
 
 
+INTERACTIVE_ARGS = ([], ["--no-anim"])
+
+
+def _interactive(args: list[str]) -> bool:
+    """`gittrace` alone (or with --no-anim) in a terminal opens the interactive
+    mode; anything else, and any run without a terminal, is the CLI as before."""
+    return args in INTERACTIVE_ARGS and sys.stdin.isatty() and sys.stdout.isatty()
+
+
 def main() -> None:
     # Rich draws box and block characters; a legacy code page (cp1252 on a
     # redirected Windows stdout) cannot encode them and would crash the run.
@@ -361,6 +400,18 @@ def main() -> None:
                 stream.reconfigure(encoding="utf-8", errors="replace")
             except (AttributeError, ValueError):
                 pass
+    args = sys.argv[1:]
+    try:
+        if _interactive(args):
+            try:
+                from gittrace.cli import interactive
+            except ImportError as exc:
+                _fail(f"the interactive mode needs Textual ({exc}); pip install -r requirements.txt")
+            raise SystemExit(interactive.run(no_anim=bool(args)))
+        if args == ["--no-anim"]:
+            _fail("--no-anim is for the interactive mode, which needs a terminal (run `gittrace` alone in one)")
+    except typer.Exit as exc:           # _fail outside a Typer command
+        raise SystemExit(exc.exit_code) from None
     app()
 
 

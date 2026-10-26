@@ -1,25 +1,11 @@
 """
 conftest.py — test bootstrap.
 
-`gittrace.graph.connection` reads the FalkorDB settings at import time, so importing
-`gittrace` on a machine without a `.env` raises RuntimeError before pytest can collect
-a single test. The offline suite never dials the database (every graph call is
-mocked), so placeholder settings are enough to let collection succeed.
+Being at the repository root, this file puts the root on sys.path, so the tests
+import `gittrace` without installing it.
 
-These defaults are only applied when there is no `.env` to load and no real
-settings in the environment, which keeps `test_integration.py` pointed at the
-configured instance on a developer machine.
+FalkorDB settings need no placeholders any more: gittrace.graph.connection
+defaults to local Docker (localhost:6379, no password) when neither the
+environment nor `.env` sets them. The integration suites only ever run
+against a local FalkorDB; a remote FALKORDB_HOST makes them skip.
 """
-
-from __future__ import annotations
-
-import os
-from pathlib import Path
-
-_HAS_DOTENV = (Path(__file__).resolve().parent / ".env").exists()
-
-if not _HAS_DOTENV:
-    os.environ.setdefault("FALKORDB_HOST", "localhost")
-    os.environ.setdefault("FALKORDB_PORT", "6379")
-    os.environ.setdefault("FALKORDB_USER", "default")
-    os.environ.setdefault("FALKORDB_PASSWORD", "")

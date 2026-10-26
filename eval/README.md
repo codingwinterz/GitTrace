@@ -99,11 +99,12 @@ seconds and fix check; each records the hash of `gittrace/llm/*.py`):
 |---|---|---|---|
 | `untouched` | `triage-v1` (`system_prompt_triage-v1.txt`) | measured | written and tried on `sample_app` only, nothing changed during the run |
 | `after-tuning-1` | `triage-v2` (`system_prompt_triage-v2.txt`) | measured | value sources before the verdict; optimistic (tuned on these findings) |
-| `after-tuning-2` | `triage-v3` (in `gittrace/llm/prompts.py`) | measured | secret guidance corrected after round 1; optimistic |
+| `after-tuning-2` | `triage-v3` (`after-tuning-2/system_prompt_triage-v3.txt`) | measured | secret guidance corrected after round 1; optimistic |
 | `held-out` | `triage-v3` | open-webui | run once after tuning was final; nothing changed afterwards |
 | `after-tuning-2-injection` | `triage-v3` | measured TPs | the injection probe, against `after-tuning-2`'s clean verdicts |
 | `no-fix-paragraph` | `triage-v3-nofix` (`system_prompt_triage-v3-nofix.txt`) | measured | Phase 6 trial: the fix instructions removed from the prompt. Hid more true positives (llama3.1:8b 3 of 35, one a command injection; qwen2.5-coder:7b 11) and was not adopted |
 | `default-no-fix` | `triage-v3`, `fix_code` constrained to null | measured | `scan` without `--fix` (`--no-fix` here): same verdict, adjustment and value sources as `after-tuning-2` for 52 of 52 findings, both models |
+| `after-tuning-3` | `triage-v4` (in `gittrace/llm/prompts.py`) | measured | the severity adjustment counts only what the rules' score does not (the prompt lists the factors already scored). TP marked harmless: qwen2.5-coder:7b 10 → 9, llama3.1:8b 1 → 1; mean TP adjustment llama3.1:8b +0.37 → −0.06. Labelled `after-tuning-3` because `after-tuning-2` is triage-v3's run. Held-out set not re-run |
 
 Caveat on the held-out set: open-webui's `review.json` (with reasons) was
 written in the rules evaluation and had been read during this work before the
@@ -117,6 +118,7 @@ python eval/run_triage.py --label untouched
 python eval/run_triage.py --label after-tuning-2-injection --probe-injection after-tuning-2
 python eval/run_triage.py --label held-out --set held-out      # only after tuning, once
 python eval/run_triage.py --label default-no-fix --no-fix
+python eval/run_triage.py --label after-tuning-3
 ```
 
 ## Explain (Phase 6)

@@ -11,8 +11,7 @@ Run every command from the repository root.
 ```bash
 pip install -r requirements.txt
 docker compose up -d falkordb
-cp .env.example .env
-# .env: FALKORDB_HOST=localhost, FALKORDB_PORT=6379, FALKORDB_PASSWORD= (empty)
+# No .env needed for local Docker: localhost:6379 without a password is the default.
 
 python -m gittrace scan tests/fixtures/sample_app           # findings, attack paths, owner
 python -m gittrace scan path/to/project --format json       # for CI; exit 1 at --fail-on (default high)
@@ -28,6 +27,8 @@ python -m gittrace explain path/to/project --no-llm         # facts only (entry 
 python -m gittrace explain path/to/project --out EXPLAIN.md # keep it as a Markdown file
 python -m gittrace explain path/to/project --file app/db.py # one file (and all its functions)
 python -m gittrace explain path/to/project --function app/db.py::Repo.get_user
+
+python -m gittrace                                          # interactive mode (/help inside; --no-anim for a still logo)
 ```
 
 `scan` asks a local model to triage each finding, and `explain` to summarise the code.
@@ -40,7 +41,9 @@ Severity, the rules and the graph model are documented in README.md.
 
 ## Env vars
 
-See `.env.example`. FalkorDB settings are required except for `scan --offline`.
+See `.env.example`. FalkorDB defaults to local Docker (localhost:6379, no password). Any other
+host is remote: `scan` warns and needs `--allow-remote` to write graphs there, and GitTrace only
+ever says "local" or "remote", never the host, port or password.
 `GITTRACE_MODEL` picks the triage model and `GITTRACE_EXPLAIN_MODEL` the `explain` model
 (`--model` wins over both), `GITTRACE_LLM_TIMEOUT`
 the seconds to wait per reply, `OLLAMA_API_BASE` where Ollama listens. Never commit `.env`.
@@ -52,7 +55,8 @@ python -m pytest tests -v
 ```
 
 `tests/test_core.py`, `tests/test_ingest.py`, `tests/test_rules.py`, `tests/test_scan.py` and
-`tests/test_llm.py` are offline (no live DB, the model mocked). `tests/test_llm_live.py`
+`tests/test_llm.py` are offline (no live DB, the model mocked), as are `tests/test_logo.py` and
+`tests/test_interactive.py` (the interactive mode, driven headless). `tests/test_llm_live.py`
 runs one real triage against Ollama and skips when Ollama or the model is not there. `tests/test_ingest_integration.py` and
 `tests/test_scan_integration.py` scan `tests/fixtures/sample_app` into a real FalkorDB and
 check the exact graph, findings and tool results; they create their graphs and drop them.
@@ -62,7 +66,8 @@ docker compose up -d falkordb
 FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -v
 ```
 
-(Environment variables win over `.env`, so this works even with cloud settings in `.env`.)
+(Environment variables win over `.env`, so this works even with cloud settings in `.env`; with a
+remote `FALKORDB_HOST` the integration tests skip rather than write graphs there.)
 Without a reachable FalkorDB the integration tests skip. CI runs them against a FalkorDB
 service container and sets `GITTRACE_REQUIRE_FALKORDB=1`, which turns that skip into a
 failure.
@@ -71,7 +76,7 @@ Run at least the offline suites before pushing. CI (`.github/workflows/tests.yml
 them on Python 3.11–3.13, plus the integration suites against FalkorDB in Docker:
 
 ```bash
-python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py tests/test_logo.py tests/test_interactive.py -q
 ```
 
 ## MCP server (Track 01)
@@ -90,7 +95,7 @@ is **`main`**; the CLI rebuild happens on **`v2`**.
 
 ```bash
 git status                   # confirm only the files you meant to change
-python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py -q
+python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py tests/test_logo.py tests/test_interactive.py -q
 
 git add gittrace tests README.md RUN.md
 git commit -m "Describe the why, not the what"

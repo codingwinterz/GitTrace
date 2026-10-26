@@ -45,11 +45,11 @@ class PythonPlugin(LanguagePlugin):
             try:
                 module = parse_module(source.path, source.data)
             except ParseError as exc:
-                log.warning("skipping %s: %s", source.path, exc)
+                log.debug("skipping %s: %s", source.path, exc)       # reported in the summary
                 project.failures.append(ParseFailure(source.path, str(exc)))
                 continue
             except Exception as exc:  # noqa: BLE001 - one bad file must not stop the scan
-                log.warning("skipping %s: %s: %s", source.path, type(exc).__name__, exc)
+                log.debug("skipping %s: %s: %s", source.path, type(exc).__name__, exc)
                 project.failures.append(ParseFailure(source.path, f"{type(exc).__name__}: {exc}"))
                 continue
             project.modules.append(module)

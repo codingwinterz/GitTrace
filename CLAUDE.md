@@ -137,7 +137,10 @@ findings and code in plain language using a local LLM.
 - Triage evaluation: measured set = the four vulnerable targets, DVGA, CTFd,
   mealie; held-out set = open-webui, used once and only after any tuning.
   Prompt versions and their runs: triage-v1 untouched, triage-v2
-  after-tuning-1, triage-v3 after-tuning-2 and held-out (current).
+  after-tuning-1, triage-v3 after-tuning-2 and held-out, triage-v4
+  after-tuning-3 (current; severity_adjustment counts only what the
+  rules' score does not, and the prompt lists the factors already scored).
+  held-out was not re-run for v4.
 - Default model: ollama/llama3.1:8b (hid 1 of 35 true positives on the
   tuning set against qwen2.5-coder:7b's 10, all secrets; 0 flips in the
   injection probe against 2). It takes 5.6 GiB of VRAM at num_ctx 8192
@@ -154,9 +157,10 @@ findings and code in plain language using a local LLM.
   are inputs and keep their text. Don't rewrite git history for values
   that are public defaults (mealie's MyPassword).
 - Fixes are opt-in (`scan --fix`). Without it the prompt is still exactly
-  triage-v3 and only the reply schema changes (TriageVerdict: fix_code may
-  only be null), so verdicts match the measured runs (52/52 re-run, both
-  models). Cache task names: "triage" (with --fix), "triage-verdict".
+  the measured one (now triage-v4) and only the reply schema changes
+  (TriageVerdict: fix_code may only be null); with triage-v3 the verdicts
+  matched the measured run 52/52 for both models (not re-measured for
+  v4). Cache task names: "triage" (with --fix), "triage-verdict".
   A prompt with the fix paragraph removed hid more true positives; it is
   archived in eval/results/triage/no-fix-paragraph/ and not used.
 - `explain` (Phase 6): facts in memory from the same analysis as
@@ -218,6 +222,30 @@ findings and code in plain language using a local LLM.
   out (eval/results/explain/timing/NOTES.md); a battery pass
   (`timing-battery`) was too confounded by the falling charge to compare
   the models.
+
+- Interactive mode (Textual, gittrace/cli/interactive.py): opens only for
+  `gittrace` with no arguments (or `--no-anim`) when stdin and stdout are
+  terminals; anything else is the Typer CLI unchanged. Slash commands are
+  parsed and run by gittrace/cli/session.py (no Textual) with the CLI's
+  defaults and render functions, on a daemon thread, output captured as
+  ANSI into a RichLog; errors are CommandError, never an exit; /explain
+  over 10 minutes needs --yes. Logo math in gittrace/cli/logo.py: 12x28
+  cells, 40 precomputed frames (2 s at 20 fps, eased), 5 s hold with the
+  timer paused, still while a command runs, static with --no-anim,
+  NO_COLOR or a terminal under 80x24. Version: gittrace.__version__.
+
+- Database target: local Docker (localhost:6379, no password) when nothing
+  is set. Hosts other than localhost / 127.0.0.1 / ::1 are remote: scan
+  prints a one-line warning and refuses to write graphs there without
+  --allow-remote (core.scan / pipeline.ingest enforce it unless a db handle
+  is passed in). GitTrace names the database only "local" / "remote"; the
+  host, port and password are redacted from every message (connection
+  .redact). The interactive status is a real round trip (GRAPH.LIST, 3 s
+  timeout). Integration tests skip unless the configured FalkorDB is local.
+- Display: the git blame owner is shown by name only; --show-email adds the
+  email (rich and JSON; the graph and the MCP owner tool still carry it).
+  GT-SECRET-* findings hide the model's "inputs" line (display only). A
+  parse failure is reported once, in the summary (the log line is debug).
 
 ## Backlog (not scheduled; do not start without approval)
 - Routes from Flask-RESTful / Flask-RESTX `Resource` classes

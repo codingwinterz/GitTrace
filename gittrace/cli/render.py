@@ -85,7 +85,9 @@ def _owner_line(owner: dict | None, blamed: bool) -> Text:
     elif owner["status"] == "uncommitted":
         text.append("line not committed yet", style=DIM)
     else:
-        text.append(f"{owner['author']} <{owner['email']}>")
+        text.append(owner["author"] or "unknown author")
+        if owner.get("email"):                 # only with scan --show-email
+            text.append(f" <{owner['email']}>")
         text.append(f"  {owner['commit'][:10]}  {(owner['date'] or '')[:10]}", style=LAVENDER)
         if owner.get("summary"):
             text.append(f"  {owner['summary']}", style=DIM)
@@ -231,7 +233,10 @@ def triage_parts(t: dict | None, f: dict) -> list:
     parts: list = [head]
     for note in t.get("call_notes") or ():
         parts.append(Text(f"model call: {note}", style=AMBER))
-    if t.get("values"):
+    # A secret is listed among the values with source "attacker" when the app
+    # uses it (that is how the prompt's verdict rule works), but shown as an
+    # "attacker input" it misleads: it is a constant in the user's own code.
+    if t.get("values") and not f["rule_id"].startswith("GT-SECRET-"):
         inputs = Text("inputs, as the model sees them: ", style="bold")
         for i, v in enumerate(t["values"]):
             if i:

@@ -83,7 +83,8 @@ class Finding:
         return (-severity_rank(self.severity), -self.score, not self.unauthenticated,
                 not self.reachable, self.file, self.line, self.column, self.rule_id)
 
-    def to_dict(self) -> dict:
+    def to_dict(self, show_email: bool = False) -> dict:
+        """The owner's email is left out unless `show_email` (scan --show-email)."""
         return {
             "id": self.id,
             "rule_id": self.rule_id,
@@ -121,8 +122,8 @@ class Finding:
             "in_tests": self.in_tests,
             "owner": None if self.owner is None else {
                 "status": self.owner.status, "author": self.owner.author,
-                "email": self.owner.email, "commit": self.owner.commit,
-                "date": self.owner.date, "summary": self.owner.summary,
+                **({"email": self.owner.email} if show_email else {}),
+                "commit": self.owner.commit, "date": self.owner.date, "summary": self.owner.summary,
             },
         }
 
@@ -153,7 +154,7 @@ class ScanResult:
         }
 
     def to_dict(self, min_severity: str = "info", triage: dict[str, dict] | None = None,
-                llm: dict | None = None) -> dict:
+                llm: dict | None = None, show_email: bool = False) -> dict:
         """`triage` maps finding ids to the model's triage (gittrace.llm.triage);
         it sits next to each finding and never changes the rules' fields."""
         shown = self.at_least(min_severity)
@@ -171,8 +172,9 @@ class ScanResult:
             "parse_failures": [{"file": f.path, "reason": f.reason} for f in self.analysis.failures],
             "llm": llm or {"enabled": False},
             "summary": summary,
-            "findings": [{**f.to_dict(), "triage": triage.get(f.id)} for f in shown],
-            "test_findings": [{**f.to_dict(), "triage": triage.get(f.id)} for f in self.test_findings],
+            "findings": [{**f.to_dict(show_email), "triage": triage.get(f.id)} for f in shown],
+            "test_findings": [{**f.to_dict(show_email), "triage": triage.get(f.id)}
+                              for f in self.test_findings],
         }
 
 
@@ -198,7 +200,27 @@ def _exposure(match: Match, reach: Reach | None) -> Exposure:
 
 def scan(root: str | os.PathLike, *, depth: int = DEFAULT_DEPTH, blame: bool = True,
          offline: bool = False, db=None, graph_name: str | None = None,
-         include_tests: bool = False) -> ScanResult:
+         include_tests: bool = False, allow_remote: bool = False) -> ScanResult:
+    """Without `offline`, the project's graph is written to the configured
+    FalkorDB, which must be local unless `allow_remote` (a `db` handle passed in
+    is the caller's own choice and is used as is). Database failures raise
+    RuntimeError with the host, port and password redacted."""
+    if offline:
+        return _scan(root, depth, blame, offline, db, graph_name, include_tests)
+    from redis.exceptions import RedisError
+
+    from gittrace.graph import connection
+
+    if db is None:
+        connection.require_local_or_allowed(allow_remote)
+    try:
+        return _scan(root, depth, blame, offline, db, graph_name, include_tests)
+    except RedisError as exc:
+        raise RuntimeError(f"the {connection.location()} FalkorDB failed: "
+                           f"{type(exc).__name__}: {connection.redact(str(exc))}") from None
+
+
+def _scan(root, depth, blame, offline, db, graph_name, include_tests) -> ScanResult:
     check_depth(depth)
     analysis = pipeline.analyze(root)
     matches = run_rules(analysis.rules, analysis.calls, analysis.assignments)

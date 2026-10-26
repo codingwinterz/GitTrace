@@ -17,11 +17,14 @@ from __future__ import annotations
 import hashlib
 import re
 
-PROMPT_VERSION = "triage-v3"
+PROMPT_VERSION = "triage-v4"
 
 # Earlier versions, with the runs that measured them:
 #   triage-v1  eval/results/triage/untouched/system_prompt_triage-v1.txt
 #   triage-v2  eval/results/triage/after-tuning-1/system_prompt_triage-v2.txt
+#   triage-v3  eval/results/triage/after-tuning-2/system_prompt_triage-v3.txt
+# triage-v4 (after-tuning-3): severity_adjustment counts only what the rules'
+# score does not (the user prompt lists the factors already scored).
 # A trial without the fix_code paragraph (triage-v3-nofix) hid more true
 # positives, so `scan` without --fix keeps this prompt and constrains
 # fix_code to null instead (schemas.TriageVerdict):
@@ -62,10 +65,14 @@ secret that only tests use.
 Marking a real vulnerability likely_harmless is the worst mistake you can make: never do it \
 when any value might come from a user.
 
-severity_adjustment: an integer from -2 to 1 added to the rule's score. Negative when the real \
-risk is lower than the score suggests (admin-only code, inputs that are mostly constant), 1 only \
-when it is clearly worse (e.g. unauthenticated remote code execution), otherwise 0. \
-A likely_harmless verdict must not use 1.
+severity_adjustment: an integer from -2 to 1 added to the rule's score. The score already \
+counts the factors the prompt lists as already scored: whether endpoints reach the code and \
+whether they need authentication, whether the value derives from a function parameter, and a \
+blast radius of 5 or more. Never adjust for those again. Adjust only for what the score does not \
+count: negative when the real risk is lower than the score suggests (admin-only code that the \
+rules did not see as authenticated, inputs that are mostly constant), 1 only when it is clearly \
+worse for a reason the score does not count (e.g. the attacker controls the whole command or code, \
+not a fragment of it), otherwise 0. A likely_harmless verdict must not use 1.
 
 reason: one or two plain sentences, at most 400 characters, naming the specific code that \
 supports the verdict.

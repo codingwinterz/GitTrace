@@ -716,7 +716,7 @@ class TestCli:
         s = next(f for f in data["findings"] if f["id"] == SECRET)
         assert (s["severity"], s["triage"]["adjusted_score"], s["triage"]["adjusted_severity"]) == \
             ("medium", 2, "low")
-        assert t["fix"] is None and t["prompt_version"] == "triage-v3"     # no fix without --fix
+        assert t["fix"] is None and t["prompt_version"] == "triage-v4"     # no fix without --fix
 
     def test_env_model_is_used(self, project, fake, monkeypatch):
         fake(default=reply())
@@ -737,6 +737,18 @@ class TestCli:
         main, harmless = text.split("Likely harmless according to the model")
         assert "GT-SECRET-001" not in main and "GT-SECRET-001" in harmless
         assert "GT-SQLI-001" in main and "GT-SQLI-001" not in harmless
+
+    def test_secret_findings_do_not_show_attacker_inputs(self, project, fake):
+        model = fake(default=reply())                  # every value "attacker", secrets included
+        text = self._scan(project, "--fail-on", "none").output
+        panels = re.split(r"[╭┌]─ (?=\d+\. )", text)[1:]       # one per finding
+        secrets = [p for p in panels if "GT-SECRET-" in p.split("\n", 1)[0]]
+        assert len(panels) == 13 and len(secrets) == 3
+        assert all("inputs, as the model sees them" not in p for p in secrets)
+        assert text.count("inputs, as the model sees them") == 10
+        # display only: the secrets were still triaged with their values in the prompt
+        secret_prompts = [c[1]["content"] for c in model.calls if "GT-SECRET-001" in c[1]["content"]]
+        assert len(secret_prompts) == 3
 
     def test_only_shown_findings_are_triaged(self, project, fake):
         model = fake(default=reply())
@@ -797,7 +809,7 @@ class TestCli:
 
 class TestFixIsOptIn:
     """`scan` triages only; `scan --fix` also asks for a fix. Both send the measured
-    triage-v3 prompt; without --fix the reply schema only allows fix_code null."""
+    triage-v4 prompt; without --fix the reply schema only allows fix_code null."""
 
     def _scan(self, project, *args):
         return runner.invoke(app, ["scan", str(project), "--offline", "--no-blame", "--fail-on", "none",
@@ -816,7 +828,7 @@ class TestFixIsOptIn:
         n = len(sent) // 2
         default, fix = sent[:n], sent[n:]
         assert hashlib.sha256(TRIAGE_SYSTEM.encode()).hexdigest() == \
-            "230786c8a52103eee206919bc57578f2ec0f7302d1f91baca969f44e630eb3f0"      # triage-v3
+            "856279f90b79f88cc210c6dc8d5058714169654578fad12a713b52fd724f62e3"      # triage-v4
         assert all(s == TRIAGE_SYSTEM for s, _, _ in sent)
         assert [u for _, u, _ in default] == [u for _, u, _ in fix]
         assert {s for _, _, s in default} == {TriageVerdict} and {s for _, _, s in fix} == {TriageReply}
@@ -832,7 +844,7 @@ class TestFixIsOptIn:
         good = 'cursor.execute("SELECT * FROM users WHERE name = ?", (name,))'
         fake(default=lambda prompt: reply(fix=good if "app/db.py line 17" in prompt else None))
         data = json.loads(self._scan(project, "--format", "json", "--fix").stdout)
-        assert (data["llm"]["prompt_version"], data["llm"]["fixes"]) == ("triage-v3", True)
+        assert (data["llm"]["prompt_version"], data["llm"]["fixes"]) == ("triage-v4", True)
         f = next(f for f in data["findings"] if f["id"] == SQLI)
         assert f["triage"]["fix"]["valid"] and "+" in f["triage"]["fix"]["diff"]
         other = next(f for f in data["findings"] if f["id"] == SECRET)
