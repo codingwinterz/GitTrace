@@ -1,0 +1,58 @@
+{
+  "reviewed": "2026-10-26, after the untouched run, against reference.json (written before it) and the code",
+  "criteria": "correct: every statement about the code is true and the main purpose is covered; partly: main purpose right, but a false or misleading detail about the code, or a key point of the reference missing; wrong: main purpose wrong or a central claim false. Generic filler about a file's role (\"used by other parts of the app\") is noted, not penalised. side_effects 'none' for a read-only function is not an error: the prompt defines side effects as what the function changes.",
+  "runs": {
+    "untouched": {
+      "ollama/llama3.1:8b": {
+        "file:app/__init__.py": {"level": "file", "rating": "wrong", "reason": "calls the package marker 'the main entry point of the app' (twice); main.py is the entry point. The Repo import is right."},
+        "file:app/auth.py": {"level": "file", "rating": "correct", "reason": "auth with a function to get the current user and a secret API token; misses the header check and 401, not wrong."},
+        "file:app/db.py": {"level": "file", "rating": "correct", "reason": "SQLite data access, Repo and AuditRepo, get and delete users; the callers it names (me, read_user) are real."},
+        "file:app/main.py": {"level": "file", "rating": "correct", "reason": "entry point, FastAPI app, routers, health and current-user endpoints. 'relied on by other parts of the app' is filler (nothing imports it)."},
+        "file:app/routers/__init__.py": {"level": "file", "rating": "partly", "reason": "says it has no code but also 'only imports and possibly constants or classes', and guesses it is 'used to import and configure routers'; the file is empty."},
+        "file:app/routers/admin.py": {"level": "file", "rating": "partly", "reason": "lists 'loading rows' as an endpoint; load_rows is a plain helper. Auth on all routes is right."},
+        "file:app/routers/debug.py": {"level": "file", "rating": "partly", "reason": "summary correctly says main never includes it, then role says 'used by the app's main entry point (main.py)': a false, self-contradicting claim on the file's key point."},
+        "file:app/routers/reports.py": {"level": "file", "rating": "partly", "reason": "the five routes are right; role says it relies on 'the app's database connection and ORM': there is no ORM, it uses raw sqlite3."},
+        "file:app/routers/users.py": {"level": "file", "rating": "correct", "reason": "the four routes and their dependencies (app.db, app.utils.shell) are right."},
+        "file:app/services/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package initializer."},
+        "file:app/services/maintenance.py": {"level": "file", "rating": "correct", "reason": "cron maintenance jobs: count users, purge sessions, load cache/config, check, Mailer. 'check something' is vague."},
+        "file:app/utils/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package initializer."},
+        "file:app/utils/shell.py": {"level": "file", "rating": "correct", "reason": "helpers to run shell commands, run_command and its inner log; no project dependencies. Does not say what log does."},
+        "function:app/db.py::Repo.__init__": {"level": "function", "rating": "partly", "reason": "inputs 'path to a SQLite database (from connect)' is false: it takes no argument; the connection itself is right."},
+        "function:app/db.py::Repo.get_user": {"level": "function", "rating": "correct", "reason": "retrieves a user by name, returns a record or None, reads the database."},
+        "function:app/main.py::me": {"level": "function", "rating": "correct", "reason": "current user from authentication, reads the database, /me handler."},
+        "function:app/routers/admin.py::report": {"level": "function", "rating": "correct", "reason": "GET and POST, load_rows then render, returns a string."},
+        "function:app/routers/debug.py::run": {"level": "function", "rating": "correct", "reason": "runs a command via os.popen and returns its output. Does not say the router is never mounted (not a key point for the function)."},
+        "function:app/routers/reports.py::count": {"level": "function", "rating": "correct", "reason": "counts reports, GET /api/reports/count, reads the database."},
+        "function:app/routers/reports.py::safe": {"level": "function", "rating": "correct", "reason": "reports for a user id from the database."},
+        "function:app/routers/reports.py::version": {"level": "function", "rating": "correct", "reason": "returns the version as JSON."},
+        "function:app/routers/users.py::ping_user": {"level": "function", "rating": "wrong", "reason": "says it pings 'to check if the user exists'; it pings a host named by the URL with a shell command and returns the output."},
+        "function:app/routers/users.py::remove_user": {"level": "function", "rating": "correct", "reason": "deletes the user via the database and returns {'deleted': id}."}
+      },
+      "ollama/qwen2.5-coder:7b": {
+        "file:app/__init__.py": {"level": "file", "rating": "partly", "reason": "imports Repo, right; role 'used to set up the FastAPI application for testing purposes' is false (it sets nothing up)."},
+        "file:app/auth.py": {"level": "file", "rating": "correct", "reason": "authenticates users with an API token; used as a dependency."},
+        "file:app/db.py": {"level": "file", "rating": "correct", "reason": "SQLite: connect, retrieve and delete users."},
+        "file:app/main.py": {"level": "file", "rating": "correct", "reason": "sets up the FastAPI app, health and user-info routes, includes routers."},
+        "file:app/routers/__init__.py": {"level": "file", "rating": "correct", "reason": "empty, marks a package. 'not used in the app' is filler-level imprecision for a package marker."},
+        "file:app/routers/admin.py": {"level": "file", "rating": "correct", "reason": "evaluating expressions and reports, authentication on all endpoints."},
+        "file:app/routers/debug.py": {"level": "file", "rating": "correct", "reason": "environment variables and running system commands; not included in the main app. (Adds a caution, which the prompt asked it not to.)"},
+        "file:app/routers/reports.py": {"level": "file", "rating": "correct", "reason": "the five report routes."},
+        "file:app/routers/users.py": {"level": "file", "rating": "correct", "reason": "the four user routes; relies on the database and the shell module."},
+        "file:app/services/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package marker; nothing imports app.services."},
+        "file:app/services/maintenance.py": {"level": "file", "rating": "correct", "reason": "cron jobs, no routes, Mailer class."},
+        "file:app/utils/__init__.py": {"level": "file", "rating": "correct", "reason": "empty package marker."},
+        "file:app/utils/shell.py": {"level": "file", "rating": "partly", "reason": "says it logs the commands' output; it logs the command (logger + cmd), not the output."},
+        "function:app/db.py::Repo.__init__": {"level": "function", "rating": "correct", "reason": "creates a Repo with a database connection, takes nothing."},
+        "function:app/db.py::Repo.get_user": {"level": "function", "rating": "partly", "reason": "outputs 'a dictionary representing the user's data': fetchone returns a row tuple, not a dictionary."},
+        "function:app/main.py::me": {"level": "function", "rating": "correct", "reason": "GET handler, current user from authentication, reads the database."},
+        "function:app/routers/admin.py::report": {"level": "function", "rating": "correct", "reason": "GET and POST, authentication, load_rows then render."},
+        "function:app/routers/debug.py::run": {"level": "function", "rating": "correct", "reason": "runs the command via os.popen and returns the output. (Adds security commentary the prompt said to leave out.)"},
+        "function:app/routers/reports.py::count": {"level": "function", "rating": "correct", "reason": "counts reports, GET /api/reports/count."},
+        "function:app/routers/reports.py::safe": {"level": "function", "rating": "correct", "reason": "reports for a user id from the URL path."},
+        "function:app/routers/reports.py::version": {"level": "function", "rating": "correct", "reason": "returns {'version': '1.0'}."},
+        "function:app/routers/users.py::ping_user": {"level": "function", "rating": "correct", "reason": "pings the host given as name with subprocess.check_output and returns the output."},
+        "function:app/routers/users.py::remove_user": {"level": "function", "rating": "correct", "reason": "deletes the user, returns {'deleted': id}, POST handler."}
+      }
+    }
+  }
+}

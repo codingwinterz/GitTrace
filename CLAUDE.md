@@ -151,7 +151,40 @@ findings and code in plain language using a local LLM.
   everything run_eval.py and run_triage.py write and fails the run on a
   leak; tests/test_eval_hygiene.py checks the committed results against
   eval/secret_values.sha256 (hashes only). Hash-locked ground-truth files
-  are inputs and keep their text.
+  are inputs and keep their text. Don't rewrite git history for values
+  that are public defaults (mealie's MyPassword).
+- Fixes are opt-in (`scan --fix`). Without it the prompt is still exactly
+  triage-v3 and only the reply schema changes (TriageVerdict: fix_code may
+  only be null), so verdicts match the measured runs (52/52 re-run, both
+  models). Cache task names: "triage" (with --fix), "triage-verdict".
+  A prompt with the fix paragraph removed hid more true positives; it is
+  archived in eval/results/triage/no-fix-paragraph/ and not used.
+- `explain` (Phase 6): facts in memory from the same analysis as
+  `scan --offline` (no FalkorDB); the rule findings are run offline by
+  explain itself for the security notes. Language plug-ins provide
+  `project_facts` (ImportFact, EntryPointDef, EffectFact, ServiceFact) and
+  docstrings (FunctionDef.doc, FileRecord.doc); none of it is written to
+  the graph. Important functions: route handlers, entry points, and
+  functions called from >= --min-callers (3) other functions; a file's
+  <module> is part of the file summary, never a function summary.
+- `explain` summaries: bottom-up (functions leaves first, then files, then
+  the project), EXPLAIN_VERSION explain-v1, cache tasks explain-function /
+  explain-file / explain-project. Grounding: a mention is kept only if it is
+  the described function, a direct caller or a direct callee (file: its
+  functions and their callers and callees; project: any project function);
+  a bare name only when exactly one allowed function has it; unverified ids
+  in the text are replaced by "[unverified reference removed]". --file
+  summarises the file and all its functions; --function one function. The
+  run is estimated at SECONDS_PER_CALL per model call and needs --yes (or an
+  interactive yes) above 10 minutes.
+- Explain evaluation: references (eval/explain/<target>/reference.json) and
+  the 30-function sample (eval/explain/sample.json, seed 7, 10 sample_app +
+  20 microblog) were written and hashed (eval/explain/reference.sha256)
+  before any summary existed. Ratings: correct (every statement true, main
+  purpose covered) / partly (main purpose right, a false or misleading
+  detail or a missing key point) / wrong (main purpose wrong or a central
+  claim false). The first run is `untouched`; any tuning gets a new
+  EXPLAIN_VERSION and a separately labelled run.
 
 ## Backlog (not scheduled; do not start without approval)
 - Routes from Flask-RESTful / Flask-RESTX `Resource` classes

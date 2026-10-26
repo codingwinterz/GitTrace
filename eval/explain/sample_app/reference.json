@@ -1,0 +1,30 @@
+{
+  "written": "2026-10-26, from tests/fixtures/sample_app, before any `explain` summary existed for this target (only the deterministic facts had been printed while building the command)",
+  "files": {
+    "app/__init__.py": "Package marker: its docstring says it is a sample FastAPI app used by ingestion tests; it re-exports Repo from app.db.",
+    "app/auth.py": "Authentication dependency: a hardcoded API token constant and get_current_user, which reads the X-Token header, raises 401 unless it equals the token, and returns a fixed admin user.",
+    "app/db.py": "SQLite data access: connect() opens app.db; Repo (connection per instance) gets a user by name with SQL built by f-string, deletes a user with SQL built by concatenation, logs by printing; AuditRepo logs and then calls the parent get_user.",
+    "app/main.py": "Entry point: creates the FastAPI app, includes the users, admin and reports routers under /api, and defines /health (returns ok) and /me (requires the auth dependency, looks up the current user in the database).",
+    "app/routers/__init__.py": "Empty package marker.",
+    "app/routers/admin.py": "Admin router under /admin with the auth dependency on every route: POST /eval evaluates a request expression with eval(); /report (GET and POST) renders rows from load_rows; load_rows returns a fixed list.",
+    "app/routers/debug.py": "Debug router (/debug) that main.py never includes: /env returns all environment variables; /run runs a shell command from the request with os.popen and returns its output.",
+    "app/routers/reports.py": "Report routes under /reports (mounted at /api/reports): by-user builds SQL from request parameters (user_id, order) by concatenation; count and safe (bound parameter) query the reports table; import parses a request body with yaml.load; version evals a constant string. Contains a hardcoded API key constant.",
+    "app/routers/users.py": "User routes under /users (mounted at /api/users): read a user, delete a user through Repo, ping a host with a shell command built from the name (subprocess, shell=True), and list files through run_command with a shell command built from the name.",
+    "app/services/__init__.py": "Empty package marker.",
+    "app/services/maintenance.py": "Maintenance jobs (docstring: run by cron, no route reaches them): count users, purge old sessions with SQL built by % formatting, a nightly job doing both, load a pickle file, load YAML with SafeLoader, eval of a constant; reads secrets from the environment; a Mailer class with a hardcoded SMTP password.",
+    "app/utils/__init__.py": "Empty package marker.",
+    "app/utils/shell.py": "Shell helpers: run_command runs a command with subprocess.run(shell=True) after logging it with os.system('logger ...') in an inner function."
+  },
+  "functions": {
+    "app/db.py::Repo.__init__": "Constructor: opens a database connection with connect() and stores it on the instance.",
+    "app/db.py::Repo.get_user": "Runs a SELECT on users for the given name (SQL built with an f-string, name inside quotes) and returns the first row (fetchone). Reads the database.",
+    "app/main.py::me": "GET /me: requires the auth dependency get_current_user; creates a Repo and returns the database row for the current user's name.",
+    "app/routers/admin.py::report": "GET and POST /api/admin/report (auth on the router): returns the rows from load_rows() joined into a newline-separated string by the inner render function.",
+    "app/routers/debug.py::run": "GET /debug/run (router never mounted): runs the 'cmd' query parameter as a shell command with os.popen and returns its output.",
+    "app/routers/reports.py::count": "GET /api/reports/count: opens a connection and returns the result of SELECT COUNT(*) FROM reports (one row).",
+    "app/routers/reports.py::safe": "GET /api/reports/safe/{user_id}: returns all reports rows for the user id using a bound SQL parameter (?).",
+    "app/routers/reports.py::version": "GET /api/reports/version: returns {'version': eval(\"'1.0'\")}, i.e. the string 1.0.",
+    "app/routers/users.py::ping_user": "GET /api/users/{name}/ping (async): runs 'ping -c 1 <name>' through a shell (subprocess.check_output, shell=True) and returns the decoded output.",
+    "app/routers/users.py::remove_user": "POST /api/users/{user_id}/delete: creates a Repo, deletes the user by id (SQL in Repo.delete_user) and returns {'deleted': user_id}."
+  }
+}

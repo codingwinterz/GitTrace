@@ -95,3 +95,17 @@ class TriageReply(BaseModel):
                 raise ValueError("likely_harmless needs every value to be constant or internal, "
                                  f"but these are attacker or unknown: {', '.join(risky[:3])}")
         return self
+
+
+class TriageVerdict(TriageReply):
+    """The model's view of one finding. It cannot create or remove findings.
+
+    `values` comes first: Ollama generates the fields in schema order, so the
+    model states where each value comes from before it gives a verdict."""
+
+    # `scan` without --fix: the same prompt (triage-v3) and the same schema,
+    # except that fix_code can only be null. Ollama constrains decoding to the
+    # schema, so the model writes no fix, and every field before fix_code is
+    # generated under the same constraints as in the measured runs. (The
+    # docstring is sent as the schema's description, so it stays as measured.)
+    fix_code: None

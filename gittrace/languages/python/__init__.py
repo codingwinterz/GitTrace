@@ -12,8 +12,10 @@ from gittrace.languages.base import (
     LanguagePlugin,
     ParsedProject,
     ParseFailure,
+    ProjectFacts,
     SourceFile,
 )
+from gittrace.languages.python import facts
 from gittrace.languages.python.parser import ParseError, PyModule, parse_module
 from gittrace.languages.python.resolver import Resolver
 from gittrace.languages.python.routes import detect_routes
@@ -68,3 +70,11 @@ class PythonPlugin(LanguagePlugin):
     def detect_routes(self, parsed: ParsedProject) -> list[EndpointDef]:
         assert isinstance(parsed, PythonProject)
         return detect_routes(parsed.modules, parsed.resolver)
+
+    def project_facts(self, parsed: ParsedProject, calls: Sequence[CallSite]) -> ProjectFacts:
+        assert isinstance(parsed, PythonProject)
+        imports = facts.imports(parsed.modules, parsed.resolver)
+        effects = facts.effects(calls)
+        return ProjectFacts(imports=imports,
+                            entry_points=facts.entry_points(parsed.modules, parsed.resolver, calls),
+                            effects=effects, services=facts.services(imports, effects))

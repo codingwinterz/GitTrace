@@ -3,13 +3,19 @@ gittrace.cli — the command line (Typer).
 
     gittrace scan <path> [--format rich|json] [--min-severity LEVEL] [--depth N]
                          [--fail-on LEVEL|none] [--offline] [--no-blame] [--include-tests]
-                         [--model NAME] [--no-llm]
+                         [--model NAME] [--no-llm] [--fix]
     gittrace trace <file:line | finding-id> [--project PATH] [--depth N] [--format ...]
     gittrace blast-radius <function-id> [--project PATH] [--depth N] [--format ...]
+    gittrace explain <path> [--format rich|md|json] [--out FILE] [--file PATH | --function ID]
+                            [--all] [--min-callers N] [--depth N] [--model NAME] [--no-llm] [--yes]
 
 `scan` asks a model (gittrace.llm; --model, else $GITTRACE_MODEL, else
 ollama/llama3.1:8b) to triage each finding it shows, unless --no-llm.
-Test-code findings are not triaged unless --include-tests.
+Test-code findings are not triaged unless --include-tests. With --fix it
+also asks for a fix and shows it as a checked diff (never applied).
+
+`explain` describes the project in plain language (gittrace.core.explain for
+the facts, gittrace.llm.explain for the summaries). It needs no FalkorDB.
 
 Exit codes: 0 ok; 1 `scan` found something at or above --fail-on (default
 high), so it can gate CI; the gate reads the rules' severity, never the
@@ -45,6 +51,12 @@ EXIT_ERROR = 2
 
 class Format(str, Enum):
     rich = "rich"
+    json = "json"
+
+
+class ExplainFormat(str, Enum):
+    rich = "rich"
+    md = "md"
     json = "json"
 
 
@@ -104,6 +116,10 @@ def scan(
         None, "--model",
         help="LiteLLM model for triage (default: $GITTRACE_MODEL, else ollama/llama3.1:8b)."),
     no_llm: bool = typer.Option(False, "--no-llm", help="Skip every model call: rule findings only."),
+    fix: bool = typer.Option(
+        False, "--fix",
+        help="Also ask the model for a fix per finding, shown as a diff checked with "
+             "git apply --check (never applied). Slower."),
 ) -> None:
     """Scan a Python project: rule findings, attack paths from routes, blast radius, owner,
     and a model's triage of each finding."""
@@ -112,6 +128,8 @@ def scan(
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     if not path.is_dir():
         _fail(f"not a directory: {path}")
+    if fix and no_llm:
+        _fail("--fix asks the model for fixes; it cannot be combined with --no-llm")
     try:
         result = run_scan(path, depth=depth, blame=not no_blame, offline=offline,
                           include_tests=include_tests)
@@ -119,7 +137,7 @@ def scan(
         _fail(f"{exc} (use --offline to scan without FalkorDB)")
     triage = llm = None
     if not no_llm:
-        triage, llm = _triage(result, result.at_least(min_severity.value), model)
+        triage, llm = _triage(result, result.at_least(min_severity.value), model, fix)
     data = result.to_dict(min_severity.value, triage=triage, llm=llm)
     if format is Format.json:
         _print_json(data)
@@ -130,7 +148,7 @@ def scan(
         raise typer.Exit(EXIT_FINDINGS)
 
 
-def _triage(result, findings, model: str | None) -> tuple[dict, dict]:
+def _triage(result, findings, model: str | None, fix: bool) -> tuple[dict, dict]:
     """Ask the model about each finding, with a progress bar on stderr."""
     from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
 
@@ -149,7 +167,7 @@ def _triage(result, findings, model: str | None) -> tuple[dict, dict]:
                       transient=True) as bar:
             task = bar.add_task("triage", total=len(findings))
             run = triage_findings(result.analysis, findings, client, Cache(result.root),
-                                  progress=lambda i, n, f: bar.update(task, completed=i - 1))
+                                  progress=lambda i, n, f: bar.update(task, completed=i - 1), fix=fix)
     except ModelUnavailable as exc:
         _fail(f"{exc} Use --no-llm to scan without a model.")
     for t in run.errors:
@@ -203,6 +221,132 @@ def blast_radius(
         _print_json(data)
     else:
         render.render_blast_radius(_console(), data)
+
+
+CONFIRM_ABOVE_S = 600
+
+
+@app.command()
+def explain(
+    path: Path = typer.Argument(..., help="Project folder to explain."),
+    format: ExplainFormat = typer.Option(None, "--format", "-f",
+                                         help="Output format (default rich; with --out, only a short note)."),
+    out: Path = typer.Option(None, "--out", "-o", help="Also write the explanation as Markdown to this file."),
+    file: str = typer.Option(None, "--file", help="Explain one file (path relative to the project)."),
+    function: str = typer.Option(None, "--function", help="Explain one function, by id (path.py::Name)."),
+    all_functions: bool = typer.Option(False, "--all",
+                                       help="Summarise every function, not only the important ones."),
+    min_callers: int = typer.Option(3, "--min-callers", min=1,
+                                    help="A function called from at least this many functions is important."),
+    depth: int = typer.Option(4, "--depth", min=1, max=10, help="How deep the request-flow trees go."),
+    model: str = typer.Option(None, "--model",
+                              help="LiteLLM model (default: $GITTRACE_MODEL, else ollama/llama3.1:8b)."),
+    no_llm: bool = typer.Option(False, "--no-llm", help="Facts only: no model summaries."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask before a run estimated over 10 minutes."),
+) -> None:
+    """Explain a Python project in plain language: entry points, endpoints, modules, libraries,
+    side effects, request flows, and model-written summaries of files and functions."""
+    from gittrace.cli import explain_render
+    from gittrace.core import explain as facts
+    from gittrace.core.scan import scan as run_scan
+
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+    if not path.is_dir():
+        _fail(f"not a directory: {path}")
+    if file and function:
+        _fail("--file and --function cannot be combined")
+    result = run_scan(path, offline=True, blame=False)        # facts and findings; no graph needed
+    ex = facts.build(result, min_callers=min_callers, flow_depth=depth)
+
+    if function:
+        if function not in ex.functions or ex.functions[function].is_module:
+            near = sorted(f.id for f in ex.summarisable() if function in (f.qualified_name, f.name))
+            hint = f" Did you mean: {', '.join(near[:5])}?" if near else ""
+            _fail(f"no function with id {function!r} in {path}.{hint} (ids look like app/db.py::Repo.get_user)")
+        files, fns, project = [ex.functions[function].file], [function], False
+        scope = f"function {function}"
+    elif file:
+        rel = _project_file(path, file)
+        if rel not in ex.files:
+            _fail(f"no parsed Python file {file!r} in {path}")
+        files, fns, project = [rel], list(ex.files[rel].functions), False
+        scope = f"file {rel}"
+    else:
+        files, project, scope = list(ex.files), True, None
+        fns = [f.id for f in (ex.summarisable() if all_functions else ex.important())]
+
+    run = None
+    if not no_llm:
+        run = _summarise(ex, result.analysis, fns, files if not function else [], project, model, yes)
+    data = explain_render.build_data(
+        ex, run, files=files, functions=[function] if function else None, project=project,
+        settings={"scope": scope, "all": all_functions, "min_callers": min_callers, "flow_depth": depth})
+    if out is not None:
+        out.write_text(explain_render.to_markdown(data), encoding="utf-8")
+    if format is ExplainFormat.json:
+        _print_json(data)
+    elif format is ExplainFormat.md:
+        typer.echo(explain_render.to_markdown(data), nl=False)
+    elif format is ExplainFormat.rich or out is None:
+        explain_render.render_rich(_console(), data)
+    if out is not None:
+        Console(stderr=True, highlight=False).print(
+            f"wrote {out} ({len(data['files'])} files; {explain_render._llm_line(data['llm'])})")
+
+
+def _project_file(root: Path, file: str) -> str:
+    p = Path(file)
+    if p.is_absolute():
+        try:
+            p = p.resolve().relative_to(root.resolve())
+        except ValueError:
+            return file
+    return p.as_posix().lstrip("./") if p.as_posix().startswith("./") else p.as_posix()
+
+
+def _summarise(ex, analysis, fns, files, project, model, yes):
+    """The model summaries, with an estimate first and a progress bar with ETA."""
+    from rich.progress import (BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn,
+                               TimeRemainingColumn)
+
+    from gittrace.llm import explain as summaries
+    from gittrace.llm.cache import Cache
+    from gittrace.llm.client import LLMError, ModelClient, ModelUnavailable, resolve_model
+
+    try:
+        client = ModelClient(resolve_model(model))
+    except LLMError as exc:
+        _fail(str(exc))
+    plan = summaries.plan(ex, fns, files, project)
+    estimate = summaries.estimate_seconds(len(plan))
+    stderr = Console(stderr=True, highlight=False)
+    stderr.print(f"[{render.LAVENDER}]explain[/] {client.model}: {len(plan)} model calls "
+                 f"({len(fns)} functions, {len(files)} files{', the project' if project else ''}), "
+                 f"about {estimate / 60:.0f} min at {summaries.SECONDS_PER_CALL:g} s per call "
+                 "(cached replies take no time)")
+    if estimate > CONFIRM_ABOVE_S and not yes:
+        if not sys.stdin.isatty():
+            _fail(f"estimated {estimate / 60:.0f} minutes; pass --yes to run anyway, or narrow it "
+                  "(--file, --function, a higher --min-callers, or --no-llm)")
+        if not typer.confirm(f"This may take about {estimate / 60:.0f} minutes. Continue?", default=False):
+            raise typer.Exit(0)
+    explainer = summaries.Explainer(ex, analysis, client, Cache(ex.root))
+    try:
+        with Progress(TextColumn(f"[{render.LAVENDER}]explain[/] {{task.description}}"), BarColumn(),
+                      MofNCompleteColumn(), TimeElapsedColumn(), TextColumn("ETA"), TimeRemainingColumn(),
+                      console=stderr, transient=True) as bar:
+            task = bar.add_task("", total=len(plan))
+
+            def progress(i, n, item):
+                bar.update(task, completed=i - 1, description=f"{item[0]} {item[1]}"[:60])
+
+            run = explainer.execute(plan, progress)
+    except ModelUnavailable as exc:
+        _fail(f"{exc} Use --no-llm for the facts without a model.")
+    for s in run.summaries.values():
+        if s.error:
+            stderr.print(Text(f"warning: no summary for {s.level} {s.target}: {s.error}", style=render.AMBER))
+    return run
 
 
 def main() -> None:

@@ -17,6 +17,7 @@ Run:  pytest tests/test_llm.py -v
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -50,7 +51,7 @@ from gittrace.llm.client import (
 from gittrace.llm.context import ContextBuilder, estimate_tokens
 from gittrace.llm.fix import check_fix, git_apply_check
 from gittrace.llm.prompts import PROMPT_VERSION, TRIAGE_SYSTEM, defang, fence
-from gittrace.llm.schemas import TriageReply
+from gittrace.llm.schemas import TriageReply, TriageVerdict
 from gittrace.llm.triage import Triager, triage_findings
 
 ROOT = expected_sample_app.ROOT
@@ -192,7 +193,7 @@ def _raise(name, text="boom"):
 class TestClient:
     def _complete(self, mod, model="ollama/qwen2.5-coder:7b"):
         with patch.dict(sys.modules, {"litellm": mod}):
-            return ModelClient(model, timeout=42).complete("sys", "user", TriageReply)
+            return ModelClient(model, timeout=42).complete("sys", "user", TriageVerdict)
 
     def test_options_sent_to_litellm(self):
         mod = fake_litellm(reply())
@@ -203,7 +204,7 @@ class TestClient:
         assert call["temperature"] <= 0.2
         assert call["timeout"] == 42
         assert call["response_format"]["type"] == "json_schema"
-        assert call["response_format"]["json_schema"]["schema"] == TriageReply.model_json_schema()
+        assert call["response_format"]["json_schema"]["schema"] == TriageVerdict.model_json_schema()
         assert call["messages"] == [{"role": "system", "content": "sys"},
                                     {"role": "user", "content": "user"}]
         assert (out.value.verdict, out.attempts) == ("likely_real", 1)
@@ -278,7 +279,7 @@ class TestOutOfMemory:
         slept: list[float] = []
         with patch.dict(sys.modules, {"litellm": mod}):
             client = ModelClient(model, timeout=42, sleep=slept.append)
-            return client.complete("sys", user, TriageReply), slept
+            return client.complete("sys", user, TriageVerdict), slept
 
     def test_retried_once_after_a_wait(self):
         mod = fake_litellm(_oom, reply())
@@ -353,16 +354,36 @@ class TestOutOfMemory:
 
 class TestSchema:
     def test_valid(self):
-        r = TriageReply.model_validate_json(reply(adjustment=-2))
-        assert (r.verdict, r.severity_adjustment, r.fix_code) == ("likely_real", -2, None)
-        h = TriageReply.model_validate_json(reply(
+        r = TriageVerdict.model_validate_json(reply(adjustment=-2))
+        assert (r.verdict, r.severity_adjustment) == ("likely_real", -2)
+        assert TriageReply.model_validate_json(reply(adjustment=-2)).fix_code is None
+        h = TriageVerdict.model_validate_json(reply(
             verdict="likely_harmless", values=[{"value": "columns", "source": "internal"},
                                                {"value": "\"users\"", "source": "constant"}]))
         assert [v.source for v in h.values] == ["internal", "constant"]
 
     def test_values_come_before_the_verdict(self):
         # Ollama generates fields in schema order: the sources are stated first.
-        assert list(TriageReply.model_json_schema()["properties"])[:2] == ["values", "verdict"]
+        assert list(TriageVerdict.model_json_schema()["properties"])[:2] == ["values", "verdict"]
+        assert list(TriageReply.model_json_schema()["properties"]) == [
+            "values", "verdict", "reason", "severity_adjustment", "fix_code"]
+
+    def test_without_fix_the_reply_is_the_same_but_fix_code_can_only_be_null(self):
+        verdict, full = TriageVerdict.model_json_schema(), TriageReply.model_json_schema()
+        assert list(verdict["properties"]) == list(full["properties"])
+        assert verdict["required"] == full["required"]
+        assert verdict["description"] == full["description"]        # sent to the model
+        assert verdict["properties"]["fix_code"]["type"] == "null"
+        others = [k for k in full["properties"] if k != "fix_code"]
+        assert [verdict["properties"][k] for k in others] == [full["properties"][k] for k in others]
+        assert TriageVerdict.model_validate_json(reply()).fix_code is None
+        with pytest.raises(ValueError):
+            TriageVerdict.model_validate_json(reply(fix="x = 1"))
+
+    def test_the_fix_schema_is_the_one_measured_for_triage_v3(self):
+        # Sent to Ollama as the decoding schema: --fix must not change what was measured.
+        digest = hashlib.sha256(json.dumps(TriageReply.model_json_schema()).encode()).hexdigest()
+        assert digest == "2bd051cdb49cc96bb1072ebd16d7bdb7900ad7e926b7f8f09a682b2fbee4874c"
 
     @pytest.mark.parametrize("bad", [
         reply(new_findings=[{"file": "x.py", "line": 1}]),        # no extra fields
@@ -384,6 +405,8 @@ class TestSchema:
     def test_rejected(self, bad):
         with pytest.raises(ValueError):
             TriageReply.model_validate_json(bad)
+        with pytest.raises(ValueError):
+            TriageVerdict.model_validate_json(bad)
 
     def test_control_characters_are_stripped(self):
         r = TriageReply.model_validate_json(reply(reason="safe\x1b[2J\x1b[31m red\nline two",
@@ -651,7 +674,7 @@ class TestFix:
     def test_triage_checks_the_fix(self, scanned, fake):
         fake(reply(fix='cursor.execute("SELECT * FROM users WHERE name = ?", (name,))'),
              reply(fix="cursor.execute("))
-        triager = Triager(scanned.analysis, ModelClient("ollama/m"))
+        triager = Triager(scanned.analysis, ModelClient("ollama/m"), fix=True)
         good = triager.triage(finding(scanned, SQLI))
         bad = triager.triage(finding(scanned, SQLI))
         assert good.fix.valid and not bad.fix.valid and "does not parse" in bad.fix.problem
@@ -684,7 +707,7 @@ class TestCli:
                                "prompt_version": PROMPT_VERSION, "triaged": 13, "cached": 0,
                                "errors": 0, "recovered": 0, "reduced_context": 0,
                                "valid_fixes": 0, "seconds": data["llm"]["seconds"],
-                               "by_verdict": {"likely_real": 3, "likely_harmless": 3, "uncertain": 7}}
+                               "fixes": False, "by_verdict": {"likely_real": 3, "likely_harmless": 3, "uncertain": 7}}
         f = next(f for f in data["findings"] if f["id"] == SQLI)
         assert (f["severity"], f["score"]) == ("critical", 11)         # the rules' result
         t = f["triage"]
@@ -693,7 +716,7 @@ class TestCli:
         s = next(f for f in data["findings"] if f["id"] == SECRET)
         assert (s["severity"], s["triage"]["adjusted_score"], s["triage"]["adjusted_severity"]) == \
             ("medium", 2, "low")
-        assert t["fix"] == {"valid": False, "diff": None, "problem": "the model offered no fix"}
+        assert t["fix"] is None and t["prompt_version"] == "triage-v3"     # no fix without --fix
 
     def test_env_model_is_used(self, project, fake, monkeypatch):
         fake(default=reply())
@@ -709,7 +732,7 @@ class TestCli:
         assert "looks like a test token" in text
         assert "model ollama/llama3.1:8b: 3 likely real" in " ".join(text.split())
         assert "severity: rules 11 critical" in text and "model adjustment +1 → 12" in text
-        assert "no valid fix suggested (the model offered no fix)" in text
+        assert "fix" not in text.lower().replace("prefix", "")       # no fix asked, none mentioned
         assert "inputs, as the model sees them: name attacker" in text
         main, harmless = text.split("Likely harmless according to the model")
         assert "GT-SECRET-001" not in main and "GT-SECRET-001" in harmless
@@ -770,3 +793,64 @@ class TestCli:
         assert "model call: the GPU ran out of memory twice at num_ctx 8192; answered with num_ctx 4096" in text
         data = json.loads(self._scan(project, "--format", "json", "--fail-on", "none").stdout)
         assert data["llm"]["recovered"] == 0          # no OOM this time; the reduced reply was not cached
+
+
+class TestFixIsOptIn:
+    """`scan` triages only; `scan --fix` also asks for a fix. Both send the measured
+    triage-v3 prompt; without --fix the reply schema only allows fix_code null."""
+
+    def _scan(self, project, *args):
+        return runner.invoke(app, ["scan", str(project), "--offline", "--no-blame", "--fail-on", "none",
+                                   *args], env={"COLUMNS": "400"})
+
+    def test_both_modes_send_the_measured_prompt(self, project, monkeypatch):
+        sent = []
+
+        def complete(self, system, user, schema):
+            sent.append((system, user, schema))
+            return client_mod.Reply(schema.model_validate_json(reply()), reply(), 1, 0.0)
+
+        monkeypatch.setattr(ModelClient, "complete", complete)
+        self._scan(project, "--format", "json")
+        self._scan(project, "--format", "json", "--fix")
+        n = len(sent) // 2
+        default, fix = sent[:n], sent[n:]
+        assert hashlib.sha256(TRIAGE_SYSTEM.encode()).hexdigest() == \
+            "230786c8a52103eee206919bc57578f2ec0f7302d1f91baca969f44e630eb3f0"      # triage-v3
+        assert all(s == TRIAGE_SYSTEM for s, _, _ in sent)
+        assert [u for _, u, _ in default] == [u for _, u, _ in fix]
+        assert {s for _, _, s in default} == {TriageVerdict} and {s for _, _, s in fix} == {TriageReply}
+
+    def test_without_fix_no_fix_is_shown_or_checked(self, project, fake):
+        fake(default=reply())
+        data = json.loads(self._scan(project, "--format", "json").stdout)
+        assert data["llm"]["fixes"] is False
+        assert all(f["triage"]["fix"] is None for f in data["findings"])
+        assert "suggested fix" not in self._scan(project).output
+
+    def test_fix_shows_a_checked_diff(self, project, fake):
+        good = 'cursor.execute("SELECT * FROM users WHERE name = ?", (name,))'
+        fake(default=lambda prompt: reply(fix=good if "app/db.py line 17" in prompt else None))
+        data = json.loads(self._scan(project, "--format", "json", "--fix").stdout)
+        assert (data["llm"]["prompt_version"], data["llm"]["fixes"]) == ("triage-v3", True)
+        f = next(f for f in data["findings"] if f["id"] == SQLI)
+        assert f["triage"]["fix"]["valid"] and "+" in f["triage"]["fix"]["diff"]
+        other = next(f for f in data["findings"] if f["id"] == SECRET)
+        assert other["triage"]["fix"]["problem"] == "the model offered no fix"
+        rich = " ".join(self._scan(project, "--fix").output.split())
+        assert "suggested fix (applies cleanly with git apply --check" in rich
+
+    def test_fix_and_no_fix_replies_are_cached_apart(self, project, fake):
+        model = fake(default=reply())
+        self._scan(project, "--format", "json")
+        n = len(model.calls)
+        self._scan(project, "--format", "json", "--fix")
+        assert len(model.calls) == 2 * n                       # nothing reused across modes
+        self._scan(project, "--format", "json", "--fix")
+        self._scan(project, "--format", "json")
+        assert len(model.calls) == 2 * n                       # and each mode hits its own cache
+
+    def test_fix_needs_the_model(self, project, fake):
+        fake()
+        out = self._scan(project, "--fix", "--no-llm")
+        assert out.exit_code == 2 and "cannot be combined with --no-llm" in out.output

@@ -5,6 +5,7 @@ eval/run_triage.py — measure the model's triage of scan findings (see eval/REA
     python eval/run_triage.py --label after-tuning                    # the same set, after prompt tuning
     python eval/run_triage.py --label held-out --set held-out         # open-webui, run once
     python eval/run_triage.py --label untouched --models ollama/llama3.1:8b
+    python eval/run_triage.py --label default-no-fix --no-fix           # as `scan` without --fix
 
 A finding's label comes from data written before any model was run on it:
   - vulnerable targets (vulpy-bad, vulpy-good, vulnerable-flask-app, vulnpy,
@@ -162,17 +163,17 @@ def metrics(records: list[dict]) -> dict:
     }
 
 
-def run_model(model: str, prepared: list) -> dict:
+def run_model(model: str, prepared: list, fix: bool = True) -> dict:
     client = ModelClient(model)
     first_target, (first_result, first_labels) = prepared[0]
     warm = time.perf_counter()
-    Triager(first_result.analysis, client).triage(
+    Triager(first_result.analysis, client, fix=fix).triage(
         next(f for f in first_result.findings if f.id in first_labels))
     warm = time.perf_counter() - warm
     records = []
     start = time.perf_counter()
     for name, (result, labels) in prepared:
-        triager = Triager(result.analysis, client)          # no cache: every call is timed
+        triager = Triager(result.analysis, client, fix=fix)  # no cache: every call is timed
         for f in result.findings:
             if f.id not in labels:
                 continue
@@ -213,7 +214,7 @@ def probe_injection(model: str, prepared: list, baseline: dict) -> dict:
     before = {(r["target"], r["id"]): r for r in baseline["records"]}
     records = []
     for name, (result, labels) in prepared:
-        triager = Triager(result.analysis, client)
+        triager = Triager(result.analysis, client, fix=True)
         for f in result.findings:
             if labels.get(f.id, {}).get("label") != "tp":
                 continue
@@ -316,6 +317,9 @@ def main() -> int:
     parser.add_argument("--label", required=True)
     parser.add_argument("--set", choices=tuple(SETS), default="measured")
     parser.add_argument("--models", nargs="+", default=list(MODELS))
+    parser.add_argument("--no-fix", action="store_true",
+                        help="fix_code constrained to null, as `scan` does without --fix; every run "
+                             "before the fix became opt-in allowed a fix (`scan --fix`)")
     parser.add_argument("--probe-injection", metavar="BASELINE_LABEL",
                         help="re-triage the true positives with an injected comment, against the "
                              "clean verdicts of this earlier run")
@@ -347,12 +351,14 @@ def main() -> int:
         hygiene.assert_clean(out_dir)
         sys.stdout.write(hygiene.scrub(injection_markdown(args.label, runs)))
         return 0
-    summary = {"label": args.label, "set": args.set, "targets": names, "prompt_version": PROMPT_VERSION,
+    fix = not args.no_fix
+    summary = {"label": args.label, "set": args.set, "targets": names, "fix": fix,
+               "prompt_version": PROMPT_VERSION,
                "llm_code_sha256": code_sha256(), "gpu": _gpu(), "platform": platform.platform(),
                "models": {}}
     for model in args.models:
         print(f"== {model}", flush=True)
-        run = run_model(model, prepared)
+        run = run_model(model, prepared, fix)
         slug = model.replace("/", "_").replace(":", "_")
         hygiene.write_json(out_dir / f"{slug}.json", run)
         summary["models"][model] = run

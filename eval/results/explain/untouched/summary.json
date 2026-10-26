@@ -1,0 +1,141 @@
+{
+  "label": "untouched",
+  "prompt_version": "explain-v1",
+  "llm_code_sha256": "86f7d61d97e0b3348a96ecb87bb1280e4186c932ead5b764f079ed448e14c5c9",
+  "gpu": "NVIDIA GeForce RTX 5050 Laptop GPU, 8151 MiB",
+  "power_at_start": "battery",
+  "models": {
+    "ollama/llama3.1:8b": {
+      "warmup_seconds": 18.01,
+      "power_after": "AC",
+      "targets": {
+        "sample_app": {
+          "calls": 32,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 0,
+          "mentions_kept": 79,
+          "mentions_removed": 7,
+          "summaries_with_removals": 6,
+          "seconds": {
+            "function": {
+              "n": 18,
+              "total": 115.8,
+              "mean": 6.43,
+              "max": 8.32
+            },
+            "file": {
+              "n": 13,
+              "total": 96.3,
+              "mean": 7.41,
+              "max": 11.48
+            },
+            "project": {
+              "n": 1,
+              "total": 25.0,
+              "mean": 25.02,
+              "max": 25.02
+            }
+          },
+          "total_seconds": 237.1
+        },
+        "microblog": {
+          "calls": 70,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 1,
+          "mentions_kept": 191,
+          "mentions_removed": 2,
+          "summaries_with_removals": 2,
+          "seconds": {
+            "function": {
+              "n": 35,
+              "total": 278.4,
+              "mean": 7.96,
+              "max": 10.6
+            },
+            "file": {
+              "n": 34,
+              "total": 336.1,
+              "mean": 9.89,
+              "max": 20.81
+            },
+            "project": {
+              "n": 1,
+              "total": 16.0,
+              "mean": 16.03,
+              "max": 16.03
+            }
+          },
+          "total_seconds": 630.6
+        }
+      }
+    },
+    "ollama/qwen2.5-coder:7b": {
+      "warmup_seconds": 13.59,
+      "power_after": "AC",
+      "targets": {
+        "sample_app": {
+          "calls": 32,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 0,
+          "mentions_kept": 76,
+          "mentions_removed": 1,
+          "summaries_with_removals": 1,
+          "seconds": {
+            "function": {
+              "n": 18,
+              "total": 33.0,
+              "mean": 1.84,
+              "max": 3.66
+            },
+            "file": {
+              "n": 13,
+              "total": 23.7,
+              "mean": 1.82,
+              "max": 3.02
+            },
+            "project": {
+              "n": 1,
+              "total": 5.5,
+              "mean": 5.5,
+              "max": 5.5
+            }
+          },
+          "total_seconds": 62.2
+        },
+        "microblog": {
+          "calls": 70,
+          "errors": 0,
+          "retried": 0,
+          "context_cut": 1,
+          "mentions_kept": 218,
+          "mentions_removed": 5,
+          "summaries_with_removals": 3,
+          "seconds": {
+            "function": {
+              "n": 35,
+              "total": 69.5,
+              "mean": 1.99,
+              "max": 4.06
+            },
+            "file": {
+              "n": 34,
+              "total": 112.5,
+              "mean": 3.31,
+              "max": 10.32
+            },
+            "project": {
+              "n": 1,
+              "total": 12.6,
+              "mean": 12.63,
+              "max": 12.63
+            }
+          },
+          "total_seconds": 194.7
+        }
+      }
+    }
+  }
+}

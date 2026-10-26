@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import codecs
 import hashlib
+import re
 from dataclasses import dataclass, field
 
 import tree_sitter_python
@@ -45,6 +46,7 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 # Calls whose arguments the route detector needs. Other calls keep only the
 # callee name, so large literal arguments are not copied for nothing.
 _KEEP_ARGS = frozenset({"include_router", "register_blueprint", "mount"})
+_MAIN_GUARD = re.compile(r"""^\(?\s*(?:__name__\s*==\s*(['"])__main__\1|(['"])__main__\2\s*==\s*__name__)\s*\)?$""")
 _DEPENDENCY_CALLS = frozenset({"Depends", "Security"})
 _TEXT_LIMIT = 200
 _SNIPPET_LINES = 20
@@ -149,6 +151,9 @@ class PyModule:
     module_function: FunctionDef | None    # the <module> node, if the file calls at import time
     assignments: list[AssignFact] = field(default_factory=list)
     module_scope: FunctionDef | None = None   # the <module> record, always (a finding may need it)
+    # (absolute module, imported names, line) per import statement, at any level
+    imports: list[tuple[str, tuple[str, ...], int]] = field(default_factory=list)
+    main_guard: int | None = None             # line of `if __name__ == "__main__":`
 
 
 def module_name(path: str) -> str:
@@ -205,6 +210,8 @@ class _Builder:
         self.calls: list[RawCall] = []
         self.seen: dict[str, int] = {}
         self.module_calls = False
+        self.imports: list[tuple[str, tuple[str, ...], int]] = []
+        self.main_guard: int | None = None
         # Only alive while the tree is: the nodes each fact is computed from.
         # (id(scope), name) -> [(how it was bound, value node)]
         self._flows: dict[tuple[int, str], list[tuple[str, Node]]] = {}
@@ -221,6 +228,7 @@ class _Builder:
             language="python",
             sha256=hashlib.sha256(self.data).hexdigest(),
             lines=lines,
+            doc=_docstring(root),
         )
         module_scope = FunctionDef(
             id=function_id(self.path, MODULE_SCOPE),
@@ -238,6 +246,7 @@ class _Builder:
             functions=self.functions, classes=self.classes, calls=self.calls,
             module_function=module_scope if self.module_calls else None,
             assignments=assignments, module_scope=module_scope,
+            imports=self.imports, main_guard=self.main_guard,
         )
 
     # -- traversal ---------------------------------------------------------
@@ -264,6 +273,9 @@ class _Builder:
                 continue
             if t == "future_import_statement":
                 continue
+            if (t == "if_statement" and scope.kind == "module" and self.main_guard is None
+                    and _MAIN_GUARD.match(_text(n.child_by_field_name("condition")).strip())):
+                self.main_guard = n.start_point[0] + 1
             if t == "call":
                 self._call(n, scope)
             elif t == "assignment":
@@ -347,6 +359,7 @@ class _Builder:
             # start_line..end_line of the file.
             source=_source(self.data[span.start_byte - span.start_point[1]:span.end_byte]),
             is_async=bool(node.children) and node.children[0].type == "async",
+            doc=_docstring(node.child_by_field_name("body")),
         )
         outer.defs[name] = fid
         if outer.kind == "function":
@@ -427,20 +440,27 @@ class _Builder:
     # -- imports -----------------------------------------------------------
 
     def _import(self, node: Node, scope: Scope) -> None:
+        line = node.start_point[0] + 1
         for child in node.named_children:
             if child.type == "dotted_name":
                 dotted = _text(child)
                 root = dotted.split(".")[0]
                 scope.imports[root] = root
+                self.imports.append((dotted, (), line))
             elif child.type == "aliased_import":
                 target = _text(child.child_by_field_name("name"))
                 scope.imports[_text(child.child_by_field_name("alias"))] = target
+                self.imports.append((target, (), line))
 
     def _import_from(self, node: Node, scope: Scope) -> None:
         module = node.child_by_field_name("module_name")
         base = self._absolute_module(module)
         if base is None:
             return
+        names = tuple(_text(c.child_by_field_name("name")) if c.type == "aliased_import" else _text(c)
+                      for c in node.named_children
+                      if c != module and c.type in ("dotted_name", "aliased_import"))
+        self.imports.append((base, names, node.start_point[0] + 1))
         for child in node.named_children:
             if child == module:
                 continue
@@ -833,6 +853,20 @@ class _Builder:
 
 def _join(base: str, name: str) -> str:
     return f"{base}.{name}" if base else name
+
+
+def _docstring(body: Node | None) -> str | None:
+    """The first paragraph of the docstring that opens a body or module, on one line."""
+    if body is None:
+        return None
+    first = next((c for c in body.named_children if c.type != "comment"), None)
+    if first is None or first.type != "expression_statement" or not first.named_children:
+        return None
+    text = _string_literal(first.named_children[0])
+    if not text or not text.strip():
+        return None
+    para = re.split(r"\n\s*\n", text.strip())[0]
+    return " ".join(para.split())[:300]
 
 
 def _string_literal(node: Node) -> str | None:

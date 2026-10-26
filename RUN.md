@@ -21,11 +21,20 @@ python -m gittrace blast-radius app/db.py::Repo.get_user -p tests/fixtures/sampl
 python -m gittrace scan path/to/project --offline           # no FalkorDB needed
 python -m gittrace scan path/to/project --no-llm            # rules only, no model calls
 python -m gittrace scan path/to/project --model ollama/qwen2.5-coder:7b   # another model
+python -m gittrace scan path/to/project --fix               # also a checked fix diff per finding
+
+python -m gittrace explain path/to/project                  # plain-language tour: facts + summaries
+python -m gittrace explain path/to/project --no-llm         # facts only (entry points, endpoints, flows)
+python -m gittrace explain path/to/project --out EXPLAIN.md # keep it as a Markdown file
+python -m gittrace explain path/to/project --file app/db.py # one file (and all its functions)
+python -m gittrace explain path/to/project --function app/db.py::Repo.get_user
 ```
 
-`scan` asks a local model to triage each finding. Install [Ollama](https://ollama.com) and pull
-the default model once (`ollama pull llama3.1:8b`), or pass `--no-llm`. Replies are
-cached in `<project>/.gittrace/cache`, so a rescan of unchanged code makes no model calls.
+`scan` asks a local model to triage each finding, and `explain` to summarise the code.
+Install [Ollama](https://ollama.com) and pull the default model once (`ollama pull llama3.1:8b`),
+or pass `--no-llm`. Replies are cached in `<project>/.gittrace/cache`, so a rerun on unchanged
+code makes no model calls. `explain` estimates its run time first and asks before anything over
+10 minutes (`--yes` skips the question).
 
 Severity, the rules and the graph model are documented in README.md.
 

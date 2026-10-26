@@ -102,6 +102,8 @@ seconds and fix check; each records the hash of `gittrace/llm/*.py`):
 | `after-tuning-2` | `triage-v3` (in `gittrace/llm/prompts.py`) | measured | secret guidance corrected after round 1; optimistic |
 | `held-out` | `triage-v3` | open-webui | run once after tuning was final; nothing changed afterwards |
 | `after-tuning-2-injection` | `triage-v3` | measured TPs | the injection probe, against `after-tuning-2`'s clean verdicts |
+| `no-fix-paragraph` | `triage-v3-nofix` (`system_prompt_triage-v3-nofix.txt`) | measured | Phase 6 trial: the fix instructions removed from the prompt. Hid more true positives (llama3.1:8b 3 of 35, one a command injection; qwen2.5-coder:7b 11) and was not adopted |
+| `default-no-fix` | `triage-v3`, `fix_code` constrained to null | measured | `scan` without `--fix` (`--no-fix` here): same verdict, adjustment and value sources as `after-tuning-2` for 52 of 52 findings, both models |
 
 Caveat on the held-out set: open-webui's `review.json` (with reasons) was
 written in the rules evaluation and had been read during this work before the
@@ -114,7 +116,59 @@ in the measured set (mealie's migration SQL and bind-parameter names, CTFd's
 python eval/run_triage.py --label untouched
 python eval/run_triage.py --label after-tuning-2-injection --probe-injection after-tuning-2
 python eval/run_triage.py --label held-out --set held-out      # only after tuning, once
+python eval/run_triage.py --label default-no-fix --no-fix
 ```
+
+## Explain (Phase 6)
+
+`run_explain.py` measures `gittrace explain`'s model summaries on two targets
+(`explain/targets.json`): `tests/fixtures/sample_app`, and
+[miguelgrinberg/microblog](https://github.com/miguelgrinberg/microblog) at a
+pinned commit, a small real-world Flask app not used anywhere else in this
+project (SQLAlchemy, Elasticsearch, Redis/RQ, email, an HTTP translation API,
+a JSON API with token auth, Flask CLI commands, Alembic migrations).
+
+- **Before any summary existed:** the sample of 30 functions was drawn (seed
+  7) from the functions `explain` summarises by default (10 from sample_app,
+  20 from microblog; `explain/sample.json`), and a reference note was written
+  for every file and every sampled function from the code
+  (`explain/<target>/reference.json`). Both are hashed in
+  `explain/reference.sha256`. Drawing the sample needed only GitTrace's
+  deterministic facts; no model was called on either target before. One
+  change to the facts came after the draw and before any summary: Flask CLI
+  commands (`@bp.cli.group()`) became entry points. It added microblog's four
+  CLI functions to the important ones; every sampled function was still
+  important.
+- **Runs:** both models, one at a time, no cache, after one untimed warm-up
+  call; every file, the project, and the important functions, as `explain`
+  does by default. Each record keeps the summary, its seconds, its grounding
+  check and what was cut to fit.
+- **Review:** every file summary and the 30 sampled function summaries, for
+  both models, rated against the reference and the code: **correct** (every
+  statement true, main purpose covered), **partly** (main purpose right, but a
+  false or misleading detail, or a key point of the reference missing), or
+  **wrong** (main purpose wrong, or a central claim false), with a reason
+  (`explain/<target>/review.json`).
+- **Untouched first:** the first run (`untouched`) uses the prompts as first
+  written (`explain-v1`, developed on `tests/fixtures/flask_app` only).
+
+```bash
+python eval/run_explain.py --draw-sample          # once
+python eval/run_explain.py --label untouched
+python eval/run_explain.py --score untouched
+```
+
+Results of `untouched` (`results/explain/untouched/`, ratings in
+`explain/<target>/review.json`; one reviewer, the tool's author):
+
+| Model | Files (47) correct / partly / wrong | Functions (30) correct / partly / wrong | Mentions removed by the grounding check |
+|---|---|---|---|
+| llama3.1:8b | 35 / 10 / 2 | 24 / 5 / 1 | 9 (of 279) |
+| qwen2.5-coder:7b | 42 / 5 / 0 | 28 / 2 / 0 | 6 (of 300) |
+
+Timings are in `summary.md`; they are not comparable between the models (the
+llama3.1:8b run started on battery and ended on AC power, the qwen2.5-coder:7b
+run was on AC power throughout; `power_at_start` / `power_after` record it).
 
 ## No raw secrets in the output
 

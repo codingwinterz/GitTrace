@@ -113,7 +113,7 @@ def model_line(llm: dict | None) -> Text:
     text = Text(f"model {llm['model']}: ", style=LAVENDER)
     for verdict, count in llm["by_verdict"].items():
         text.append(f"{count} {VERDICT_LABEL[verdict]}   ", style=VERDICT_STYLE[verdict] if count else DIM)
-    extra = [f"{llm['valid_fixes']} fix(es) that apply cleanly", f"{llm['cached']} cached"]
+    extra = ([f"{llm['valid_fixes']} fix(es) that apply cleanly"] if llm.get("fixes") else []) +         [f"{llm['cached']} cached"]
     text.append(" · ".join(extra), style=DIM)
     if llm["errors"]:
         text.append(f" · {llm['errors']} could not be triaged", style=AMBER)
@@ -246,6 +246,8 @@ def triage_parts(t: dict | None, f: dict) -> list:
     sev.append_text(_adjusted(t))
     parts.append(sev)
     fix = t["fix"]
+    if fix is None:                         # not asked for (scan without --fix)
+        return parts
     if fix["valid"]:
         parts.append(Text("suggested fix (applies cleanly with git apply --check; not verified "
                           "correct; never applied):", style=TEAL))

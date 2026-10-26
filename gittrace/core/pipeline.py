@@ -19,10 +19,14 @@ from gittrace.languages import plugins
 from gittrace.languages.base import (
     AssignFact,
     CallSite,
+    EffectFact,
     EndpointDef,
+    EntryPointDef,
     FileRecord,
     FunctionDef,
+    ImportFact,
     ParseFailure,
+    ServiceFact,
     SourceFile,
 )
 
@@ -40,6 +44,11 @@ class Analysis:
     assignments: list[AssignFact] = field(default_factory=list)
     module_scopes: dict[str, FunctionDef] = field(default_factory=dict)
     rules: list = field(default_factory=list)
+    # for `explain` (gittrace.core.explain); not written to the graph
+    imports: list[ImportFact] = field(default_factory=list)
+    entry_points: list[EntryPointDef] = field(default_factory=list)
+    effects: list[EffectFact] = field(default_factory=list)
+    services: list[ServiceFact] = field(default_factory=list)
 
     def counts(self) -> dict[str, int]:
         origins = Counter(c.origin for c in self.calls if not c.resolved)
@@ -82,8 +91,14 @@ def analyze(root: str | os.PathLike) -> Analysis:
         result.assignments.extend(parsed.assignments)
         result.module_scopes.update(parsed.module_scopes)
         result.rules.extend(r for r in plugin.rules() if r not in result.rules)
-        result.calls.extend(plugin.resolve_calls(parsed))
+        calls = plugin.resolve_calls(parsed)
+        result.calls.extend(calls)
         result.endpoints.extend(plugin.detect_routes(parsed))
+        extra = plugin.project_facts(parsed, calls)
+        result.imports.extend(extra.imports)
+        result.entry_points.extend(extra.entry_points)
+        result.effects.extend(extra.effects)
+        result.services.extend(extra.services)
     return result
 
 

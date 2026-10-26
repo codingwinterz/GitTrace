@@ -22,6 +22,10 @@ PROMPT_VERSION = "triage-v3"
 # Earlier versions, with the runs that measured them:
 #   triage-v1  eval/results/triage/untouched/system_prompt_triage-v1.txt
 #   triage-v2  eval/results/triage/after-tuning-1/system_prompt_triage-v2.txt
+# A trial without the fix_code paragraph (triage-v3-nofix) hid more true
+# positives, so `scan` without --fix keeps this prompt and constrains
+# fix_code to null instead (schemas.TriageVerdict):
+#   eval/results/triage/no-fix-paragraph/system_prompt_triage-v3-nofix.txt
 TRIAGE_SYSTEM = """\
 You review ONE security finding reported by GitTrace, a rule-based static analyser for Python. \
 A deterministic rule has already detected it. You cannot add, remove, rename or merge findings; \

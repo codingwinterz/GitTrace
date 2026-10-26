@@ -48,6 +48,7 @@ class FileRecord:
     language: str
     sha256: str
     lines: int
+    doc: str | None = None    # the module docstring's first paragraph (for `explain`)
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,7 @@ class FunctionDef:
     end_line: int        # 1-based, inclusive
     source: str
     is_async: bool = False
+    doc: str | None = None    # the docstring's first paragraph (for `explain`)
 
 
 @dataclass(frozen=True)
@@ -187,6 +189,86 @@ def endpoint_id(method: str, path: str, handler_id: str) -> str:
     return f"{method} {path} -> {handler_id}"
 
 
+# -- facts for `gittrace explain` ---------------------------------------------
+
+@dataclass(frozen=True)
+class ImportFact:
+    """One imported module. kind: project (a file of the project) | stdlib |
+    external (a third-party package); `package` is its top-level name."""
+
+    file: str
+    line: int
+    module: str
+    kind: str
+    package: str
+
+
+@dataclass(frozen=True)
+class EntryPointDef:
+    """Where the program starts, other than an HTTP route.
+
+    kind:
+      main         `if __name__ == "__main__":` (function_id is the file's <module>)
+      cli          a command-line command (click / Typer command, argparse parser)
+      app          a web application object created at import time
+      app_factory  a function that creates a web application object
+    """
+
+    kind: str
+    function_id: str
+    file: str
+    line: int
+    detail: str
+
+
+# Side-effect kinds, as explained to readers of `explain`.
+EFFECT_KINDS = {
+    "db_read": "reads the database",
+    "db_write": "writes the database",
+    "db": "uses the database",
+    "network": "calls another service over the network",
+    "file_read": "reads files",
+    "file_write": "writes or deletes files",
+    "subprocess": "runs other programs",
+}
+
+
+@dataclass(frozen=True)
+class EffectFact:
+    """A call with a side effect outside the program (EFFECT_KINDS)."""
+
+    function_id: str
+    file: str
+    line: int
+    kind: str
+    callee: str          # the dotted name called, e.g. `cursor.execute`
+    detail: str = ""     # e.g. `SQL SELECT`, `mode "w"`
+
+
+@dataclass(frozen=True)
+class ServiceFact:
+    """A data store or outside service the project uses.
+
+    kind: database | cache | search | http | email | queue | cloud | ai |
+          payments | files | programs
+    """
+
+    kind: str
+    name: str            # e.g. "SQLite", "outbound HTTP (requests)"
+    explanation: str     # one plain sentence for someone new to the term
+    evidence: tuple[str, ...]   # `app/db.py:1 imports sqlite3`, ...
+
+
+@dataclass
+class ProjectFacts:
+    """What a plug-in's `project_facts` returns."""
+
+    imports: list[ImportFact] = field(default_factory=list)
+    entry_points: list[EntryPointDef] = field(default_factory=list)
+    effects: list[EffectFact] = field(default_factory=list)
+    services: list[ServiceFact] = field(default_factory=list)
+
+
 @dataclass
 class ParsedProject:
     """What a plug-in's parse step returns. Plug-ins subclass it to carry
@@ -228,3 +310,8 @@ class LanguagePlugin(ABC):
         from gittrace.rules import rules_for
 
         return rules_for(self.name)
+
+    def project_facts(self, parsed: ParsedProject, calls: Sequence[CallSite]) -> ProjectFacts:
+        """Imports, entry points, side effects and services, for `explain`.
+        A plug-in that does not know them returns nothing (not a guess)."""
+        return ProjectFacts()
