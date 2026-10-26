@@ -179,7 +179,14 @@ class TestSession:
         c = _console(200)
         Session().run(parse("/help"), c)
         for spec in session.SPECS.values():
-            assert spec.usage in _text(c)                   # "[path]" is not eaten as markup
+            assert spec.command in _text(c)                 # "[path]" is not eaten as markup
+            assert spec.options in _text(c)
+            assert f"{spec.command} {spec.options}".strip() == spec.usage
+
+    def test_command_and_options(self):
+        scan = session.SPECS["/scan"]
+        assert scan.command == "/scan [path]" and scan.options.startswith("[--offline] [--no-llm]")
+        assert session.SPECS["/model"].command == "/model [name | default]" and not session.SPECS["/model"].options
 
 
 # -- the app --------------------------------------------------------------------
@@ -227,7 +234,8 @@ class TestApp:
                 info = str(app.query_one("#info", Static).render())
                 assert "GitTrace" in info and f"v{__version__}" in info
                 assert str(ROOT) in info
-                assert "ollama/llama3.1:8b scan" in info and "ollama/qwen2.5-coder:7b explain" in info
+                assert "model     scan     ollama/llama3.1:8b\n" in info          # one line each
+                assert "\n          explain  ollama/qwen2.5-coder:7b\n" in info
                 assert "● up  local" in info
                 assert app.query_one("#header").outer_size.height <= 14 + 2
                 assert app.query_one(Logo).outer_size.height <= 14
@@ -253,6 +261,40 @@ class TestApp:
                 assert "error: unknown command /nope" in out
                 assert "ollama/foo:1b" in str(app.query_one("#info", Static).render())
         _run(go())
+
+    @pytest.mark.parametrize("columns, side_by_side", [(80, False), (100, True), (200, True)])
+    def test_help_layout(self, columns, side_by_side):
+        """Every description whole (no "…"), right beside its command (2 spaces
+        after the command column) or, when narrow, on the next line, indented."""
+        async def go():
+            app = GitTraceApp(animate=False, falkordb=UP)
+            async with app.run_test(size=(columns, 60)) as pilot:
+                output = app.query_one(RichLog)
+                output.clear()
+                await _submit(pilot, app, "/help")
+                lines = [strip.text.rstrip() for strip in output.lines]
+                assert output.virtual_size.width <= output.scrollable_content_region.width  # no sideways scroll
+                return lines
+
+        lines = _run(go())
+        block = " ".join(" ".join(lines).split())
+        assert "…" not in block
+        specs = list(session.SPECS.values())
+        width = max(len(s.command) for s in specs)
+        for spec in specs:
+            assert " ".join(f"{spec.help} {'options: ' + spec.options if spec.options else ''}".split()) in block
+            row = next(i for i, line in enumerate(lines) if line.startswith(spec.command))
+            if side_by_side:
+                assert lines[row] == f"{spec.command:<{width}}  {lines[row][width + 2:]}"
+                assert spec.help.startswith(lines[row][width + 2:].split()[0])
+            else:
+                assert lines[row] == spec.command
+                assert lines[row + 1].startswith("    " + spec.help.split()[0])
+        first = lines.index(specs[0].command) if not side_by_side else 1
+        hint = next(i for i, line in enumerate(lines) if line.startswith("Up and down arrows"))
+        assert first == 1 and "" not in lines[first:hint]               # no blank lines between entries
+        if columns >= 200:                                               # one line each, plus the options
+            assert hint - first == len(specs) + sum(1 for s in specs if s.options)
 
     def test_quit(self, monkeypatch):
         async def go():

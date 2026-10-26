@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Callable
 
 from rich.console import Console
+from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 
@@ -46,6 +47,16 @@ class Spec:
     min_args: int = 0
     max_args: int = 0
     flags: frozenset[str] = frozenset()
+
+    @property
+    def command(self) -> str:
+        """The usage without its options: "/scan [path]"."""
+        return self.usage.split(" [--", 1)[0]
+
+    @property
+    def options(self) -> str:
+        """The options part of the usage ("[--offline] [--no-llm] ..."), or ""."""
+        return self.usage[len(self.command):].strip()
 
 
 SPECS: dict[str, Spec] = {
@@ -71,6 +82,7 @@ SPECS: dict[str, Spec] = {
 }
 ALIASES = {"/exit": "/quit"}
 NAMES = tuple(SPECS)
+HELP_MIN_DESCRIPTION = 50   # narrower than this, /help puts each description under its command
 
 
 @dataclass(frozen=True)
@@ -163,12 +175,26 @@ class Session:
     # -- commands -----------------------------------------------------------
 
     def help(self, cmd: Command, console: Console, status: Status) -> None:
-        table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
-        table.add_column(style=f"bold {render.LAVENDER}", no_wrap=True)
-        table.add_column()
+        # The command column holds the usage without its options (the options go
+        # under the description), so it stays as narrow as "/blast-radius
+        # <function-id>"; the description column gets the rest of the width.
+        command_width = max(len(spec.command) for spec in SPECS.values())
+        side_by_side = console.width - command_width - 2 >= HELP_MIN_DESCRIPTION
+        table = Table.grid(padding=(0, 2))
+        table.add_column(no_wrap=True)
+        table.add_column(overflow="fold")
         for spec in SPECS.values():
-            table.add_row(Text(spec.usage), Text(spec.help))      # Text: "[path]" is not markup
-        console.print(table)
+            command = Text(spec.command, style=f"bold {render.LAVENDER}")   # Text: "[path]" is not markup
+            description = Text(spec.help)
+            if spec.options:
+                description.append(f"\noptions: {spec.options}", style=render.DIM)
+            if side_by_side:
+                table.add_row(command, description)
+            else:                                         # narrow: the description under its command
+                console.print(command)
+                console.print(Padding(description, (0, 0, 0, 4)))
+        if side_by_side:
+            console.print(table)
         console.print(Text("Up and down arrows recall earlier commands; the right arrow accepts a suggestion. "
                            f"Current project: {self.project}", style=render.DIM))
 

@@ -234,11 +234,11 @@ class GitTraceApp(App):
         text.append("model     ", render.DIM)
         if s.model:
             text.append(f"{s.model}\n")
-        else:
-            text.append(f"{s.scan_model()}", "")
-            text.append(" scan · ", render.DIM)
-            text.append(f"{s.explain_model()}", "")
-            text.append(" explain\n", render.DIM)
+        else:                                   # each command's own default, one per line
+            text.append("scan     ", render.DIM)
+            text.append(f"{s.scan_model()}\n")
+            text.append(" " * 10 + "explain  ", render.DIM)
+            text.append(f"{s.explain_model()}\n")
         text.append("FalkorDB  ", render.DIM)
         if self.falkordb is None:
             text.append("checking…", render.DIM)
