@@ -45,7 +45,8 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 
 # Calls whose arguments the route detector needs. Other calls keep only the
 # callee name, so large literal arguments are not copied for nothing.
-_KEEP_ARGS = frozenset({"include_router", "register_blueprint", "mount"})
+_KEEP_ARGS = frozenset({"include_router", "register_blueprint", "mount",
+                        "add_resource", "add_namespace", "init_app"})       # routes.py reads these
 _MAIN_GUARD = re.compile(r"""^\(?\s*(?:__name__\s*==\s*(['"])__main__\1|(['"])__main__\2\s*==\s*__name__)\s*\)?$""")
 _DEPENDENCY_CALLS = frozenset({"Depends", "Security"})
 _TEXT_LIMIT = 200
@@ -125,6 +126,7 @@ class PyClass:
     scope: Scope
     outer: Scope
     bases: tuple[Value, ...]
+    decorators: tuple[Value, ...] = ()
 
 
 @dataclass(eq=False)
@@ -340,7 +342,7 @@ class _Builder:
         if definition.type == "function_definition":
             self._function(definition, scope, node, tuple(decorators))
         elif definition.type == "class_definition":
-            self._class(definition, scope, node)
+            self._class(definition, scope, node, tuple(decorators))
 
     def _function(self, node: Node, outer: Scope, span: Node, decorators: tuple[Value, ...]) -> None:
         name = _text(node.child_by_field_name("name"))
@@ -403,7 +405,7 @@ class _Builder:
         if body is not None:
             self._walk(body, scope)
 
-    def _class(self, node: Node, outer: Scope, span: Node) -> None:
+    def _class(self, node: Node, outer: Scope, span: Node, decorators: tuple[Value, ...] = ()) -> None:
         name = _text(node.child_by_field_name("name"))
         qualname = self._qualify(outer, name)
         outer.classes[name] = qualname
@@ -420,7 +422,7 @@ class _Builder:
 
         scope = Scope("class", qualname, outer)
         self.scopes[qualname] = scope
-        self.classes[qualname] = PyClass(qualname, scope, outer, tuple(bases))
+        self.classes[qualname] = PyClass(qualname, scope, outer, tuple(bases), decorators)
         body = node.child_by_field_name("body")
         if body is not None:
             self._walk(body, scope)

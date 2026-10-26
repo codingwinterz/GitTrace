@@ -264,9 +264,6 @@ findings and code in plain language using a local LLM.
   smoke-tests on Linux and Windows.
 
 ## Backlog (not scheduled; do not start without approval)
-- Routes from Flask-RESTful / Flask-RESTX `Resource` classes
-  (`@api.route(...)` / `@namespace.route(...)` on a class, `get`/`post`
-  methods as handlers). Most of CTFd's API is invisible without it.
 - Auth checks inside handler bodies (JWT verified in the handler, an
   `if not current_user: abort(401)` guard) instead of a dependency or a
   decorator. Today such routes count as unauthenticated.

@@ -7,7 +7,7 @@
 ![FalkorDB](https://img.shields.io/badge/graph%20database-FalkorDB-orange)
 ![license MIT](https://img.shields.io/badge/license-MIT-green)
 
-- **Scope, honestly:** Python only; routes from FastAPI and Flask; five kinds of finding (SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization, hardcoded secrets).
+- **Scope, honestly:** Python only; routes from FastAPI, Flask and Flask-RESTful/RESTX; five kinds of finding (SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization, hardcoded secrets).
 - **Rules detect, the model only comments.** Every finding comes from a deterministic rule. A local model (via Ollama) gives an opinion on each one; it cannot add or remove findings or change the CI gate.
 - **Within those five categories it is comparable to Bandit, with added reachability and ownership context** (measured below, on small samples).
 
@@ -346,7 +346,7 @@ Edges: `(File)-[:DECLARES]->(Function|Endpoint)`, `(Endpoint)-[:HANDLED_BY]->(Fu
 
 - **Files:** every `.py` file except `.git`, virtualenvs (`venv`, `.venv`, or any directory with a `pyvenv.cfg`), `node_modules`, `__pycache__`, `site-packages`, `build`, `dist`, tool caches, and whatever the project's `.gitignore` files exclude. A file with a syntax error is logged, counted and skipped.
 - **Calls, best effort:** same-file and nested functions, `import x [as z]`, `from x import y [as z]`, relative imports, package re-exports, star imports, `self.m()` / `cls.m()` / `super().m()` through project base classes, `Cls().m()`, and variables assigned once from a project class (`repo = Repo(); repo.get()`). Never by bare name. Parameters, attributes (`self.db.execute`) and return values are not type-inferred.
-- **Routes:** FastAPI (`@app.get/post/...`, `api_route`, `websocket`, `APIRouter`, `include_router` prefixes, nested routers, `app.mount("/api/v1", api)`) and Flask (`@app.route(methods=...)`, `@bp.get/...`, `Blueprint(url_prefix=...)`, `register_blueprint(url_prefix=...)`). `auth_required` needs obvious evidence: an auth-named `Depends(...)` (also through an alias like `CurrentUser = Annotated[User, Depends(get_current_user)]`), any `Security(...)`, or a decorator such as `@login_required`.
+- **Routes:** FastAPI (`@app.get/post/...`, `api_route`, `websocket`, `APIRouter`, `include_router` prefixes, nested routers, `app.mount("/api/v1", api)`) and Flask (`@app.route(methods=...)`, `@bp.get/...`, `Blueprint(url_prefix=...)`, `register_blueprint(url_prefix=...)`), plus Flask-RESTful / Flask-RESTX resources (`api.add_resource(Resource, "/url")`, `@api.route(...)` / `@ns.route(...)` on a class; each `get`/`post`/... method is a handler, inherited ones too; `Api(app, prefix=...)`, `init_app`, `Namespace(path=...)`, `add_namespace(path=...)`). `auth_required` needs obvious evidence: an auth-named `Depends(...)` (also through an alias like `CurrentUser = Annotated[User, Depends(get_current_user)]`), any `Security(...)`, or a decorator such as `@login_required` (on a resource also in its `method_decorators` / `decorators`).
 
 ## Graph tools and the MCP server (Track 01)
 

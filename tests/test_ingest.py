@@ -464,6 +464,111 @@ class TestRoutes:
         }
         assert {e.path for e in endpoints if e.auth_required} == {"/b", "/c", "/d"}
 
+    def test_flask_restful_resources(self):
+        _, _, endpoints = _analyze_sources({
+            "shop/__init__.py": "",
+            "shop/base.py": """
+                from flask_restful import Resource
+                class Guarded(Resource):
+                    method_decorators = [token_required]
+                class Lookup(Resource):
+                    def get(self, sku): pass
+            """,
+            "shop/api.py": """
+                from flask import Blueprint, Flask
+                from flask_restful import Api, Resource
+                from shop.base import Guarded, Lookup
+                app = Flask(__name__)
+                bp = Blueprint("v2", __name__)
+                api = Api(app, prefix="/api")
+                v2 = Api(bp)
+                late = Api(prefix="/late")
+                loose = Api()
+                class Shelf(Resource):
+                    def get(self): pass
+                    def post(self): pass
+                    def helper(self): pass
+                class Till(Guarded):
+                    def put(self, n): pass
+                class Stock(Lookup):
+                    pass
+                class Cache:
+                    def add_resource(self, *a): pass
+                cache = Cache()
+                api.add_resource(Shelf, "/shelves", "/racks")
+                api.add_resource(Till, "/till/<int:n>")
+                v2.add_resource(Stock, "/stock/<sku>")
+                late.add_resource(Shelf, "/s")
+                loose.add_resource(Shelf, "/nowhere")
+                cache.add_resource(Shelf, "/not-a-route")
+                app.register_blueprint(bp, url_prefix="/v2")
+                late.init_app(app)
+            """,
+        })
+        got = {e.id: (e.auth_required, e.prefix_resolved) for e in endpoints}
+        assert got == {
+            "GET /api/shelves -> shop/api.py::Shelf.get": (False, True),
+            "POST /api/shelves -> shop/api.py::Shelf.post": (False, True),
+            "GET /api/racks -> shop/api.py::Shelf.get": (False, True),
+            "POST /api/racks -> shop/api.py::Shelf.post": (False, True),
+            # method_decorators on a project base class
+            "PUT /api/till/<int:n> -> shop/api.py::Till.put": (True, True),
+            # an inherited verb method; Api(blueprint) goes under the blueprint's prefix
+            "GET /v2/stock/<sku> -> shop/base.py::Lookup.get": (False, True),
+            # Api() set up later with init_app
+            "GET /late/s -> shop/api.py::Shelf.get": (False, True),
+            "POST /late/s -> shop/api.py::Shelf.post": (False, True),
+            # an Api never given an app: still endpoints, prefix flagged
+            "GET /nowhere -> shop/api.py::Shelf.get": (False, False),
+            "POST /nowhere -> shop/api.py::Shelf.post": (False, False),
+        }
+        till = next(e for e in endpoints if e.method == "PUT")
+        assert till.auth_evidence == ("@token_required",)
+
+    def test_flask_restx_namespaces(self):
+        _, _, endpoints = _analyze_sources({"svc.py": """
+            from flask import Flask
+            from flask_restx import Api, Namespace, Resource
+            app = Flask(__name__)
+            api = Api(app)
+            pets = Namespace("pets")
+            owners = Namespace("owners", path="/people")
+            vets = Namespace("vets")
+            api.add_namespace(pets)
+            api.add_namespace(owners)
+            api.add_namespace(vets, path="/clinic")
+            @pets.route("/", "/all")
+            class PetList(Resource):
+                def get(self): pass
+            @owners.route("/<int:oid>")
+            class Owner(Resource):
+                decorators = [admin_only]
+                def get(self, oid): pass
+                @login_required
+                def delete(self, oid): pass
+            @vets.route("/<name>")
+            class Vet(Resource):
+                def get(self, name): pass
+            @api.route("/ping")
+            class Ping(Resource):
+                def get(self): pass
+            @pets.doc("not a route")
+            class NotRouted(Resource):
+                def get(self): pass
+            @api.route("/fn")
+            def plain_function(): pass
+        """})
+        got = {e.id: e.auth_evidence for e in endpoints}
+        assert got == {
+            "GET /pets/ -> svc.py::PetList.get": (),               # as Flask-RESTX serves it
+            "GET /pets/all -> svc.py::PetList.get": (),
+            "GET /people/<int:oid> -> svc.py::Owner.get": ("@admin_only",),
+            "DELETE /people/<int:oid> -> svc.py::Owner.delete": ("@admin_only", "@login_required"),
+            "GET /clinic/<name> -> svc.py::Vet.get": (),
+            "GET /ping -> svc.py::Ping.get": (),
+        }
+        assert all(e.prefix_resolved and e.framework == "flask" for e in endpoints)
+
 
 # ---------------------------------------------------------------------------
 # 5. Graph names and the entry point
