@@ -3,7 +3,7 @@
 All notable changes to GitTrace. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the version numbers follow [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] — unreleased (`v2` branch)
+## [2.0.0] — 2026-10-27
 
 A rebuild as a command-line tool that scans real Python projects. The measured results are
 in the README ("Results at a glance") and `eval/`.
@@ -34,8 +34,16 @@ in the README ("Results at a glance") and `eval/`.
   `blast-radius`.
 - **Ingestion (Phase 3):** tree-sitter parsing into a FalkorDB graph with stable function ids,
   call resolution, and FastAPI / Flask routes with auth evidence.
+- **Flask-RESTful / Flask-RESTX routes:** `api.add_resource(Resource, "/url")` and
+  `@api.route` / `@ns.route` on a class; each verb method is a handler; `Api`, `init_app`,
+  `Namespace` and `add_namespace` prefixes; `method_decorators` count as auth evidence.
+- **Auth checks in the handler body:** a token-verifying call (`jwt.decode`,
+  `verify_jwt_in_request`, `verify_token`-like names) or a 401/403 guard on the caller's
+  identity among the handler's first five statements marks the route as authenticated.
 - **Evaluation:** ground truth written before running anything; untouched, after-tuning
-  and held-out runs against Bandit, for triage, and for explain.
+  and held-out runs against Bandit, for triage, and for explain; an `after-reachability` run
+  for the two route changes above (detection unchanged; reachability: 7 of 20 truly reachable
+  true positives marked, 0 wrongly; without auth 6 marked, all correct, was 7 with 1 wrong).
 
 ### Changed
 
@@ -49,6 +57,8 @@ in the README ("Results at a glance") and `eval/`.
   `GITTRACE_SHOW_EMAIL=1` for the MCP tools).
 - **Display:** secret findings no longer show the model's "attacker input" line, and a parse
   failure is reported once.
+- **Interactive mode:** `/help` is a compact two-column list (descriptions under their
+  command below 80 columns), and the header shows the scan and explain models on separate lines.
 - **`explain`'s time estimate** uses the AC-power measurement: 2.1 s per model call.
 - **Restructured** into `gittrace/core`, `graph`, `languages/python`, `rules`, `llm` and `cli` (Phase 2).
 
