@@ -123,7 +123,7 @@ Speed, on a laptop RTX 5050 (8 GB) on AC power: about 2.1 s per summary call for
 gittrace scan path/to/project
 ```
 
-1. **Reads the real code** with tree-sitter: every function, method and nested function, the calls between them, and the FastAPI / Flask routes with their auth dependencies.
+1. **Reads the real code** with tree-sitter: every function, method and nested function, the calls between them, and the FastAPI, Flask and Flask-RESTful/RESTX routes with their auth dependencies.
 2. **Builds a graph** of it in FalkorDB, one graph per project.
 3. **Runs deterministic rules** for SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization and hardcoded secrets — one finding per dangerous call site.
 4. **Asks the graph who can reach each finding**: the shortest path from every endpoint (unauthenticated first), the upstream callers (blast radius), and `git blame` for the owner.
