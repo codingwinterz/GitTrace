@@ -25,6 +25,10 @@ GITTRACE_REQUIRE_FALKORDB=1 python -m pytest tests -q   # fail instead of skippi
 - Offline suites mock the database and the model; the integration suites
   (`tests/test_*_integration.py`) run against a **local** FalkorDB only and drop the graphs they
   create; `tests/test_llm_live.py` makes one real call to Ollama.
+- The offline suites are every `tests/test_*.py` except those three; run at least these before
+  pushing:
+  `python -m pytest tests -q --ignore=tests/test_ingest_integration.py --ignore=tests/test_scan_integration.py --ignore=tests/test_llm_live.py`
+  (`tests/test_connection.py` has one round-trip test that skips without a local FalkorDB).
 - CI runs the offline suites on Python 3.11–3.13, the integration suites against a FalkorDB
   service, and builds, installs and smoke-tests the package on Linux and Windows.
 - Every Cypher query must be tested against a real FalkorDB, not only with mocked results.
@@ -76,3 +80,23 @@ See `eval/README.md` for the scripts.
 - Describe what changed and why; mention any measured number that moved.
 - Keep generated files (`eval/results/...`) in the same commit as the code that produced them.
 - Never commit `.env`. CI must be green.
+
+## Maintainer notes
+
+- **Branches:** `main` (the default) holds the CLI (v2); `v2` is kept as the development
+  branch; the 1.0 web app is the tag `v1.0.0`.
+- **Pushing:** check `git status` for only the files you meant to change, run at least the
+  offline suites, push, then confirm it landed with `git log --oneline -1 origin/<branch>`.
+- **No secrets before every push.** `.env` is gitignored and must stay that way: it can hold
+  the FalkorDB password and a hosted model's API key. Check the tracked tree, not just the
+  working directory:
+
+  ```bash
+  git ls-files | grep -i '\.env$'                                 # must print nothing
+  git grep -nE 'AIza[0-9A-Za-z_-]{10,}|AQ\.[A-Za-z0-9_-]{10,}'   # must print nothing
+  ```
+
+  If a key ever does get committed, rotate it at its provider first (a force-push does not
+  un-leak it), then rewrite history.
+- Do not commit `*.log`, `debug/`, `.venv/`, `__pycache__/` or `.pytest_cache/`; all are
+  already in `.gitignore`.
