@@ -1,5 +1,7 @@
 # GitTrace
 
+Demo video: TODO
+
 **Point it at a Python web project. It finds the dangerous code an HTTP route can actually reach, shows the path from the route to the bug, who calls it, who last changed it, and asks a local model whether it is real.**
 
 [![tests](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml/badge.svg)](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml)
@@ -77,6 +79,10 @@ All numbers come from `eval/` (scripts, labels and per-finding results are commi
 | Real projects after tuning (CTFd, mealie; open-webui held out) | 3 + 15 + 29 findings | 4 real issues among 47 findings (CTFd 0, mealie 2, open-webui 2) | not reviewed |
 
 So: **comparable to Bandit in these categories, with added reachability and ownership context**: which route reaches each finding, whether that route needs authentication, the path, how many callers and endpoints depend on it, and who last changed the line. On real projects most findings are real patterns that are not exploitable (SQL built from trusted table names); that context, and the model's triage, are how GitTrace helps you sort them. Details: [Evaluation](#evaluation).
+
+**Reachability (is the finding reached from a route?).** Of the 20 true positives on the vulnerable apps that a route truly reaches (per the ground truth), GitTrace marks **7, and 0 wrongly**. The 13 it misses are all in vulnpy: **11 are reached through `getattr` dispatch** and **2 through Falcon routes**, neither of which GitTrace follows. The same in the untouched, after-tuning and after-reachability runs; counting and per-run table in [`eval/README.md`](eval/README.md#reachability).
+
+**Known weakness: many false positives on real projects.** On CTFd and mealie most findings are dangerous-looking patterns that are not vulnerabilities: before tuning, 10 of 10 (CTFd) and 63 of 65 (mealie) were false positives; after tuning, 3 of 3 and 13 of 15 (open-webui, held out: 27 of 29).
 
 **Triage (the model's opinion on each finding).** "Real issues marked harmless" is the number that matters: a real problem the model would push into the "likely harmless" section (it is still reported there).
 

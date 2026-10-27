@@ -64,6 +64,27 @@ Real-world reviews (`eval/<project>/review.json`) are keyed by finding id. A
 finding that only appeared after tuning was reviewed in the after-tuning run
 and is marked as such (CTFd `config.py:308`).
 
+## Reachability
+
+Counted over GitTrace's true positives on the four vulnerable targets, from the
+committed files: a true positive is *truly reachable* when its ground-truth entry
+(`eval/<target>/ground_truth.json`) lists at least one route, and *marked* when a
+finding matched to it (`results/<label>/<target>.json`) has `reachable: true`.
+
+| | `untouched` | `after-tuning` | `after-reachability` |
+|---|---|---|---|
+| True positives | 23 | 29 | 29 |
+| Truly reachable | 20 | 20 | 20 |
+| Marked reachable (correctly / wrongly) | 7 (7 / 0) | 7 (7 / 0) | 7 (7 / 0) |
+| Marked reachable without auth (correctly / wrongly) | 7 (6 / 1) | 7 (6 / 1) | 6 (6 / 0) |
+
+The 13 truly reachable true positives not marked are all in vulnpy, the same in
+every run: 11 are reached through `getattr` dispatch (`import_module` plus
+`getattr(module, "do_" + name)`, with routes added in loops; VP-2, VP-6 to VP-15),
+and 2 through Falcon routes, which GitTrace does not detect (VP-4, VP-5). The one
+wrongly marked without auth before `after-reachability` is VF-1, whose JWT is
+checked inside the handler.
+
 ## Model triage (Phase 5)
 
 `run_triage.py` measures the model's triage of GitTrace's findings on the labels
