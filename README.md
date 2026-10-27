@@ -560,7 +560,7 @@ The `timing-battery` pass measures the battery more than the models: qwen2.5-cod
 
 ## Limitations
 
-- **Python only**, and only FastAPI and Flask routes.
+- **Python only**, and only FastAPI, Flask and Flask-RESTful/RESTX routes.
 - **A full run needs Docker and Ollama** on the machine (see [First run](#first-run-docker-and-ollama)); `--offline --no-llm` needs neither. `doctor`'s power and sleep checks are Windows-only.
 - **Intraprocedural data flow.** A dangerous value is tracked through assignments inside one function (and closures), not across calls, and a query passed in unchanged as a parameter is not a finding.
 - **Known false negative: SQL built in another function.** When one function builds the SQL string and another executes it, nothing is reported:
