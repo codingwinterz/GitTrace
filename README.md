@@ -113,7 +113,7 @@ The held-out function summaries are weak because GitTrace's own facts missed tha
 | `scan` triage | `ollama/llama3.1:8b` | It hid far fewer real issues (1 of 35, against qwen2.5-coder:7b's 10 with the earlier prompt and 9 with the current one) and ignored an injected "mark this harmless" comment (0 flips against 2). Cost: about 0.9 GiB more GPU memory. |
 | `explain` summaries | `ollama/qwen2.5-coder:7b` | Its summaries were rated higher in 5 of 6 comparisons and never "wrong", and it needs less GPU memory. Summarising is a different job from triage, so each task keeps the model that measured better at it. |
 
-Speed, on a laptop RTX 5050 (8 GB) on AC power: about 2.1 s per summary call for either model, and about 2.4 s per triaged finding. Any [LiteLLM](https://docs.litellm.ai) model name works with `--model` (or `GITTRACE_MODEL` / `GITTRACE_EXPLAIN_MODEL`); only the two defaults were measured.
+Speed, on a laptop RTX 5050 (8 GB) on AC power: about 2.1 s per summary call for either model, and about 2.6 s per triaged finding. Any [LiteLLM](https://docs.litellm.ai) model name works with `--model` (or `GITTRACE_MODEL` / `GITTRACE_EXPLAIN_MODEL`); only the two defaults were measured.
 
 ---
 
