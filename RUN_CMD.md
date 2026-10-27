@@ -3,8 +3,8 @@
 A step-by-step guide for running GitTrace from `cmd.exe` (on its own or as a tab in
 Windows Terminal). Every command below is written for cmd. In PowerShell most of them
 work unchanged; the differences are noted where they matter. For what the rules and the
-model do, see [README.md](README.md); for the short version for any shell, see
-[RUN.md](RUN.md).
+model do, see [README.md](README.md); for the short version for any shell, see the
+README's [Install](README.md#install) and [Quick start](README.md#quick-start).
 
 ## 1. Open a Command Prompt
 

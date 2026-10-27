@@ -25,6 +25,10 @@ GITTRACE_REQUIRE_FALKORDB=1 python -m pytest tests -q   # fail instead of skippi
 - Offline suites mock the database and the model; the integration suites
   (`tests/test_*_integration.py`) run against a **local** FalkorDB only and drop the graphs they
   create; `tests/test_llm_live.py` makes one real call to Ollama.
+- The offline suites are every `tests/test_*.py` except those three; run at least these before
+  pushing:
+  `python -m pytest tests -q --ignore=tests/test_ingest_integration.py --ignore=tests/test_scan_integration.py --ignore=tests/test_llm_live.py`
+  (`tests/test_connection.py` has one round-trip test that skips without a local FalkorDB).
 - CI runs the offline suites on Python 3.11–3.13, the integration suites against a FalkorDB
   service, and builds, installs and smoke-tests the package on Linux and Windows.
 - Every Cypher query must be tested against a real FalkorDB, not only with mocked results.
