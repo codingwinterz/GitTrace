@@ -27,3 +27,16 @@ eval/.bandit-venv/
 # Package build output (python -m build)
 /dist/
 /build/
+
+# Caches of linters and type checkers
+.ruff_cache/
+.mypy_cache/
+
+# GitTrace's own cache when this repo is scanned (it also writes a `*` .gitignore inside)
+.gittrace/
+
+# Never part of this repo: the demo video project (node_modules, renders, captures)
+node_modules/
+/out/
+/captures/
+*.mp4
