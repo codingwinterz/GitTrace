@@ -54,7 +54,7 @@ in the README ("Results at a glance") and `eval/`.
 
 ### Removed
 
-- The FastAPI web routes and the `frontend/` app (still on `main`).
+- The FastAPI web routes and the `frontend/` app (still in the `v1.0.0` tag).
 
 ### Security
 
@@ -65,7 +65,7 @@ in the README ("Results at a glance") and `eval/`.
 
 - Blast radius counted callees instead of callers; function lookups used substrings (Phase 1).
 
-## [1.0] — 2026-10-19 (`main` branch)
+## [1.0] — 2026-10-19 (tag `v1.0.0`)
 
 The Graph Hacks submission: a CVE blast-radius agent over FalkorDB with a web UI, an HTTP
-API, a synthetic demo graph and an MCP server. See the `main` branch and its demo video.
+API, a synthetic demo graph and an MCP server. See the `v1.0.0` tag and its demo video.

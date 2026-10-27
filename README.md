@@ -13,14 +13,14 @@ Demo video: TODO
 - **Rules detect, the model only comments.** Every finding comes from a deterministic rule. A local model (via Ollama) gives an opinion on each one; it cannot add or remove findings or change the CI gate.
 - **Within those five categories it is comparable to Bandit, with added reachability and ownership context** (measured below, on small samples).
 
-Built for Graph Hacks, Track 01 (team SUDO SAIYAN, Avaneesh S). This is the `v2` command-line rebuild; the earlier web demo is on `main`.
+Built for Graph Hacks, Track 01 (team SUDO SAIYAN, Avaneesh S). This is the v2 command-line rebuild; the earlier web demo is tagged [`v1.0.0`](https://github.com/codingwinterz/GitTrace/tree/v1.0.0).
 
 ---
 
 ## Install
 
 ```bash
-pipx install git+https://github.com/codingwinterz/GitTrace@v2     # or, from a clone: pipx install .
+pipx install git+https://github.com/codingwinterz/GitTrace@v2.0.0     # or, from a clone: pipx install .
 gittrace --version
 ```
 
@@ -29,8 +29,8 @@ Python 3.11 or newer. [pipx](https://pipx.pypa.io) puts `gittrace` (and `gittrac
 **Use Python 3.12, 3.13 or 3.14 for now.** Python 3.15 is new, and several dependencies (pydantic-core, tiktoken, tree-sitter, ...) have not published prebuilt wheels for it yet, so installing on 3.15 tries to compile them and fails without a C and Rust toolchain. If your default Python is 3.15, choose the version explicitly:
 
 ```bash
-pipx install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2
-uv tool install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2    # the same with uv
+pipx install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0
+uv tool install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0    # the same with uv
 ```
 
 ### First run: Docker and Ollama

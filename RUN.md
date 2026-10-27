@@ -1,8 +1,8 @@
 # Run GitTrace locally
 
 One-page, clone-to-run companion to README.md. For the rules, severity model, graph
-model, Cypher queries, and the MCP server, see README.md. Demo video (of the `main` branch,
-which still has the web UI): <https://youtu.be/xwo16Zesdus>.
+model, Cypher queries, and the MCP server, see README.md. Demo video (of the 1.0 web
+UI, tag `v1.0.0`): <https://youtu.be/xwo16Zesdus>.
 
 ## Fastest start
 
@@ -92,7 +92,8 @@ Stdio transport. Register in your MCP host as:
 ## Pushing changes to GitHub
 
 The repo is `https://github.com/codingwinterz/GitTrace` (public). Its default branch
-is **`main`**; the CLI rebuild happens on **`v2`**.
+**`main`** holds the CLI (v2); **`v2`** is kept as the development branch, and the 1.0 web
+app is the tag **`v1.0.0`**.
 
 ```bash
 git status                   # confirm only the files you meant to change

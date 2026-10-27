@@ -13,8 +13,8 @@ positive or a missed finding is a normal bug report.
 
 ## Supported versions
 
-Only the latest release on the `v2` branch gets fixes. The original hackathon web app on
-`main` is not maintained.
+Only the latest 2.x release gets fixes. The original hackathon web app (tag `v1.0.0`) is
+not maintained.
 
 ## What GitTrace trusts, and what it does not
 
