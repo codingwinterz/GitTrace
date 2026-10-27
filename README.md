@@ -581,7 +581,7 @@ The `timing-battery` pass measures the battery more than the models: qwen2.5-cod
 
 ## AI assistance disclosure (Rule 11)
 
-This project was built with AI coding assistance. An AI coding agent (Codebuff) wrote and edited code, tests, and documentation in this repository under the author's direction; the author ran the application, verified the graph queries against the live FalkorDB instance, and validated the outputs quoted in this README. No result in this document is a model claim — each one was produced by executing the code in this repo. The `v2` command-line rebuild is being written with Claude Code under the author's direction, phase by phase.
+This project was built with AI coding assistance. An AI coding agent (Codebuff) wrote and edited code, tests, and documentation in this repository under the author's direction; the author ran the application, verified the graph queries against the live FalkorDB instance, and validated the outputs quoted in this README. No result in this document is a model claim — each one was produced by executing the code in this repo. The `v2` command-line rebuild (released as 2.0.0) was written with Claude Code under the author's direction, phase by phase.
 
 ## License
 
