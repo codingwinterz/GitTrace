@@ -42,7 +42,7 @@ gittrace --version
 ```bat
 git clone https://github.com/codingwinterz/GitTrace.git
 cd GitTrace
-git checkout v2
+git checkout v2.0.0
 py -3.14 -m venv .venv
 .venv\Scripts\activate.bat
 pip install -r requirements.txt
