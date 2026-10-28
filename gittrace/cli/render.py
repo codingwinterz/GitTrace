@@ -32,6 +32,7 @@ VERDICT_LABEL = {"likely_real": "likely real", "uncertain": "uncertain",
                  "likely_harmless": "likely harmless"}
 _CONTEXT_LINES = 3
 _MAX_ROUTES = 5
+_WIDE_FINDINGS_WIDTH = 160
 
 # A 5-row block font for the headline numbers: Rich cannot change font size.
 _DIGITS = {
@@ -178,43 +179,84 @@ def verdict_text(t: dict | None) -> Text:
     return text
 
 
-def findings_table(findings: list[dict], start: int = 1, reasons: bool = False) -> Table:
+def _finding_reach_and_auth(f: dict) -> tuple[Text, Text]:
+    reach = f["reachability"]
+    routes = reach["routes"]
+    if not reach["applies"]:
+        return Text("n/a (secret in source)", style=DIM), Text("n/a", style=DIM)
+    if not routes:
+        return Text("no endpoint", style=TEAL), Text("-", style=DIM)
+    first = routes[0]
+    reached = Text(f"{first['method']} {first['path']}", style=LAVENDER)
+    if len(routes) > 1:
+        reached.append(f" (+{len(routes) - 1})", style=DIM)
+    if reach["uncertain"]:
+        reached.append(" ?", style=AMBER)
+    auth = Text("NO AUTH", style=RED) if reach["unauthenticated"] else Text("auth", style=AMBER)
+    return reached, auth
+
+
+def findings_table(findings: list[dict], start: int = 1,
+                   compact: bool = False) -> Table:
     triaged = any(f.get("triage") for f in findings)
     table = Table(box=box.SIMPLE_HEAD, header_style="bold", expand=True)
-    table.add_column("#", justify="right", style=DIM, no_wrap=True)
-    table.add_column("Severity", no_wrap=True)
-    table.add_column("Rule", no_wrap=True)
-    table.add_column("Location", style=LAVENDER, overflow="fold")
-    table.add_column("Reached from", overflow="fold")
-    table.add_column("Auth", no_wrap=True)
+    if compact:
+        # Keep one readable cell per row; the scan renderer prints reasons as
+        # separate wrapped text directly below each finding.
+        table.add_column("Finding", overflow="fold", min_width=32, ratio=1)
+        for i, f in enumerate(findings, start):
+            table.add_row(_compact_finding_text(i, f, triaged))
+        return table
+
+    table.add_column("#", justify="right", style=DIM, no_wrap=True, min_width=1, width=3)
+    table.add_column("Severity", no_wrap=True, min_width=8, width=8)
+    table.add_column("Rule", no_wrap=True, min_width=11, width=11)
+    table.add_column("Location", style=LAVENDER, overflow="fold", min_width=12, width=16)
+    table.add_column("Reached from", overflow="fold", min_width=12, width=18)
+    table.add_column("Auth", no_wrap=True, min_width=7, width=7)
     if triaged:
-        table.add_column("Model", no_wrap=True)
-    if reasons:
-        table.add_column("Model's reason", overflow="fold", ratio=2)
+        table.add_column("Model", no_wrap=True, min_width=15, width=15)
     for i, f in enumerate(findings, start):
-        reach = f["reachability"]
-        routes = reach["routes"]
-        if not reach["applies"]:
-            reached, auth = Text("n/a (secret in source)", style=DIM), Text("n/a", style=DIM)
-        elif not routes:
-            reached, auth = Text("no endpoint", style=TEAL), Text("-", style=DIM)
-        else:
-            first = routes[0]
-            reached = Text(f"{first['method']} {first['path']}", style=LAVENDER)
-            if len(routes) > 1:
-                reached.append(f" (+{len(routes) - 1})", style=DIM)
-            if reach["uncertain"]:
-                reached.append(" ?", style=AMBER)
-            auth = Text("NO AUTH", style=RED) if reach["unauthenticated"] else Text("auth", style=AMBER)
+        reached, auth = _finding_reach_and_auth(f)
         loc = f"{f['location']['file']}:{f['location']['line']}"
         row = [str(i), severity_text(f["severity"]), f["rule_id"], loc, reached, auth]
         if triaged:
             row.append(verdict_text(f.get("triage")))
-        if reasons:
-            t = f.get("triage") or {}
-            row.append(Text(t.get("reason") or t.get("error") or "", style=DIM))
         table.add_row(*row)
     return table
+
+
+def _compact_finding_text(index: int, f: dict, triaged: bool) -> Text:
+    reached, auth = _finding_reach_and_auth(f)
+    body = Text(f"{index}. ", style="bold")
+    body.append_text(severity_text(f["severity"]))
+    body.append(f" · {f['rule_id']}\n")
+    body.append("   Location: ", style="bold")
+    body.append(f"{f['location']['file']}:{f['location']['line']}", style=LAVENDER)
+    body.append("\n   Reached from: ", style="bold")
+    body.append_text(reached)
+    body.append(" · ")
+    body.append_text(auth)
+    if triaged:
+        body.append("\n   Model: ", style="bold")
+        body.append_text(verdict_text(f.get("triage")))
+    return body
+
+
+def _render_findings_table(console: Console, findings: list[dict], start: int = 1,
+                           reasons: bool = False) -> None:
+    compact = console.width < _WIDE_FINDINGS_WIDTH or reasons
+    if compact:
+        triaged = any(f.get("triage") for f in findings)
+        for index, finding in enumerate(findings, start):
+            console.print(_compact_finding_text(index, finding, triaged))
+            if reasons:
+                triage = finding.get("triage") or {}
+                reason = Text("   Model's reason: ", style="bold")
+                reason.append(triage.get("reason") or triage.get("error") or "", style=DIM)
+                console.print(reason, overflow="fold")
+        return
+    console.print(findings_table(findings, start=start))
 
 
 def triage_parts(t: dict | None, f: dict) -> list:
@@ -296,7 +338,7 @@ def render_scan(console: Console, data: dict, functions: dict, blamed: bool) -> 
     findings = [f for f in data["findings"] if not _harmless(f)]
     harmless = [f for f in data["findings"] if _harmless(f)]
     if findings:
-        console.print(findings_table(findings))
+        _render_findings_table(console, findings)
         for i, f in enumerate(findings, 1):
             console.print(finding_detail(i, f, functions, blamed))
     if harmless:
@@ -305,14 +347,14 @@ def render_scan(console: Console, data: dict, functions: dict, blamed: bool) -> 
             f"Likely harmless according to the model: {len(harmless)} finding(s). The rules "
             "still report them at the severity shown, and --fail-on still counts them; "
             "check the model's reason.", style=LAVENDER))
-        console.print(findings_table(harmless, start=start, reasons=True))
+        _render_findings_table(console, harmless, start=start, reasons=True)
         for i, f in enumerate(harmless, start):
             console.print(finding_detail(i, f, functions, blamed))
     tests = data.get("test_findings") or []
     if tests:
         console.print(Text(f"In test code: {len(tests)} finding(s), reported at info "
                            "(--include-tests to treat them normally)", style=LAVENDER))
-        console.print(findings_table(tests))
+        _render_findings_table(console, tests)
     if data["parse_failures"]:
         console.print(Text("Not scanned (parse failures):", style=AMBER))
         for failure in data["parse_failures"]:

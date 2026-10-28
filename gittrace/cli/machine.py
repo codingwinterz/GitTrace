@@ -283,9 +283,9 @@ def run_checks(system: System | None = None) -> list[Check]:
 def render_checks(console: Console, checks: list[Check]) -> None:
     table = Table(title=Text("gittrace doctor", style=f"bold {render.LAVENDER}"), title_justify="left",
                   show_header=True, header_style="bold", box=None, padding=(0, 2, 0, 0))
-    table.add_column("Check", no_wrap=True)
-    table.add_column("Status", no_wrap=True)
-    table.add_column("Detail")
+    table.add_column("Check", no_wrap=True, min_width=5)
+    table.add_column("Status", no_wrap=True, min_width=6)
+    table.add_column("Detail", min_width=8)
     for c in checks:
         table.add_row(c.name, Text(c.status.upper(), style=STYLE[c.status]), c.detail)
     console.print(table)
