@@ -1,6 +1,12 @@
 # GitTrace
 
-Demo video: TODO
+
+
+https://github.com/user-attachments/assets/9142be63-94e0-4b06-8d31-66a2cd2488b6
+
+
+
+
 
 **Point it at a Python web project. It finds the dangerous code an HTTP route can actually reach, shows the path from the route to the bug, who calls it, who last changed it, and asks a local model whether it is real.**
 
