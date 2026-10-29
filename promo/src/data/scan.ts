@@ -1,6 +1,8 @@
-// The real scan the video replays (public/scan_output.txt, the stdout of
-// SCAN_COMMAND) and the real call path it draws (public/scan_result.json,
-// the same scan as JSON). Lines are only sliced, never edited or reordered.
+// The real scan the video replays and the real call path it draws. The same
+// scan is captured twice, as printed at two terminal widths: COLUMNS=60 for
+// the square video (public/scan_output.txt) and COLUMNS=100 for the wide one
+// (public/scan_output_100.txt); public/scan_result.json is the same scan as
+// JSON. Lines are only sliced, never edited or reordered.
 import { useEffect, useState } from "react";
 import { continueRender, delayRender, staticFile } from "remotion";
 import scanResult from "../../public/scan_result.json";
@@ -35,16 +37,18 @@ export const sliceSummary = (lines: string[]): string[] => {
   return lines.slice(0, end < 0 ? lines.length : end);
 };
 
-export const useScanOutput = (): string[] | null => {
+export const SCAN_OUTPUT = { square: "scan_output.txt", wide: "scan_output_100.txt" } as const;
+
+export const useScanOutput = (file: string): string[] | null => {
   const [lines, setLines] = useState<string[] | null>(null);
-  const [handle] = useState(() => delayRender("loading scan_output.txt"));
+  const [handle] = useState(() => delayRender(`loading ${file}`));
   useEffect(() => {
-    fetch(staticFile("scan_output.txt"))
+    fetch(staticFile(file))
       .then((r) => r.text())
       .then((text) => {
         setLines(text.replace(/\r\n/g, "\n").split("\n"));
         continueRender(handle);
       });
-  }, [handle]);
+  }, [handle, file]);
   return lines;
 };

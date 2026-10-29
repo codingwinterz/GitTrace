@@ -1,5 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { useLayout, useMargin } from "../layout";
 import { theme } from "../theme";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -17,18 +18,16 @@ export const fadeOut = (frame: number, at: number, len = 12) => interpolate(fram
 // A faint grid drifting slowly behind every scene.
 export const Background: React.FC = () => {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
   const step = 72;
   const drift = (frame * 0.35) % step;
-  const lines = Array.from({ length: Math.ceil(1080 / step) + 2 }, (_, i) => i * step - drift);
+  const xs = Array.from({ length: Math.ceil(width / step) + 2 }, (_, i) => i * step - drift);
+  const ys = Array.from({ length: Math.ceil(height / step) + 2 }, (_, i) => i * step - drift);
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bg }}>
-      <svg width={1080} height={1080} style={{ position: "absolute", inset: 0, opacity: 0.35 }}>
-        {lines.map((p) => (
-          <React.Fragment key={p}>
-            <line x1={p} y1={0} x2={p} y2={1080} stroke={theme.line} strokeWidth={1} />
-            <line x1={0} y1={p} x2={1080} y2={p} stroke={theme.line} strokeWidth={1} />
-          </React.Fragment>
-        ))}
+      <svg width={width} height={height} style={{ position: "absolute", inset: 0, opacity: 0.35 }}>
+        {xs.map((p) => <line key={`x${p}`} x1={p} y1={0} x2={p} y2={height} stroke={theme.line} strokeWidth={1} />)}
+        {ys.map((p) => <line key={`y${p}`} x1={0} y1={p} x2={width} y2={p} stroke={theme.line} strokeWidth={1} />)}
       </svg>
       <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 45%, transparent 0%, ${theme.bg} 75%)` }} />
     </AbsoluteFill>
@@ -45,9 +44,11 @@ export const Scene: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 // Captions sit in the lower-middle band.
 export const Caption: React.FC<{ text: string; at: number }> = ({ text, at }) => {
   const enter = useEnter(at);
+  const wide = useLayout() === "wide";
+  const margin = useMargin();
   return (
-    <div style={{ position: "absolute", left: theme.side, right: theme.side, top: 830, textAlign: "center",
-      fontSize: 48, fontWeight: 700, lineHeight: 1.22, ...enter }}>{text}</div>
+    <div style={{ position: "absolute", left: margin, right: margin, top: wide ? 880 : 830, textAlign: "center",
+      fontSize: wide ? 46 : 48, fontWeight: 700, lineHeight: 1.22, ...enter }}>{text}</div>
   );
 };
 
