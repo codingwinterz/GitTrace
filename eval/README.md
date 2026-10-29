@@ -76,8 +76,26 @@ finding matched to it (`results/<label>/<target>.json`) has `reachable: true`.
 |---|---|---|---|---|
 | True positives | 23 | 29 | 29 | 29 |
 | Truly reachable | 20 | 20 | 20 | 20 |
-| Marked reachable (correctly / wrongly) | 7 (7 / 0) | 7 (7 / 0) | 7 (7 / 0) | 7 (7 / 0) |
-| Marked reachable without auth (correctly / wrongly) | 7 (6 / 1) | 7 (6 / 1) | 6 (6 / 0) | 6 (6 / 0) |
+
+Marked reachable, per run:
+
+- `untouched`: 7 marked, 0 wrong
+- `after-tuning`: 7 marked, 0 wrong
+- `after-reachability`: 7 marked, 0 wrong
+- `after-reach-fixes`: 7 marked, 0 wrong
+
+Marked reachable without auth, per run:
+
+- `untouched`: 7 marked, 1 wrong
+- `after-tuning`: 7 marked, 1 wrong
+- `after-reachability`: 6 marked, 0 wrong
+- `after-reach-fixes`: 6 marked, 0 wrong
+
+These lines, and every other reachability count in the docs, are records in
+`claims.json`, recounted from the results file each one names (`claims.py`;
+`tests/test_claims.py` fails when a label, a number or the wording drifts).
+`results/baseline_reachability.json` and `results/after_reachability_port.json`
+record no run label, so no claim cites them.
 
 The 13 truly reachable true positives not marked are all in vulnpy, the same in
 every run: 11 are reached through `getattr` dispatch (`import_module` plus
