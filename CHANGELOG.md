@@ -9,6 +9,11 @@ GitTrace no longer needs Docker, Redis or a database server: `pipx install` and 
 
 ### Added
 
+- **Falcon routes:** `app.add_route("/a", Resource())` on `falcon.App` / `falcon.API` /
+  `falcon.asgi.App`, one endpoint per responder (`on_get`, `on_post`, ...; `suffix=`).
+- **Flask `add_url_rule`**, also in loops: an endpoint when the view resolves; a computed rule
+  is kept as `${...}` with `prefix_resolved: false`.
+- **Thread targets:** `threading.Thread(target=f)` is a `dynamic` call edge to `f`.
 - **Model layer through the Respan Gateway:** `GITTRACE_GATEWAY=1` routes scan triage,
   `explain` summaries and `--fix` through an in-process
   [Respan Gateway](https://github.com/respanai/respan-gateway) (`respan-gateway==0.3.0`, the optional `gateway` extra:

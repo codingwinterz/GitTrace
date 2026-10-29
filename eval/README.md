@@ -58,6 +58,7 @@ anticipate. Neither changes any count, because both are false positives either w
 | `untouched` | the four vulnerable targets, CTFd, mealie | as committed in Phase 4 (94af77b) | first run; ground truth written before it |
 | `after-tuning` | the same | fixes 1-8 approved after `untouched` | optimistic: the fixes were chosen from these targets |
 | `after-reachability` | the four vulnerable targets, CTFd, mealie | the tuned rules plus Flask-RESTful/RESTX routes and auth checks at the top of handler bodies | detection rules unchanged; the body-check condition rule was tightened after a first run of this label showed 401/403 guards on a form field, a user limit and feature flags, so it is tuned on these targets; held-out targets not re-run (run once) |
+| `after-reach-fixes` | the four vulnerable targets, CTFd, mealie (reachability only: `results/after_reach_fixes.json`) | unchanged | Falcon routes, Flask `add_url_rule` (also in loops) and thread targets; measured with `scan` against the graph, compared Sink by Sink with `results/after_reachability_port.json`; the run label and commit are in the file |
 | `held-out` | DVGA, open-webui | the tuned rules (`held_out_code.sha256`) | chosen and read only after the fixes were final; run once with `--targets held-out`, nothing changed afterwards; the open-webui review was folded in with `--review-only`, without re-scanning |
 
 Real-world reviews (`eval/<project>/review.json`) are keyed by finding id. A
@@ -71,17 +72,21 @@ committed files: a true positive is *truly reachable* when its ground-truth entr
 (`eval/<target>/ground_truth.json`) lists at least one route, and *marked* when a
 finding matched to it (`results/<label>/<target>.json`) has `reachable: true`.
 
-| | `untouched` | `after-tuning` | `after-reachability` |
-|---|---|---|---|
-| True positives | 23 | 29 | 29 |
-| Truly reachable | 20 | 20 | 20 |
-| Marked reachable (correctly / wrongly) | 7 (7 / 0) | 7 (7 / 0) | 7 (7 / 0) |
-| Marked reachable without auth (correctly / wrongly) | 7 (6 / 1) | 7 (6 / 1) | 6 (6 / 0) |
+| | `untouched` | `after-tuning` | `after-reachability` | `after-reach-fixes` |
+|---|---|---|---|---|
+| True positives | 23 | 29 | 29 | 29 |
+| Truly reachable | 20 | 20 | 20 | 20 |
+| Marked reachable (correctly / wrongly) | 7 (7 / 0) | 7 (7 / 0) | 7 (7 / 0) | 7 (7 / 0) |
+| Marked reachable without auth (correctly / wrongly) | 7 (6 / 1) | 7 (6 / 1) | 6 (6 / 0) | 6 (6 / 0) |
 
 The 13 truly reachable true positives not marked are all in vulnpy, the same in
 every run: 11 are reached through `getattr` dispatch (`import_module` plus
 `getattr(module, "do_" + name)`, with routes added in loops; VP-2, VP-6 to VP-15),
-and 2 through Falcon routes, which GitTrace does not detect (VP-4, VP-5). The one
+and 2 through Falcon routes (VP-4, VP-5). From `after-reach-fixes` GitTrace detects
+Falcon routes, but vulnpy's app is rebound under a condition
+(`app = ContrastMiddleware(app)`), so it is not resolved and the 2 stay unmarked;
+the new thread edge gives VP-5's function its caller (`ThreadView.on_get`, blast
+radius 0 -> 1), still with no route. The one
 wrongly marked without auth before `after-reachability` is VF-1, whose JWT is
 checked inside the handler.
 
