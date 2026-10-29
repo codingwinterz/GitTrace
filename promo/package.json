@@ -10,6 +10,7 @@
   "private": true,
   "dependencies": {
     "@remotion/cli": "4.0.539",
+    "@remotion/transitions": "4.0.539",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.539"
@@ -27,9 +28,8 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
-    "data": "node scripts/build-data.mjs",
-    "check": "node scripts/check-numbers.mjs",
-    "render": "node scripts/build-data.mjs && node scripts/check-numbers.mjs && remotion render GitTracePromo out/gittrace_promo_1080.mp4 --codec h264 --crf 18"
+    "check": "node scripts/check-claims.mjs",
+    "render": "node scripts/check-claims.mjs && remotion render GitTrace out/gittrace_promo_1080.mp4"
   },
   "allowScripts": {
     "esbuild": false

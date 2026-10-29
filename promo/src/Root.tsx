@@ -1,19 +1,33 @@
 import React from "react";
-import { Composition, Series } from "remotion";
-import { CallPath, Hook, Numbers, Outro, Terminal, Why } from "./scenes";
-import { FPS, SCENES, SIZE, TOTAL } from "./theme";
+import { Composition } from "remotion";
+import { linearTiming, TransitionSeries } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+import { CallPath } from "./scenes/CallPath";
+import { Hook } from "./scenes/Hook";
+import { Numbers } from "./scenes/Numbers";
+import { Outro } from "./scenes/Outro";
+import { Terminal } from "./scenes/Terminal";
+import { Why } from "./scenes/Why";
+import { FADE, FPS, SCENES, SIZE, TOTAL } from "./theme";
 
-export const Promo: React.FC = () => (
-  <Series>
-    <Series.Sequence name="Hook" durationInFrames={SCENES.hook}><Hook /></Series.Sequence>
-    <Series.Sequence name="Terminal" durationInFrames={SCENES.terminal}><Terminal /></Series.Sequence>
-    <Series.Sequence name="Call path" durationInFrames={SCENES.path}><CallPath /></Series.Sequence>
-    <Series.Sequence name="Why" durationInFrames={SCENES.why}><Why /></Series.Sequence>
-    <Series.Sequence name="Numbers" durationInFrames={SCENES.numbers}><Numbers /></Series.Sequence>
-    <Series.Sequence name="Outro" durationInFrames={SCENES.outro}><Outro /></Series.Sequence>
-  </Series>
+const cut = () => <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: FADE })} />;
+
+export const GitTrace: React.FC = () => (
+  <TransitionSeries>
+    <TransitionSeries.Sequence name="Hook" durationInFrames={SCENES.hook}><Hook /></TransitionSeries.Sequence>
+    {cut()}
+    <TransitionSeries.Sequence name="Terminal" durationInFrames={SCENES.terminal}><Terminal /></TransitionSeries.Sequence>
+    {cut()}
+    <TransitionSeries.Sequence name="Call path" durationInFrames={SCENES.path}><CallPath /></TransitionSeries.Sequence>
+    {cut()}
+    <TransitionSeries.Sequence name="Why" durationInFrames={SCENES.why}><Why /></TransitionSeries.Sequence>
+    {cut()}
+    <TransitionSeries.Sequence name="Numbers" durationInFrames={SCENES.numbers}><Numbers /></TransitionSeries.Sequence>
+    {cut()}
+    <TransitionSeries.Sequence name="Outro" durationInFrames={SCENES.outro}><Outro /></TransitionSeries.Sequence>
+  </TransitionSeries>
 );
 
 export const RemotionRoot: React.FC = () => (
-  <Composition id="GitTracePromo" component={Promo} durationInFrames={TOTAL} fps={FPS} width={SIZE} height={SIZE} />
+  <Composition id="GitTrace" component={GitTrace} durationInFrames={TOTAL} fps={FPS} width={SIZE} height={SIZE} />
 );
