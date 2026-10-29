@@ -1,0 +1,2847 @@
+{
+  "run_label": "after-reach-fixes",
+  "commit": "7c622d3",
+  "gittrace_tree_clean": true,
+  "targets": {
+    "vulpy-bad": {
+      "score": {
+        "tp_reachable_any": 3,
+        "tp_reachable_unauthenticated": 3
+      },
+      "findings": [
+        {
+          "id": "libuser.py::12::12",
+          "rule_id": "GT-SQLI-001",
+          "severity": "critical",
+          "score": 11,
+          "reachable": true,
+          "unauthenticated": true,
+          "endpoints": [
+            "GET /user/login -> mod_user.py::do_login",
+            "POST /user/login -> mod_user.py::do_login",
+            "POST /api/key -> mod_api.py::do_key_create"
+          ],
+          "blast_radius": 6
+        },
+        {
+          "id": "libuser.py::25::5",
+          "rule_id": "GT-SQLI-001",
+          "severity": "critical",
+          "score": 10,
+          "reachable": true,
+          "unauthenticated": true,
+          "endpoints": [
+            "GET /user/create -> mod_user.py::do_create",
+            "POST /user/create -> mod_user.py::do_create"
+          ],
+          "blast_radius": 3
+        },
+        {
+          "id": "libuser.py::53::5",
+          "rule_id": "GT-SQLI-001",
+          "severity": "critical",
+          "score": 10,
+          "reachable": true,
+          "unauthenticated": true,
+          "endpoints": [
+            "GET /user/chpasswd -> mod_user.py::do_chpasswd",
+            "POST /user/chpasswd -> mod_user.py::do_chpasswd"
+          ],
+          "blast_radius": 3
+        },
+        {
+          "id": "db.py::19::9",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 1
+        },
+        {
+          "id": "vulpy-ssl.py::13::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "vulpy.py::16::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        }
+      ],
+      "trace_attack_path": {
+        "libuser.py::12::12": [
+          {
+            "routes": [
+              {
+                "endpoint": "GET /user/login -> mod_user.py::do_login",
+                "method": "GET",
+                "path": "/user/login",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 1,
+                "path_nodes": [
+                  "GET /user/login -> mod_user.py::do_login",
+                  "mod_user.py::do_login",
+                  "libuser.py::login"
+                ]
+              },
+              {
+                "endpoint": "POST /user/login -> mod_user.py::do_login",
+                "method": "POST",
+                "path": "/user/login",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 1,
+                "path_nodes": [
+                  "POST /user/login -> mod_user.py::do_login",
+                  "mod_user.py::do_login",
+                  "libuser.py::login"
+                ]
+              },
+              {
+                "endpoint": "POST /api/key -> mod_api.py::do_key_create",
+                "method": "POST",
+                "path": "/api/key",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 2,
+                "path_nodes": [
+                  "POST /api/key -> mod_api.py::do_key_create",
+                  "mod_api.py::do_key_create",
+                  "libapi.py::keygen",
+                  "libuser.py::login"
+                ]
+              }
+            ],
+            "callers": [
+              "libapi.py::keygen",
+              "mod_api.py::do_key_create",
+              "mod_user.py::do_login"
+            ]
+          }
+        ],
+        "libuser.py::25::5": [
+          {
+            "routes": [
+              {
+                "endpoint": "GET /user/create -> mod_user.py::do_create",
+                "method": "GET",
+                "path": "/user/create",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 1,
+                "path_nodes": [
+                  "GET /user/create -> mod_user.py::do_create",
+                  "mod_user.py::do_create",
+                  "libuser.py::create"
+                ]
+              },
+              {
+                "endpoint": "POST /user/create -> mod_user.py::do_create",
+                "method": "POST",
+                "path": "/user/create",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 1,
+                "path_nodes": [
+                  "POST /user/create -> mod_user.py::do_create",
+                  "mod_user.py::do_create",
+                  "libuser.py::create"
+                ]
+              }
+            ],
+            "callers": [
+              "mod_user.py::do_create"
+            ]
+          }
+        ],
+        "libuser.py::53::5": [
+          {
+            "routes": [
+              {
+                "endpoint": "GET /user/chpasswd -> mod_user.py::do_chpasswd",
+                "method": "GET",
+                "path": "/user/chpasswd",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 1,
+                "path_nodes": [
+                  "GET /user/chpasswd -> mod_user.py::do_chpasswd",
+                  "mod_user.py::do_chpasswd",
+                  "libuser.py::password_change"
+                ]
+              },
+              {
+                "endpoint": "POST /user/chpasswd -> mod_user.py::do_chpasswd",
+                "method": "POST",
+                "path": "/user/chpasswd",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 1,
+                "path_nodes": [
+                  "POST /user/chpasswd -> mod_user.py::do_chpasswd",
+                  "mod_user.py::do_chpasswd",
+                  "libuser.py::password_change"
+                ]
+              }
+            ],
+            "callers": [
+              "mod_user.py::do_chpasswd"
+            ]
+          }
+        ],
+        "db.py::19::9": [
+          {
+            "routes": [],
+            "callers": [
+              "db.py::<module>"
+            ]
+          }
+        ],
+        "vulpy-ssl.py::13::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "vulpy.py::16::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ]
+      },
+      "blast_radius": {
+        "libuser.py::login": {
+          "graph": "gittrace_bad_bac02f2d",
+          "depth": 10,
+          "function": "libuser.py::login",
+          "file": "libuser.py",
+          "start_line": 5,
+          "end_line": 17,
+          "sinks": [
+            "libuser.py::12::12"
+          ],
+          "caller_count": 3,
+          "endpoint_count": 3,
+          "unauthenticated_endpoints": 3,
+          "total": 6,
+          "routes": [
+            {
+              "endpoint": "GET /user/login -> mod_user.py::do_login",
+              "method": "GET",
+              "path": "/user/login",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 1,
+              "path_nodes": [
+                "GET /user/login -> mod_user.py::do_login",
+                "mod_user.py::do_login",
+                "libuser.py::login"
+              ]
+            },
+            {
+              "endpoint": "POST /user/login -> mod_user.py::do_login",
+              "method": "POST",
+              "path": "/user/login",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 1,
+              "path_nodes": [
+                "POST /user/login -> mod_user.py::do_login",
+                "mod_user.py::do_login",
+                "libuser.py::login"
+              ]
+            },
+            {
+              "endpoint": "POST /api/key -> mod_api.py::do_key_create",
+              "method": "POST",
+              "path": "/api/key",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 2,
+              "path_nodes": [
+                "POST /api/key -> mod_api.py::do_key_create",
+                "mod_api.py::do_key_create",
+                "libapi.py::keygen",
+                "libuser.py::login"
+              ]
+            }
+          ],
+          "callers": [
+            "libapi.py::keygen",
+            "mod_api.py::do_key_create",
+            "mod_user.py::do_login"
+          ]
+        },
+        "libuser.py::create": {
+          "graph": "gittrace_bad_bac02f2d",
+          "depth": 10,
+          "function": "libuser.py::create",
+          "file": "libuser.py",
+          "start_line": 20,
+          "end_line": 28,
+          "sinks": [
+            "libuser.py::25::5"
+          ],
+          "caller_count": 1,
+          "endpoint_count": 2,
+          "unauthenticated_endpoints": 2,
+          "total": 3,
+          "routes": [
+            {
+              "endpoint": "GET /user/create -> mod_user.py::do_create",
+              "method": "GET",
+              "path": "/user/create",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 1,
+              "path_nodes": [
+                "GET /user/create -> mod_user.py::do_create",
+                "mod_user.py::do_create",
+                "libuser.py::create"
+              ]
+            },
+            {
+              "endpoint": "POST /user/create -> mod_user.py::do_create",
+              "method": "POST",
+              "path": "/user/create",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 1,
+              "path_nodes": [
+                "POST /user/create -> mod_user.py::do_create",
+                "mod_user.py::do_create",
+                "libuser.py::create"
+              ]
+            }
+          ],
+          "callers": [
+            "mod_user.py::do_create"
+          ]
+        },
+        "libuser.py::password_change": {
+          "graph": "gittrace_bad_bac02f2d",
+          "depth": 10,
+          "function": "libuser.py::password_change",
+          "file": "libuser.py",
+          "start_line": 46,
+          "end_line": 56,
+          "sinks": [
+            "libuser.py::53::5"
+          ],
+          "caller_count": 1,
+          "endpoint_count": 2,
+          "unauthenticated_endpoints": 2,
+          "total": 3,
+          "routes": [
+            {
+              "endpoint": "GET /user/chpasswd -> mod_user.py::do_chpasswd",
+              "method": "GET",
+              "path": "/user/chpasswd",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 1,
+              "path_nodes": [
+                "GET /user/chpasswd -> mod_user.py::do_chpasswd",
+                "mod_user.py::do_chpasswd",
+                "libuser.py::password_change"
+              ]
+            },
+            {
+              "endpoint": "POST /user/chpasswd -> mod_user.py::do_chpasswd",
+              "method": "POST",
+              "path": "/user/chpasswd",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 1,
+              "path_nodes": [
+                "POST /user/chpasswd -> mod_user.py::do_chpasswd",
+                "mod_user.py::do_chpasswd",
+                "libuser.py::password_change"
+              ]
+            }
+          ],
+          "callers": [
+            "mod_user.py::do_chpasswd"
+          ]
+        },
+        "db.py::db_init": {
+          "graph": "gittrace_bad_bac02f2d",
+          "depth": 10,
+          "function": "db.py::db_init",
+          "file": "db.py",
+          "start_line": 5,
+          "end_line": 22,
+          "sinks": [
+            "db.py::19::9"
+          ],
+          "caller_count": 1,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 1,
+          "routes": [],
+          "callers": [
+            "db.py::<module>"
+          ]
+        },
+        "vulpy-ssl.py::<module>": {
+          "graph": "gittrace_bad_bac02f2d",
+          "depth": 10,
+          "function": "vulpy-ssl.py::<module>",
+          "file": "vulpy-ssl.py",
+          "start_line": 1,
+          "end_line": 29,
+          "sinks": [
+            "vulpy-ssl.py::13::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "vulpy.py::<module>": {
+          "graph": "gittrace_bad_bac02f2d",
+          "depth": 10,
+          "function": "vulpy.py::<module>",
+          "file": "vulpy.py",
+          "start_line": 1,
+          "end_line": 55,
+          "sinks": [
+            "vulpy.py::16::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        }
+      }
+    },
+    "vulpy-good": {
+      "score": {
+        "tp_reachable_any": 0,
+        "tp_reachable_unauthenticated": 0
+      },
+      "findings": [
+        {
+          "id": "libuser.py::61::5",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 2
+        },
+        {
+          "id": "libapi.py::10::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "libsession.py::9::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "vulpy-ssl.py::13::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "vulpy.py::17::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        }
+      ],
+      "trace_attack_path": {
+        "libuser.py::61::5": [
+          {
+            "routes": [],
+            "callers": [
+              "db_init.py::<module>",
+              "db_init.py::db_init_users"
+            ]
+          }
+        ],
+        "libapi.py::10::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "libsession.py::9::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "vulpy-ssl.py::13::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "vulpy.py::17::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ]
+      },
+      "blast_radius": {
+        "libuser.py::user_create": {
+          "graph": "gittrace_good_afb962d9",
+          "depth": 10,
+          "function": "libuser.py::user_create",
+          "file": "libuser.py",
+          "start_line": 55,
+          "end_line": 67,
+          "sinks": [
+            "libuser.py::61::5"
+          ],
+          "caller_count": 2,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 2,
+          "routes": [],
+          "callers": [
+            "db_init.py::<module>",
+            "db_init.py::db_init_users"
+          ]
+        },
+        "libapi.py::<module>": {
+          "graph": "gittrace_good_afb962d9",
+          "depth": 10,
+          "function": "libapi.py::<module>",
+          "file": "libapi.py",
+          "start_line": 1,
+          "end_line": 51,
+          "sinks": [
+            "libapi.py::10::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "libsession.py::<module>": {
+          "graph": "gittrace_good_afb962d9",
+          "depth": 10,
+          "function": "libsession.py::<module>",
+          "file": "libsession.py",
+          "start_line": 1,
+          "end_line": 62,
+          "sinks": [
+            "libsession.py::9::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "vulpy-ssl.py::<module>": {
+          "graph": "gittrace_good_afb962d9",
+          "depth": 10,
+          "function": "vulpy-ssl.py::<module>",
+          "file": "vulpy-ssl.py",
+          "start_line": 1,
+          "end_line": 29,
+          "sinks": [
+            "vulpy-ssl.py::13::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "vulpy.py::<module>": {
+          "graph": "gittrace_good_afb962d9",
+          "depth": 10,
+          "function": "vulpy.py::<module>",
+          "file": "vulpy.py",
+          "start_line": 1,
+          "end_line": 54,
+          "sinks": [
+            "vulpy.py::17::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        }
+      }
+    },
+    "vulnerable-flask-app": {
+      "score": {
+        "tp_reachable_any": 2,
+        "tp_reachable_unauthenticated": 1
+      },
+      "findings": [
+        {
+          "id": "app/app.py::329::17",
+          "rule_id": "GT-DESER-001",
+          "severity": "critical",
+          "score": 9,
+          "reachable": true,
+          "unauthenticated": true,
+          "endpoints": [
+            "POST /yaml_hammer -> app/app.py::yaml_hammer"
+          ],
+          "blast_radius": 1
+        },
+        {
+          "id": "app/app.py::265::36",
+          "rule_id": "GT-SQLI-001",
+          "severity": "high",
+          "score": 7,
+          "reachable": true,
+          "unauthenticated": false,
+          "endpoints": [
+            "POST /search -> app/app.py::search_customer"
+          ],
+          "blast_radius": 1
+        },
+        {
+          "id": "app/app.py::28::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "app/app.py::63::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        }
+      ],
+      "trace_attack_path": {
+        "app/app.py::329::17": [
+          {
+            "routes": [
+              {
+                "endpoint": "POST /yaml_hammer -> app/app.py::yaml_hammer",
+                "method": "POST",
+                "path": "/yaml_hammer",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 0,
+                "path_nodes": [
+                  "POST /yaml_hammer -> app/app.py::yaml_hammer",
+                  "app/app.py::yaml_hammer"
+                ]
+              }
+            ],
+            "callers": []
+          }
+        ],
+        "app/app.py::265::36": [
+          {
+            "routes": [
+              {
+                "endpoint": "POST /search -> app/app.py::search_customer",
+                "method": "POST",
+                "path": "/search",
+                "auth_required": true,
+                "prefix_resolved": true,
+                "hops": 0,
+                "path_nodes": [
+                  "POST /search -> app/app.py::search_customer",
+                  "app/app.py::search_customer"
+                ]
+              }
+            ],
+            "callers": []
+          }
+        ],
+        "app/app.py::28::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "app/app.py::63::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ]
+      },
+      "blast_radius": {
+        "app/app.py::yaml_hammer": {
+          "graph": "gittrace_vulnerable_flask_app_6d2bdd82",
+          "depth": 10,
+          "function": "app/app.py::yaml_hammer",
+          "file": "app/app.py",
+          "start_line": 315,
+          "end_line": 331,
+          "sinks": [
+            "app/app.py::329::17"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 1,
+          "unauthenticated_endpoints": 1,
+          "total": 1,
+          "routes": [
+            {
+              "endpoint": "POST /yaml_hammer -> app/app.py::yaml_hammer",
+              "method": "POST",
+              "path": "/yaml_hammer",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 0,
+              "path_nodes": [
+                "POST /yaml_hammer -> app/app.py::yaml_hammer",
+                "app/app.py::yaml_hammer"
+              ]
+            }
+          ],
+          "callers": []
+        },
+        "app/app.py::search_customer": {
+          "graph": "gittrace_vulnerable_flask_app_6d2bdd82",
+          "depth": 10,
+          "function": "app/app.py::search_customer",
+          "file": "app/app.py",
+          "start_line": 246,
+          "end_line": 281,
+          "sinks": [
+            "app/app.py::265::36"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 1,
+          "unauthenticated_endpoints": 0,
+          "total": 1,
+          "routes": [
+            {
+              "endpoint": "POST /search -> app/app.py::search_customer",
+              "method": "POST",
+              "path": "/search",
+              "auth_required": true,
+              "prefix_resolved": true,
+              "hops": 0,
+              "path_nodes": [
+                "POST /search -> app/app.py::search_customer",
+                "app/app.py::search_customer"
+              ]
+            }
+          ],
+          "callers": []
+        },
+        "app/app.py::<module>": {
+          "graph": "gittrace_vulnerable_flask_app_6d2bdd82",
+          "depth": 10,
+          "function": "app/app.py::<module>",
+          "file": "app/app.py",
+          "start_line": 1,
+          "end_line": 339,
+          "sinks": [
+            "app/app.py::28::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "app/app.py::setup_users": {
+          "graph": "gittrace_vulnerable_flask_app_6d2bdd82",
+          "depth": 10,
+          "function": "app/app.py::setup_users",
+          "file": "app/app.py",
+          "start_line": 55,
+          "end_line": 77,
+          "sinks": [
+            "app/app.py::63::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        }
+      }
+    },
+    "vulnpy": {
+      "score": {
+        "tp_reachable_any": 2,
+        "tp_reachable_unauthenticated": 2
+      },
+      "findings": [
+        {
+          "id": "apps/fastapi_app.py::43::9",
+          "rule_id": "GT-CMDI-001",
+          "severity": "critical",
+          "score": 10,
+          "reachable": true,
+          "unauthenticated": true,
+          "endpoints": [
+            "GET /cmdi -> apps/fastapi_app.py::cmdi"
+          ],
+          "blast_radius": 1
+        },
+        {
+          "id": "src/vulnpy/trigger/cmdi.py::6::12",
+          "rule_id": "GT-CMDI-001",
+          "severity": "critical",
+          "score": 10,
+          "reachable": true,
+          "unauthenticated": true,
+          "endpoints": [
+            "POST /files/upload -> apps/fastapi_app.py::upload_return_large_file"
+          ],
+          "blast_radius": 3
+        },
+        {
+          "id": "apps/falcon_app.py::29::9",
+          "rule_id": "GT-CMDI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "apps/falcon_app.py::64::5",
+          "rule_id": "GT-CMDI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 1
+        },
+        {
+          "id": "src/vulnpy/trigger/cmdi.py::10::15",
+          "rule_id": "GT-CMDI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/deserialization.py::8::12",
+          "rule_id": "GT-DESER-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/deserialization.py::12::12",
+          "rule_id": "GT-DESER-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/deserialization.py::17::16",
+          "rule_id": "GT-DESER-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/deserialization.py::23::14",
+          "rule_id": "GT-DESER-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/sqli.py::37::9",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/sqli.py::48::9",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/sqli.py::59::16",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/unsafe_code_exec.py::2::5",
+          "rule_id": "GT-EVAL-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/unsafe_code_exec.py::6::12",
+          "rule_id": "GT-EVAL-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "src/vulnpy/trigger/unsafe_code_exec.py::10::12",
+          "rule_id": "GT-EVAL-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/trigger/test_unsafe_code_exec.py::57::9",
+          "rule_id": "GT-EVAL-001",
+          "severity": "info",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        }
+      ],
+      "trace_attack_path": {
+        "apps/fastapi_app.py::43::9": [
+          {
+            "routes": [
+              {
+                "endpoint": "GET /cmdi -> apps/fastapi_app.py::cmdi",
+                "method": "GET",
+                "path": "/cmdi",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 0,
+                "path_nodes": [
+                  "GET /cmdi -> apps/fastapi_app.py::cmdi",
+                  "apps/fastapi_app.py::cmdi"
+                ]
+              }
+            ],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/cmdi.py::6::12": [
+          {
+            "routes": [
+              {
+                "endpoint": "POST /files/upload -> apps/fastapi_app.py::upload_return_large_file",
+                "method": "POST",
+                "path": "/files/upload",
+                "auth_required": false,
+                "prefix_resolved": true,
+                "hops": 1,
+                "path_nodes": [
+                  "POST /files/upload -> apps/fastapi_app.py::upload_return_large_file",
+                  "apps/fastapi_app.py::upload_return_large_file",
+                  "src/vulnpy/trigger/cmdi.py::do_os_system"
+                ]
+              }
+            ],
+            "callers": [
+              "apps/fastapi_app.py::upload_return_large_file",
+              "apps/quart_app.py::upload_return_large_file"
+            ]
+          }
+        ],
+        "apps/falcon_app.py::29::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "apps/falcon_app.py::64::5": [
+          {
+            "routes": [],
+            "callers": [
+              "apps/falcon_app.py::ThreadView.on_get"
+            ]
+          }
+        ],
+        "src/vulnpy/trigger/cmdi.py::10::15": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/deserialization.py::8::12": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/deserialization.py::12::12": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/deserialization.py::17::16": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/deserialization.py::23::14": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/sqli.py::37::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/sqli.py::48::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/sqli.py::59::16": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/unsafe_code_exec.py::2::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/unsafe_code_exec.py::6::12": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "src/vulnpy/trigger/unsafe_code_exec.py::10::12": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/trigger/test_unsafe_code_exec.py::57::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ]
+      },
+      "blast_radius": {
+        "apps/fastapi_app.py::cmdi": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "apps/fastapi_app.py::cmdi",
+          "file": "apps/fastapi_app.py",
+          "start_line": 37,
+          "end_line": 47,
+          "sinks": [
+            "apps/fastapi_app.py::43::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 1,
+          "unauthenticated_endpoints": 1,
+          "total": 1,
+          "routes": [
+            {
+              "endpoint": "GET /cmdi -> apps/fastapi_app.py::cmdi",
+              "method": "GET",
+              "path": "/cmdi",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 0,
+              "path_nodes": [
+                "GET /cmdi -> apps/fastapi_app.py::cmdi",
+                "apps/fastapi_app.py::cmdi"
+              ]
+            }
+          ],
+          "callers": []
+        },
+        "src/vulnpy/trigger/cmdi.py::do_os_system": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/cmdi.py::do_os_system",
+          "file": "src/vulnpy/trigger/cmdi.py",
+          "start_line": 5,
+          "end_line": 6,
+          "sinks": [
+            "src/vulnpy/trigger/cmdi.py::6::12"
+          ],
+          "caller_count": 2,
+          "endpoint_count": 1,
+          "unauthenticated_endpoints": 1,
+          "total": 3,
+          "routes": [
+            {
+              "endpoint": "POST /files/upload -> apps/fastapi_app.py::upload_return_large_file",
+              "method": "POST",
+              "path": "/files/upload",
+              "auth_required": false,
+              "prefix_resolved": true,
+              "hops": 1,
+              "path_nodes": [
+                "POST /files/upload -> apps/fastapi_app.py::upload_return_large_file",
+                "apps/fastapi_app.py::upload_return_large_file",
+                "src/vulnpy/trigger/cmdi.py::do_os_system"
+              ]
+            }
+          ],
+          "callers": [
+            "apps/fastapi_app.py::upload_return_large_file",
+            "apps/quart_app.py::upload_return_large_file"
+          ]
+        },
+        "apps/falcon_app.py::FileUpload.on_post": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "apps/falcon_app.py::FileUpload.on_post",
+          "file": "apps/falcon_app.py",
+          "start_line": 23,
+          "end_line": 32,
+          "sinks": [
+            "apps/falcon_app.py::29::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "apps/falcon_app.py::thread_function": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "apps/falcon_app.py::thread_function",
+          "file": "apps/falcon_app.py",
+          "start_line": 35,
+          "end_line": 67,
+          "sinks": [
+            "apps/falcon_app.py::64::5"
+          ],
+          "caller_count": 1,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 1,
+          "routes": [],
+          "callers": [
+            "apps/falcon_app.py::ThreadView.on_get"
+          ]
+        },
+        "src/vulnpy/trigger/cmdi.py::do_subprocess_popen": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/cmdi.py::do_subprocess_popen",
+          "file": "src/vulnpy/trigger/cmdi.py",
+          "start_line": 9,
+          "end_line": 14,
+          "sinks": [
+            "src/vulnpy/trigger/cmdi.py::10::15"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/deserialization.py::do_pickle_load": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/deserialization.py::do_pickle_load",
+          "file": "src/vulnpy/trigger/deserialization.py",
+          "start_line": 6,
+          "end_line": 8,
+          "sinks": [
+            "src/vulnpy/trigger/deserialization.py::8::12"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/deserialization.py::do_pickle_loads": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/deserialization.py::do_pickle_loads",
+          "file": "src/vulnpy/trigger/deserialization.py",
+          "start_line": 11,
+          "end_line": 12,
+          "sinks": [
+            "src/vulnpy/trigger/deserialization.py::12::12"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/deserialization.py::do_yaml_load": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/deserialization.py::do_yaml_load",
+          "file": "src/vulnpy/trigger/deserialization.py",
+          "start_line": 15,
+          "end_line": 19,
+          "sinks": [
+            "src/vulnpy/trigger/deserialization.py::17::16"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/deserialization.py::do_yaml_load_all": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/deserialization.py::do_yaml_load_all",
+          "file": "src/vulnpy/trigger/deserialization.py",
+          "start_line": 22,
+          "end_line": 28,
+          "sinks": [
+            "src/vulnpy/trigger/deserialization.py::23::14"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/sqli.py::do_sqlite3_execute.execute": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/sqli.py::do_sqlite3_execute.execute",
+          "file": "src/vulnpy/trigger/sqli.py",
+          "start_line": 35,
+          "end_line": 37,
+          "sinks": [
+            "src/vulnpy/trigger/sqli.py::37::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/sqli.py::do_sqlite3_executemany.executemany": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/sqli.py::do_sqlite3_executemany.executemany",
+          "file": "src/vulnpy/trigger/sqli.py",
+          "start_line": 46,
+          "end_line": 48,
+          "sinks": [
+            "src/vulnpy/trigger/sqli.py::48::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/sqli.py::do_sqlite3_executescript.executescript": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/sqli.py::do_sqlite3_executescript.executescript",
+          "file": "src/vulnpy/trigger/sqli.py",
+          "start_line": 57,
+          "end_line": 59,
+          "sinks": [
+            "src/vulnpy/trigger/sqli.py::59::16"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/unsafe_code_exec.py::do_exec": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/unsafe_code_exec.py::do_exec",
+          "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+          "start_line": 1,
+          "end_line": 2,
+          "sinks": [
+            "src/vulnpy/trigger/unsafe_code_exec.py::2::5"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/unsafe_code_exec.py::do_eval": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/unsafe_code_exec.py::do_eval",
+          "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+          "start_line": 5,
+          "end_line": 6,
+          "sinks": [
+            "src/vulnpy/trigger/unsafe_code_exec.py::6::12"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "src/vulnpy/trigger/unsafe_code_exec.py::do_compile": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "src/vulnpy/trigger/unsafe_code_exec.py::do_compile",
+          "file": "src/vulnpy/trigger/unsafe_code_exec.py",
+          "start_line": 9,
+          "end_line": 10,
+          "sinks": [
+            "src/vulnpy/trigger/unsafe_code_exec.py::10::12"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/trigger/test_unsafe_code_exec.py::TestCompile.test_good_input": {
+          "graph": "gittrace_vulnpy_4672b6c2",
+          "depth": 10,
+          "function": "tests/trigger/test_unsafe_code_exec.py::TestCompile.test_good_input",
+          "file": "tests/trigger/test_unsafe_code_exec.py",
+          "start_line": 54,
+          "end_line": 59,
+          "sinks": [
+            "tests/trigger/test_unsafe_code_exec.py::57::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        }
+      }
+    },
+    "ctfd": {
+      "score": {
+        "tp_reachable_any": 0,
+        "tp_reachable_unauthenticated": 0
+      },
+      "findings": [
+        {
+          "id": "CTFd/utils/exports/__init__.py::416::29",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 6,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 7
+        },
+        {
+          "id": "CTFd/utils/exports/__init__.py::247::21",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 6
+        },
+        {
+          "id": "CTFd/config.py::308::5",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/teams/test_invites.py::31::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/test_config.py::106::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/test_config.py::180::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/test_config.py::181::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/test_config.py::254::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/test_config.py::371::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/users/test_auth.py::573::13",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_email.py::96::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_email.py::133::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_email.py::176::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_email.py::199::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_uploaders.py::26::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_uploaders.py::53::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_uploaders.py::84::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_uploaders.py::116::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/utils/test_uploaders.py::149::9",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        }
+      ],
+      "trace_attack_path": {
+        "CTFd/utils/exports/__init__.py::416::29": [
+          {
+            "routes": [],
+            "callers": [
+              "CTFd/cli/__init__.py::import_ctf",
+              "CTFd/utils/exports/__init__.py::import_ctf",
+              "import.py::<module>",
+              "tests/test_plugin_utils.py::test_import_ctf_override",
+              "tests/utils/test_exports.py::test_import_ctf",
+              "tests/utils/test_exports.py::test_import_ctf_defaults_theme_when_not_installed",
+              "tests/utils/test_exports.py::test_import_ctf_restores_installed_theme"
+            ]
+          }
+        ],
+        "CTFd/utils/exports/__init__.py::247::21": [
+          {
+            "routes": [],
+            "callers": [
+              "CTFd/cli/__init__.py::import_ctf",
+              "import.py::<module>",
+              "tests/test_plugin_utils.py::test_import_ctf_override",
+              "tests/utils/test_exports.py::test_import_ctf",
+              "tests/utils/test_exports.py::test_import_ctf_defaults_theme_when_not_installed",
+              "tests/utils/test_exports.py::test_import_ctf_restores_installed_theme"
+            ]
+          }
+        ],
+        "CTFd/config.py::308::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/teams/test_invites.py::31::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/test_config.py::106::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/test_config.py::180::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/test_config.py::181::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/test_config.py::254::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/test_config.py::371::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/users/test_auth.py::573::13": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_email.py::96::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_email.py::133::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_email.py::176::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_email.py::199::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_uploaders.py::26::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_uploaders.py::53::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_uploaders.py::84::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_uploaders.py::116::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/utils/test_uploaders.py::149::9": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ]
+      },
+      "blast_radius": {
+        "CTFd/utils/exports/__init__.py::import_ctf.insertion": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "CTFd/utils/exports/__init__.py::import_ctf.insertion",
+          "file": "CTFd/utils/exports/__init__.py",
+          "start_line": 302,
+          "end_line": 425,
+          "sinks": [
+            "CTFd/utils/exports/__init__.py::416::29"
+          ],
+          "caller_count": 7,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 7,
+          "routes": [],
+          "callers": [
+            "CTFd/cli/__init__.py::import_ctf",
+            "CTFd/utils/exports/__init__.py::import_ctf",
+            "import.py::<module>",
+            "tests/test_plugin_utils.py::test_import_ctf_override",
+            "tests/utils/test_exports.py::test_import_ctf",
+            "tests/utils/test_exports.py::test_import_ctf_defaults_theme_when_not_installed",
+            "tests/utils/test_exports.py::test_import_ctf_restores_installed_theme"
+          ]
+        },
+        "CTFd/utils/exports/__init__.py::import_ctf": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "CTFd/utils/exports/__init__.py::import_ctf",
+          "file": "CTFd/utils/exports/__init__.py",
+          "start_line": 121,
+          "end_line": 504,
+          "sinks": [
+            "CTFd/utils/exports/__init__.py::247::21"
+          ],
+          "caller_count": 6,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 6,
+          "routes": [],
+          "callers": [
+            "CTFd/cli/__init__.py::import_ctf",
+            "import.py::<module>",
+            "tests/test_plugin_utils.py::test_import_ctf_override",
+            "tests/utils/test_exports.py::test_import_ctf",
+            "tests/utils/test_exports.py::test_import_ctf_defaults_theme_when_not_installed",
+            "tests/utils/test_exports.py::test_import_ctf_restores_installed_theme"
+          ]
+        },
+        "CTFd/config.py::<module>": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "CTFd/config.py::<module>",
+          "file": "CTFd/config.py",
+          "start_line": 1,
+          "end_line": 331,
+          "sinks": [
+            "CTFd/config.py::308::5"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/teams/test_invites.py::test_team_invite_codes": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/teams/test_invites.py::test_team_invite_codes",
+          "file": "tests/teams/test_invites.py",
+          "start_line": 11,
+          "end_line": 42,
+          "sinks": [
+            "tests/teams/test_invites.py::31::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/test_config.py::test_preset_admin_config": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/test_config.py::test_preset_admin_config",
+          "file": "tests/test_config.py",
+          "start_line": 100,
+          "end_line": 171,
+          "sinks": [
+            "tests/test_config.py::106::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/test_config.py::test_preset_admin_token_config": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/test_config.py::test_preset_admin_token_config",
+          "file": "tests/test_config.py",
+          "start_line": 174,
+          "end_line": 245,
+          "sinks": [
+            "tests/test_config.py::180::9",
+            "tests/test_config.py::181::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/test_config.py::test_preset_admin_no_promotion_existing_user": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/test_config.py::test_preset_admin_no_promotion_existing_user",
+          "file": "tests/test_config.py",
+          "start_line": 248,
+          "end_line": 331,
+          "sinks": [
+            "tests/test_config.py::254::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/test_config.py::test_preset_admin_empty_credentials": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/test_config.py::test_preset_admin_empty_credentials",
+          "file": "tests/test_config.py",
+          "start_line": 334,
+          "end_line": 397,
+          "sinks": [
+            "tests/test_config.py::371::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/users/test_auth.py::test_registration_password_minimum_length": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/users/test_auth.py::test_registration_password_minimum_length",
+          "file": "tests/users/test_auth.py",
+          "start_line": 542,
+          "end_line": 604,
+          "sinks": [
+            "tests/users/test_auth.py::573::13"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_email.py::test_sendmail_with_mailgun_from_config_file": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_email.py::test_sendmail_with_mailgun_from_config_file",
+          "file": "tests/utils/test_email.py",
+          "start_line": 90,
+          "end_line": 124,
+          "sinks": [
+            "tests/utils/test_email.py::96::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_email.py::test_sendmail_with_mailgun_from_db_config": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_email.py::test_sendmail_with_mailgun_from_db_config",
+          "file": "tests/utils/test_email.py",
+          "start_line": 127,
+          "end_line": 165,
+          "sinks": [
+            "tests/utils/test_email.py::133::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_email.py::test_smtp_credentials_not_mixed_between_file_and_db": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_email.py::test_smtp_credentials_not_mixed_between_file_and_db",
+          "file": "tests/utils/test_email.py",
+          "start_line": 168,
+          "end_line": 188,
+          "sinks": [
+            "tests/utils/test_email.py::176::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_email.py::test_smtp_db_credentials_used_when_db_server_set": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_email.py::test_smtp_db_credentials_used_when_db_server_set",
+          "file": "tests/utils/test_email.py",
+          "start_line": 191,
+          "end_line": 214,
+          "sinks": [
+            "tests/utils/test_email.py::199::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_uploaders.py::test_s3_uploader": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_uploaders.py::test_s3_uploader",
+          "file": "tests/utils/test_uploaders.py",
+          "start_line": 15,
+          "end_line": 39,
+          "sinks": [
+            "tests/utils/test_uploaders.py::26::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_uploaders.py::test_s3_uploader_custom_prefix": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_uploaders.py::test_s3_uploader_custom_prefix",
+          "file": "tests/utils/test_uploaders.py",
+          "start_line": 42,
+          "end_line": 70,
+          "sinks": [
+            "tests/utils/test_uploaders.py::53::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_uploaders.py::test_s3_sync": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_uploaders.py::test_s3_sync",
+          "file": "tests/utils/test_uploaders.py",
+          "start_line": 73,
+          "end_line": 101,
+          "sinks": [
+            "tests/utils/test_uploaders.py::84::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_uploaders.py::test_s3_uploader_open_cannot_write_outside_upload_folder": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_uploaders.py::test_s3_uploader_open_cannot_write_outside_upload_folder",
+          "file": "tests/utils/test_uploaders.py",
+          "start_line": 104,
+          "end_line": 134,
+          "sinks": [
+            "tests/utils/test_uploaders.py::116::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/utils/test_uploaders.py::test_s3_sync_skips_keys_outside_upload_folder": {
+          "graph": "gittrace_ctfd_6704301a",
+          "depth": 10,
+          "function": "tests/utils/test_uploaders.py::test_s3_sync_skips_keys_outside_upload_folder",
+          "file": "tests/utils/test_uploaders.py",
+          "start_line": 137,
+          "end_line": 175,
+          "sinks": [
+            "tests/utils/test_uploaders.py::149::9"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        }
+      }
+    },
+    "mealie": {
+      "score": {
+        "tp_reachable_any": 0,
+        "tp_reachable_unauthenticated": 0
+      },
+      "findings": [
+        {
+          "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::183::13",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 2
+        },
+        {
+          "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::105::21",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 3
+        },
+        {
+          "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::121::41",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 3
+        },
+        {
+          "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::143::21",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 3
+        },
+        {
+          "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::24::28",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 2
+        },
+        {
+          "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::33::25",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 2
+        },
+        {
+          "id": "mealie/schema/recipe/recipe.py::414::17",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/schema/recipe/recipe.py::431::29",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/services/backups_v2/alchemy_exporter.py::44::41",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/services/backups_v2/alchemy_exporter.py::47::41",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::191::25",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::207::13",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::211::17",
+          "rule_id": "GT-SQLI-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/core/settings/db_providers.py::38::5",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "mealie/core/settings/settings.py::290::5",
+          "rule_id": "GT-SECRET-001",
+          "severity": "medium",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::28::31",
+          "rule_id": "GT-SQLI-001",
+          "severity": "info",
+          "score": 5,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 1
+        },
+        {
+          "id": "tests/conftest.py::40::26",
+          "rule_id": "GT-SQLI-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/conftest.py::41::26",
+          "rule_id": "GT-SQLI-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::201::5",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::50::5",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::136::5",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::146::5",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/services_tests/test_email_service.py::15::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::38::36",
+          "rule_id": "GT-SQLI-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::40::21",
+          "rule_id": "GT-SQLI-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        },
+        {
+          "id": "tests/unit_tests/test_oidc_native_client.py::9::1",
+          "rule_id": "GT-SECRET-001",
+          "severity": "info",
+          "score": 4,
+          "reachable": false,
+          "unauthenticated": false,
+          "endpoints": [],
+          "blast_radius": 0
+        }
+      ],
+      "trace_attack_path": {
+        "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::183::13": [
+          {
+            "routes": [],
+            "callers": [
+              "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::_remove_duplicates_from_m2m_tables",
+              "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::upgrade"
+            ]
+          }
+        ],
+        "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::105::21": [
+          {
+            "routes": [],
+            "callers": [
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::create_households_for_groups",
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::populate_household_data",
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::upgrade"
+            ]
+          }
+        ],
+        "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::121::41": [
+          {
+            "routes": [],
+            "callers": [
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::create_households_for_groups",
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::populate_household_data",
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::upgrade"
+            ]
+          }
+        ],
+        "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::143::21": [
+          {
+            "routes": [],
+            "callers": [
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::create_households_for_groups",
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::populate_household_data",
+              "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::upgrade"
+            ]
+          }
+        ],
+        "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::24::28": [
+          {
+            "routes": [],
+            "callers": [
+              "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::update_normalization",
+              "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::upgrade"
+            ]
+          }
+        ],
+        "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::33::25": [
+          {
+            "routes": [],
+            "callers": [
+              "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::update_normalization",
+              "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::upgrade"
+            ]
+          }
+        ],
+        "mealie/schema/recipe/recipe.py::414::17": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/schema/recipe/recipe.py::431::29": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/services/backups_v2/alchemy_exporter.py::44::41": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/services/backups_v2/alchemy_exporter.py::47::41": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::191::25": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::207::13": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::211::17": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/core/settings/db_providers.py::38::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "mealie/core/settings/settings.py::290::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::28::31": [
+          {
+            "routes": [],
+            "callers": [
+              "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::test_clear_legacy_organizer_join_tables_empties_only_legacy_tables"
+            ]
+          }
+        ],
+        "tests/conftest.py::40::26": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/conftest.py::41::26": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::201::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::50::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::136::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::146::5": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/services_tests/test_email_service.py::15::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::38::36": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::40::21": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ],
+        "tests/unit_tests/test_oidc_native_client.py::9::1": [
+          {
+            "routes": [],
+            "callers": []
+          }
+        ]
+      },
+      "blast_radius": {
+        "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::_remove_duplicates_from_m2m_table": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::_remove_duplicates_from_m2m_table",
+          "file": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py",
+          "start_line": 176,
+          "end_line": 196,
+          "sinks": [
+            "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::183::13"
+          ],
+          "caller_count": 2,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 2,
+          "routes": [],
+          "callers": [
+            "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::_remove_duplicates_from_m2m_tables",
+            "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::upgrade"
+          ]
+        },
+        "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::create_household": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::create_household",
+          "file": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py",
+          "start_line": 89,
+          "end_line": 145,
+          "sinks": [
+            "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::105::21",
+            "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::121::41",
+            "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::143::21"
+          ],
+          "caller_count": 3,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 3,
+          "routes": [],
+          "callers": [
+            "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::create_households_for_groups",
+            "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::populate_household_data",
+            "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::upgrade"
+          ]
+        },
+        "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::_update_table": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::_update_table",
+          "file": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py",
+          "start_line": 22,
+          "end_line": 34,
+          "sinks": [
+            "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::24::28",
+            "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::33::25"
+          ],
+          "caller_count": 2,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 2,
+          "routes": [],
+          "callers": [
+            "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::update_normalization",
+            "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::upgrade"
+          ]
+        },
+        "mealie/schema/recipe/recipe.py::Recipe.filter_search_query": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/schema/recipe/recipe.py::Recipe.filter_search_query",
+          "file": "mealie/schema/recipe/recipe.py",
+          "start_line": 399,
+          "end_line": 467,
+          "sinks": [
+            "mealie/schema/recipe/recipe.py::414::17",
+            "mealie/schema/recipe/recipe.py::431::29"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "mealie/services/backups_v2/alchemy_exporter.py::ForeignKeyDisabler.__exit__": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/services/backups_v2/alchemy_exporter.py::ForeignKeyDisabler.__exit__",
+          "file": "mealie/services/backups_v2/alchemy_exporter.py",
+          "start_line": 40,
+          "end_line": 51,
+          "sinks": [
+            "mealie/services/backups_v2/alchemy_exporter.py::44::41",
+            "mealie/services/backups_v2/alchemy_exporter.py::47::41"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::upgrade": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::upgrade",
+          "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+          "start_line": 165,
+          "end_line": 199,
+          "sinks": [
+            "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::191::25"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::downgrade": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::downgrade",
+          "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+          "start_line": 202,
+          "end_line": 218,
+          "sinks": [
+            "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::207::13",
+            "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::211::17"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "mealie/core/settings/db_providers.py::<module>": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/core/settings/db_providers.py::<module>",
+          "file": "mealie/core/settings/db_providers.py",
+          "start_line": 1,
+          "end_line": 91,
+          "sinks": [
+            "mealie/core/settings/db_providers.py::38::5"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "mealie/core/settings/settings.py::<module>": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "mealie/core/settings/settings.py::<module>",
+          "file": "mealie/core/settings/settings.py",
+          "start_line": 1,
+          "end_line": 584,
+          "sinks": [
+            "mealie/core/settings/settings.py::290::5"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::_count": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::_count",
+          "file": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py",
+          "start_line": 27,
+          "end_line": 28,
+          "sinks": [
+            "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::28::31"
+          ],
+          "caller_count": 1,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 1,
+          "routes": [],
+          "callers": [
+            "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::test_clear_legacy_organizer_join_tables_empties_only_legacy_tables"
+          ]
+        },
+        "tests/conftest.py::<module>": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/conftest.py::<module>",
+          "file": "tests/conftest.py",
+          "start_line": 1,
+          "end_line": 107,
+          "sinks": [
+            "tests/conftest.py::40::26",
+            "tests/conftest.py::41::26"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::test_cache_stores_complex_objects": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::test_cache_stores_complex_objects",
+          "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache.py",
+          "start_line": 185,
+          "end_line": 207,
+          "sinks": [
+            "tests/unit_tests/core/security/auth_cache/test_auth_cache.py::201::5"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::test_oauth_cache_handles_token_expiration": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::test_oauth_cache_handles_token_expiration",
+          "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py",
+          "start_line": 47,
+          "end_line": 63,
+          "sinks": [
+            "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::50::5"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::test_auth_cache_with_real_oauth_data_structure": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::test_auth_cache_with_real_oauth_data_structure",
+          "file": "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py",
+          "start_line": 117,
+          "end_line": 153,
+          "sinks": [
+            "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::136::5",
+            "tests/unit_tests/core/security/auth_cache/test_auth_cache_integration.py::146::5"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/unit_tests/services_tests/test_email_service.py::<module>": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/unit_tests/services_tests/test_email_service.py::<module>",
+          "file": "tests/unit_tests/services_tests/test_email_service.py",
+          "start_line": 1,
+          "end_line": 128,
+          "sinks": [
+            "tests/unit_tests/services_tests/test_email_service.py::15::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::test_clear_legacy_organizer_join_tables_empties_only_legacy_tables": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::test_clear_legacy_organizer_join_tables_empties_only_legacy_tables",
+          "file": "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py",
+          "start_line": 31,
+          "end_line": 60,
+          "sinks": [
+            "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::38::36",
+            "tests/unit_tests/test_clear_legacy_organizer_join_tables_migration.py::40::21"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        },
+        "tests/unit_tests/test_oidc_native_client.py::<module>": {
+          "graph": "gittrace_mealie_f2e3d57e",
+          "depth": 10,
+          "function": "tests/unit_tests/test_oidc_native_client.py::<module>",
+          "file": "tests/unit_tests/test_oidc_native_client.py",
+          "start_line": 1,
+          "end_line": 95,
+          "sinks": [
+            "tests/unit_tests/test_oidc_native_client.py::9::1"
+          ],
+          "caller_count": 0,
+          "endpoint_count": 0,
+          "unauthenticated_endpoints": 0,
+          "total": 0,
+          "routes": [],
+          "callers": []
+        }
+      }
+    }
+  },
+  "total": {
+    "tp_reachable_any": 7,
+    "tp_reachable_unauthenticated": 6,
+    "ground_truth_reachable": 21
+  }
+}
