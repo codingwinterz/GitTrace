@@ -1,5 +1,5 @@
 """
-gittrace.languages.python.routes — FastAPI and Flask route detection.
+gittrace.languages.python.routes — FastAPI, Flask and Falcon route detection.
 
 A decorator counts as a route only when the object it hangs off resolves (via
 the resolver, across files) to a variable built by a known constructor:
@@ -25,6 +25,13 @@ given to `Api(app, prefix=...)` or `api.init_app(app)`, then the Api's own
 prefix; a Namespace's `path` (default "/<name>"), replaced by
 `api.add_namespace(ns, path=...)`.
 
+Falcon: `app.add_route("/a", Resource())` on a falcon.App / falcon.API (also
+falcon.asgi.App) is an endpoint per responder the resource class has
+(`on_get`, `on_post`, ..., inherited from project base classes too;
+`suffix="x"` selects `on_get_x`, ...); the handler is the responder. The
+resource may be a call to the class or a variable holding an instance.
+Falcon has no prefixes.
+
 auth_required is true only on obvious evidence: a FastAPI dependency
 (route, router, include_router or app level, or in the handler's parameters,
 directly or through an alias such as
@@ -47,12 +54,14 @@ from dataclasses import dataclass
 
 from gittrace.languages.base import EndpointDef, endpoint_id
 from gittrace.languages.python.parser import PyFunction, PyModule, Value
-from gittrace.languages.python.resolver import ClassSym, ExtInst, FuncSym, Resolver, VarSym
+from gittrace.languages.python.resolver import ClassSym, ExtInst, FuncSym, InstSym, Resolver, VarSym
 
 FASTAPI_APPS = frozenset({"fastapi.FastAPI", "fastapi.applications.FastAPI"})
 FASTAPI_ROUTERS = frozenset({"fastapi.APIRouter", "fastapi.routing.APIRouter"})
 FLASK_APPS = frozenset({"flask.Flask", "flask.app.Flask"})
 FLASK_BLUEPRINTS = frozenset({"flask.Blueprint", "flask.blueprints.Blueprint"})
+FALCON_APPS = frozenset({"falcon.App", "falcon.API", "falcon.app.App", "falcon.api.API",
+                         "falcon.asgi.App", "falcon.asgi.app.App"})
 RESOURCE_APIS = frozenset({"flask_restful.Api", "flask_restx.Api", "flask_restx.api.Api",
                            "flask_restplus.Api", "flask_restplus.api.Api"})
 RESOURCE_NAMESPACES = frozenset({"flask_restx.Namespace", "flask_restx.namespace.Namespace",
@@ -62,6 +71,7 @@ _FASTAPI_VERBS = frozenset({"get", "post", "put", "delete", "patch", "options", 
 _FLASK_VERBS = frozenset({"get", "post", "put", "delete", "patch"})
 _RESOURCE_VERBS = ("get", "post", "put", "patch", "delete", "head", "options")
 _RESOURCE_DECORATOR_LISTS = ("method_decorators", "decorators")
+_FALCON_VERBS = ("get", "post", "put", "patch", "delete", "head", "options")
 
 AUTH_NAME = re.compile(
     r"auth|current_user|current_active_user|logged_in|login|token|jwt|oauth|bearer"
@@ -82,7 +92,7 @@ VERIFY_NAME = re.compile(
 @dataclass(frozen=True)
 class RouteObject:
     var: VarSym
-    framework: str        # fastapi | flask
+    framework: str        # fastapi | flask | falcon
     is_root: bool         # an app, not a router/blueprint
     ctor: Value
     kind: str = "router"  # app | router (APIRouter, Blueprint) | api | namespace (Flask-RESTful/RESTX)
@@ -185,6 +195,8 @@ class _Detector:
             return RouteObject(sym, "flask", False, ctor, "api")
         if held.dotted in RESOURCE_NAMESPACES:
             return RouteObject(sym, "flask", False, ctor, "namespace")
+        if held.dotted in FALCON_APPS:
+            return RouteObject(sym, "falcon", True, ctor, "app")
         return None
 
     def _flask_parent(self, mod: PyModule, scope, ref: Value | None) -> RouteObject | None:
@@ -315,6 +327,38 @@ class _Detector:
                         found.append((obj, ClassSym(mod.path, pc.qualname), dec.args, dec))
         return found
 
+    def falcon_resources(self) -> list[tuple[RouteObject, ClassSym, Value | None, str, Value]]:
+        """(falcon app, resource class, URL template, responder suffix, add_route call)."""
+        found = []
+        for mod in self.modules:
+            for call in mod.calls:                    # app.add_route("/a", Resource(), suffix="x")
+                c = call.call
+                if c.parts[-1] != "add_route" or len(c.parts) < 2:
+                    continue
+                obj = self.route_object(mod, call.scope, c.parts[:-1])
+                if obj is None or obj.framework != "falcon":
+                    continue
+                url = c.args[0] if c.args else c.kwarg("uri_template")
+                resource = c.args[1] if len(c.args) > 1 else c.kwarg("resource")
+                cls = self._resource_class(mod, call.scope, resource)
+                suffix = c.kwarg("suffix")
+                if cls is None or (suffix is not None and suffix.kind != "str"):
+                    continue
+                found.append((obj, cls, url, suffix.string if suffix is not None else "", c))
+        return found
+
+    def _resource_class(self, mod: PyModule, scope, value: Value | None) -> ClassSym | None:
+        """The project class of `Resource()` or of a variable holding one."""
+        if value is None or value.kind not in ("call", "ref"):
+            return None
+        sym = self.resolver.resolve_ref(mod, scope, value.parts).sym
+        if value.kind == "call":
+            return sym if isinstance(sym, ClassSym) else None
+        if isinstance(sym, VarSym):
+            held = self.resolver.deref(sym)
+            return held.cls if isinstance(held, InstSym) else None
+        return None
+
     def resource_evidence(self, cls: ClassSym) -> list[str]:
         """Auth-named entries of `method_decorators` / `decorators` on the class
         or a project base class, and auth-named class decorators."""
@@ -343,13 +387,28 @@ class _Detector:
                     for chain in self.chains(obj):
                         self._add(endpoints, obj, verb.upper(), flask_join(chain.prefix, route), fn,
                                   site.line, evidence, chain.resolved and route_ok)
+        for obj, cls, url, suffix, site in self.falcon_resources():
+            class_evidence = self.resource_evidence(cls) + [
+                e for c in self.resolver.mro(cls)
+                for e in _falcon_hook_evidence(self.resolver.modules[c.path].classes[c.qualname].decorators)]
+            route, route_ok = _literal(url)
+            for verb in _FALCON_VERBS:
+                member = self.resolver.class_member(cls, f"on_{verb}" + (f"_{suffix}" if suffix else ""))
+                fn = self.functions.get(member.id) if isinstance(member, FuncSym) else None
+                if fn is None:
+                    continue
+                evidence = (class_evidence + _decorator_evidence(fn.decorators, None)
+                            + _falcon_hook_evidence(fn.decorators) + self.body_evidence(fn))
+                for chain in self.chains(obj):
+                    self._add(endpoints, obj, verb.upper(), chain.prefix + route, fn, site.line, evidence,
+                              chain.resolved and route_ok)
         for mod in self.modules:
             for fn in mod.functions:
                 for dec in fn.decorators:
                     if dec.kind != "call" or len(dec.parts) < 2:
                         continue
                     obj = self.route_object(mod, fn.outer, dec.parts[:-1])
-                    if obj is None or obj.resources:
+                    if obj is None or obj.resources or obj.framework == "falcon":
                         continue
                     methods = _methods(obj.framework, dec)
                     if not methods:
@@ -430,6 +489,19 @@ def _decorator_evidence(decorators: tuple[Value, ...], route: Value) -> list[str
             continue
         if AUTH_NAME.search(dec.parts[-1]):
             found.append("@" + ".".join(dec.parts) + ("()" if dec.kind == "call" else ""))
+    return found
+
+
+def _falcon_hook_evidence(decorators: tuple[Value, ...]) -> list[str]:
+    """`@falcon.before(hook)` with an auth-named hook."""
+    found = []
+    for dec in decorators:
+        if dec.kind != "call" or dec.parts[-1] != "before" or not dec.args:
+            continue
+        hook = dec.args[0]
+        name = ".".join(hook.parts) if hook.kind in ("ref", "call") else ""
+        if name and AUTH_NAME.search(name.split(".")[-1]):
+            found.append(f"@{'.'.join(dec.parts)}({name})")
     return found
 
 
