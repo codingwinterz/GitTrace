@@ -1,0 +1,418 @@
+{
+  "project": "bad",
+  "graph": "gittrace_bad_bac02f2d",
+  "settings": {
+    "depth": 10,
+    "min_severity": "info"
+  },
+  "scanned": {
+    "files": 18,
+    "parse_failures": 0,
+    "functions": 41,
+    "endpoints": 19,
+    "calls": 277
+  },
+  "parse_failures": [],
+  "llm": {
+    "enabled": false
+  },
+  "summary": {
+    "total": 6,
+    "by_severity": {
+      "critical": 3,
+      "high": 0,
+      "medium": 3,
+      "low": 0,
+      "info": 0
+    },
+    "by_rule": {
+      "GT-SECRET-001": 2,
+      "GT-SQLI-001": 4
+    },
+    "reachable": 3,
+    "unauthenticated": 3,
+    "test_findings": 0
+  },
+  "findings": [
+    {
+      "id": "libuser.py::12::12",
+      "rule_id": "GT-SQLI-001",
+      "category": "sql-injection",
+      "title": "SQL query built from strings",
+      "severity": "critical",
+      "score": 11,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 3 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)",
+        "blast radius 6 >= 5 (+1)"
+      ],
+      "location": {
+        "file": "libuser.py",
+        "line": 12,
+        "column": 12,
+        "end_line": 12
+      },
+      "snippet": "    user = c.execute(\"SELECT * FROM users WHERE username = '{}' and password = '{}'\".format(username, password)).fetchone()",
+      "function": "libuser.py::login",
+      "callee": "c.execute",
+      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "evidence": [
+        ".format()",
+        "derived from parameter `password`, `username`"
+      ],
+      "param_derived": true,
+      "params": [
+        "password",
+        "username"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": false,
+        "routes": [
+          {
+            "endpoint": "GET /user/login -> mod_user.py::do_login",
+            "method": "GET",
+            "path": "/user/login",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 1,
+            "path_nodes": [
+              "GET /user/login -> mod_user.py::do_login",
+              "mod_user.py::do_login",
+              "libuser.py::login"
+            ]
+          },
+          {
+            "endpoint": "POST /user/login -> mod_user.py::do_login",
+            "method": "POST",
+            "path": "/user/login",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 1,
+            "path_nodes": [
+              "POST /user/login -> mod_user.py::do_login",
+              "mod_user.py::do_login",
+              "libuser.py::login"
+            ]
+          },
+          {
+            "endpoint": "POST /api/key -> mod_api.py::do_key_create",
+            "method": "POST",
+            "path": "/api/key",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 2,
+            "path_nodes": [
+              "POST /api/key -> mod_api.py::do_key_create",
+              "mod_api.py::do_key_create",
+              "libapi.py::keygen",
+              "libuser.py::login"
+            ]
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 6,
+        "callers": [
+          "libapi.py::keygen",
+          "mod_api.py::do_key_create",
+          "mod_user.py::do_login"
+        ],
+        "endpoints": 3
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "libuser.py::25::5",
+      "rule_id": "GT-SQLI-001",
+      "category": "sql-injection",
+      "title": "SQL query built from strings",
+      "severity": "critical",
+      "score": 10,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 2 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)"
+      ],
+      "location": {
+        "file": "libuser.py",
+        "line": 25,
+        "column": 5,
+        "end_line": 25
+      },
+      "snippet": "    c.execute(\"INSERT INTO users (username, password, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%d', '%d', '%s')\" %(username, password, 0, 0, ''))",
+      "function": "libuser.py::create",
+      "callee": "c.execute",
+      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "evidence": [
+        "%-formatting",
+        "derived from parameter `password`, `username`"
+      ],
+      "param_derived": true,
+      "params": [
+        "password",
+        "username"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": false,
+        "routes": [
+          {
+            "endpoint": "GET /user/create -> mod_user.py::do_create",
+            "method": "GET",
+            "path": "/user/create",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 1,
+            "path_nodes": [
+              "GET /user/create -> mod_user.py::do_create",
+              "mod_user.py::do_create",
+              "libuser.py::create"
+            ]
+          },
+          {
+            "endpoint": "POST /user/create -> mod_user.py::do_create",
+            "method": "POST",
+            "path": "/user/create",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 1,
+            "path_nodes": [
+              "POST /user/create -> mod_user.py::do_create",
+              "mod_user.py::do_create",
+              "libuser.py::create"
+            ]
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 3,
+        "callers": [
+          "mod_user.py::do_create"
+        ],
+        "endpoints": 2
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "libuser.py::53::5",
+      "rule_id": "GT-SQLI-001",
+      "category": "sql-injection",
+      "title": "SQL query built from strings",
+      "severity": "critical",
+      "score": 10,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 2 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)"
+      ],
+      "location": {
+        "file": "libuser.py",
+        "line": 53,
+        "column": 5,
+        "end_line": 53
+      },
+      "snippet": "    c.execute(\"UPDATE users SET password = '{}' WHERE username = '{}'\".format(password, username))",
+      "function": "libuser.py::password_change",
+      "callee": "c.execute",
+      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "evidence": [
+        ".format()",
+        "derived from parameter `password`, `username`"
+      ],
+      "param_derived": true,
+      "params": [
+        "password",
+        "username"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": false,
+        "routes": [
+          {
+            "endpoint": "GET /user/chpasswd -> mod_user.py::do_chpasswd",
+            "method": "GET",
+            "path": "/user/chpasswd",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 1,
+            "path_nodes": [
+              "GET /user/chpasswd -> mod_user.py::do_chpasswd",
+              "mod_user.py::do_chpasswd",
+              "libuser.py::password_change"
+            ]
+          },
+          {
+            "endpoint": "POST /user/chpasswd -> mod_user.py::do_chpasswd",
+            "method": "POST",
+            "path": "/user/chpasswd",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 1,
+            "path_nodes": [
+              "POST /user/chpasswd -> mod_user.py::do_chpasswd",
+              "mod_user.py::do_chpasswd",
+              "libuser.py::password_change"
+            ]
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 3,
+        "callers": [
+          "mod_user.py::do_chpasswd"
+        ],
+        "endpoints": 2
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "db.py::19::9",
+      "rule_id": "GT-SQLI-001",
+      "category": "sql-injection",
+      "title": "SQL query built from strings",
+      "severity": "medium",
+      "score": 4,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "not reachable from any endpoint (-2)"
+      ],
+      "location": {
+        "file": "db.py",
+        "line": 19,
+        "column": 9,
+        "end_line": 19
+      },
+      "snippet": "        c.execute(\"INSERT INTO users (user, password, failures) VALUES ('%s', '%s', '%d')\" %(u, p, 0))",
+      "function": "db.py::db_init",
+      "callee": "c.execute",
+      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "evidence": [
+        "%-formatting"
+      ],
+      "param_derived": false,
+      "params": [],
+      "reachability": {
+        "applies": true,
+        "reachable": false,
+        "unauthenticated": false,
+        "uncertain": false,
+        "routes": []
+      },
+      "blast_radius": {
+        "total": 1,
+        "callers": [
+          "db.py::<module>"
+        ],
+        "endpoints": 0
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "vulpy-ssl.py::13::1",
+      "rule_id": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded secret",
+      "severity": "medium",
+      "score": 4,
+      "base_severity": "medium",
+      "reasons": [
+        "base severity medium (4)",
+        "not adjusted for reachability (rule is not flow-sensitive)"
+      ],
+      "location": {
+        "file": "vulpy-ssl.py",
+        "line": 13,
+        "column": 1,
+        "end_line": 13
+      },
+      "snippet": "app.config['SECRET_KEY'] = 'aaa****'",
+      "function": "vulpy-ssl.py::<module>",
+      "callee": null,
+      "message": "`SECRET_KEY` is assigned a hardcoded secret; load it from the environment.",
+      "evidence": [
+        "string constant of 7 characters"
+      ],
+      "param_derived": false,
+      "params": [],
+      "reachability": {
+        "applies": false,
+        "reachable": false,
+        "unauthenticated": false,
+        "uncertain": false,
+        "routes": []
+      },
+      "blast_radius": {
+        "total": 0,
+        "callers": [],
+        "endpoints": 0
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "vulpy.py::16::1",
+      "rule_id": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded secret",
+      "severity": "medium",
+      "score": 4,
+      "base_severity": "medium",
+      "reasons": [
+        "base severity medium (4)",
+        "not adjusted for reachability (rule is not flow-sensitive)"
+      ],
+      "location": {
+        "file": "vulpy.py",
+        "line": 16,
+        "column": 1,
+        "end_line": 16
+      },
+      "snippet": "app.config['SECRET_KEY'] = 'aaa****'",
+      "function": "vulpy.py::<module>",
+      "callee": null,
+      "message": "`SECRET_KEY` is assigned a hardcoded secret; load it from the environment.",
+      "evidence": [
+        "string constant of 7 characters"
+      ],
+      "param_derived": false,
+      "params": [],
+      "reachability": {
+        "applies": false,
+        "reachable": false,
+        "unauthenticated": false,
+        "uncertain": false,
+        "routes": []
+      },
+      "blast_radius": {
+        "total": 0,
+        "callers": [],
+        "endpoints": 0
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    }
+  ],
+  "test_findings": []
+}
