@@ -38,10 +38,11 @@ a comment steering the model; it does not remove it, so nothing important depend
 
 **Where your code goes.**
 
-- *The graph database.* `scan` writes the project's graph to FalkorDB, **including function
-  source code** (secrets in it included). The default is local Docker. For any other host,
-  `scan` prints a warning and refuses to write unless you pass `--allow-remote`;
-  `scan --offline` writes nothing.
+- *The graph.* `scan` builds the project's graph in memory and caches it in
+  `<project>/.gittrace/graph.json`, on this machine only. The cache leaves out function source
+  code, so hardcoded secrets in the project are not copied into it, and finding snippets are
+  masked; it holds file paths, function names, routes and the findings. `scan --offline`
+  writes no cache.
 - *The model.* With the default Ollama models, prompts stay on your machine. If you choose a
   hosted model (`--model gemini/...`, `openai/...`, ...), every prompt, which contains your
   code around each finding, is sent to that provider under their terms.

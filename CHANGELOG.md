@@ -3,6 +3,33 @@
 All notable changes to GitTrace. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+GitTrace no longer needs Docker, Redis or a database server: `pipx install` and run.
+
+### Changed
+
+- **The graph is in-process:** FalkorDB is replaced by a NetworkX graph held in memory
+  (`gittrace/graph/memstore.py`) and cached in `<project>/.gittrace/graph.json`, written
+  atomically with the sha256 of every source file. A cache is never used once any source file
+  is changed, added or removed; the graph tools then ask for a new `scan`. Function source code
+  is not cached. The graph tools keep their names, arguments and result shapes, and reachability
+  is unchanged on the evaluation targets (`eval/results/baseline_reachability.json` and
+  `after_reachability_port.json` are identical: 7 truly reachable true positives, 6 without auth).
+- **`gittrace up [--pull]`** now only checks Ollama and pulls missing models.
+- **`gittrace doctor`** no longer checks Docker, FalkorDB or the database location.
+- **Interactive mode:** the header no longer shows a database status.
+
+### Removed
+
+- The `gittrace graphs [--drop NAME]` command.
+- `scan --allow-remote` and `/scan --allow-remote` (there is no remote database to write to).
+- Starting a FalkorDB container from `gittrace up`.
+- The `docker`, `falkordb` and `database` checks of `gittrace doctor`.
+- The `FALKORDB_HOST`, `FALKORDB_PORT`, `FALKORDB_USER` and `FALKORDB_PASSWORD` settings.
+- `docker-compose.yml`, the FalkorDB service in CI, and the `falkordb` and `redis` dependencies
+  (`networkx` is added).
+
 ## [2.0.0] — 2026-10-27
 
 A rebuild as a command-line tool that scans real Python projects. The measured results are

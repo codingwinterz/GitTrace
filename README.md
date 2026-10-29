@@ -12,7 +12,6 @@ https://github.com/user-attachments/assets/9142be63-94e0-4b06-8d31-66a2cd2488b6
 
 [![tests](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml/badge.svg)](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)
-![FalkorDB](https://img.shields.io/badge/graph%20database-FalkorDB-orange)
 ![license MIT](https://img.shields.io/badge/license-MIT-green)
 
 - **Scope, honestly:** Python only; routes from FastAPI, Flask and Flask-RESTful/RESTX; five kinds of finding (SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization, hardcoded secrets).
@@ -39,27 +38,26 @@ pipx install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0
 uv tool install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0    # the same with uv
 ```
 
-### First run: Docker and Ollama
+### First run: Ollama
 
-A full `gittrace scan` needs two programs running on your machine: **Docker**, for the FalkorDB graph database, and **Ollama**, for the local model. Install both and start them, then:
+GitTrace needs no database server: the code graph is built in the GitTrace process and cached in `<project>/.gittrace/graph.json`. The only other program a full run uses is **Ollama**, for the local model. Install it and start it, then:
 
 ```bash
-gittrace up --pull      # starts FalkorDB in Docker and pulls both models (about 9.6 GB the first time)
-gittrace doctor         # checks Docker, FalkorDB, Ollama, the models, free GPU memory, power and sleep settings
+gittrace up --pull      # checks Ollama and pulls both models (about 9.6 GB the first time)
+gittrace doctor         # checks Ollama, the models, free GPU memory, power and sleep settings
 ```
 
 The same by hand, if you prefer:
 
 ```bash
-docker run -d --name gittrace-falkordb -p 6379:6379 -p 3000:3000 falkordb/falkordb:v4.22.1
 ollama pull llama3.1:8b          # 4.9 GB, used by scan to triage findings
 ollama pull qwen2.5-coder:7b     # 4.7 GB, used by explain to summarise code
 ```
 
-- Docker: <https://docs.docker.com/get-docker/> · Ollama: <https://ollama.com/download>
+- Ollama: <https://ollama.com/download>
 - The models run best on a GPU with about 6 GB of free memory (llama3.1:8b takes 5.6 GiB, qwen2.5-coder:7b 4.7 GiB); otherwise Ollama runs them on the CPU, much more slowly.
-- **Without either:** `gittrace scan <path> --offline --no-llm` and `gittrace explain <path> --no-llm` need neither Docker nor Ollama. The rules, reachability and facts work in memory; only the model's opinion and the stored graph are missing.
-- No configuration file is needed: GitTrace defaults to the local Docker database and local Ollama. See [Settings](#settings) to change that.
+- **Without Ollama:** `gittrace scan <path> --no-llm` and `gittrace explain <path> --no-llm` make no model call. The rules, reachability, the graph and the facts all work; only the model's opinion is missing.
+- No configuration file is needed: GitTrace defaults to local Ollama. See [Settings](#settings) to change that.
 
 ## Quick start
 
@@ -130,7 +128,7 @@ gittrace scan path/to/project
 ```
 
 1. **Reads the real code** with tree-sitter: every function, method and nested function, the calls between them, and the FastAPI, Flask and Flask-RESTful/RESTX routes with their auth dependencies.
-2. **Builds a graph** of it in FalkorDB, one graph per project.
+2. **Builds a graph** of it in memory (NetworkX), one graph per project, cached in `<project>/.gittrace/graph.json`.
 3. **Runs deterministic rules** for SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization and hardcoded secrets — one finding per dangerous call site.
 4. **Asks the graph who can reach each finding**: the shortest path from every endpoint (unauthenticated first), the upstream callers (blast radius), and `git blame` for the owner.
 5. **Scores severity deterministically** from the rule, the reachability and the blast radius, and prints it with Rich (or JSON for CI).
@@ -146,7 +144,7 @@ Rules detect; nothing else decides what is a finding. The model only comments on
 
 ## See it work
 
-`tests/fixtures/sample_app` is a small FastAPI app with planted vulnerabilities and planted non-findings. **The fixtures and tests contain deliberate fake secrets and vulnerabilities**: key-shaped strings (some look like Stripe or API keys), passwords and injectable code, written for testing and never real credentials. Secret scanners will flag them; do not copy them into real code. Every value below is asserted by the test suite, offline and against a real FalkorDB:
+`tests/fixtures/sample_app` is a small FastAPI app with planted vulnerabilities and planted non-findings. **The fixtures and tests contain deliberate fake secrets and vulnerabilities**: key-shaped strings (some look like Stripe or API keys), passwords and injectable code, written for testing and never real credentials. Secret scanners will flag them; do not copy them into real code. Every value below is asserted by the test suite, offline and through the real graph store:
 
 | Finding | Severity | Why |
 |---|---|---|
@@ -166,32 +164,29 @@ Not reported, on purpose: constant SQL, a parameterised query, `eval("1 + 1")`, 
 ```bash
 gittrace scan <path> [--format rich|json] [--min-severity LEVEL] [--depth N]
                      [--fail-on LEVEL|none] [--offline] [--no-blame] [--include-tests]
-                     [--model NAME] [--no-llm] [--fix] [--allow-remote] [--show-email]
+                     [--model NAME] [--no-llm] [--fix] [--show-email]
 gittrace explain <path> [--format rich|md|json] [--out FILE] [--file PATH | --function ID]
                         [--all] [--min-callers N] [--depth N] [--model NAME] [--no-llm] [--yes]
 gittrace trace <file.py:line | finding-id> [--project PATH] [--depth N] [--format ...]
 gittrace blast-radius <function-id> [--project PATH] [--depth N] [--format ...]
 gittrace doctor [--format json]                  # is this machine ready? (changes nothing)
-gittrace up [--pull]                             # start local FalkorDB; check (and pull) the models
-gittrace graphs [--drop NAME ...] [--allow-remote]
+gittrace up [--pull]                             # check (and pull) the models
 gittrace --version
 ```
 
 `python -m gittrace ...` works the same, e.g. from a source checkout.
 
-- `scan` writes the project's graph and prints a headline panel, a findings table (severity, rule, file:line, the endpoint that reaches it, whether that endpoint needs auth), then for each finding the code with the line highlighted, the attack paths as a tree, the blast radius, the owner and the severity reasons.
+- `scan` writes the project's graph cache (`<project>/.gittrace/graph.json`) and prints a headline panel, a findings table (severity, rule, file:line, the endpoint that reaches it, whether that endpoint needs auth), then for each finding the code with the line highlighted, the attack paths as a tree, the blast radius, the owner and the severity reasons.
 - `--fail-on` (default `high`) sets the exit code: **1** if any finding is at or above it, so `scan` can gate CI; `none` never fails. It reads the rules' severity only, never the model's adjustment. `--min-severity` only filters what is shown (and what the model is asked about).
 - `--depth` (default 10, max 50) bounds the CALLS hops followed from a route handler to the vulnerable function, and the upstream callers counted in the blast radius.
-- `--offline` computes reachability in memory and writes nothing to FalkorDB (same rules and scores); `trace` and `blast-radius` need the graph.
+- `--offline` computes reachability from the analysis directly and writes no graph cache (same rules and scores); `trace` and `blast-radius` need the cache. The cache records the sha256 of every source file and is never used once any file is changed, added or removed: the graph tools then ask for a new `scan`.
 - `--no-blame` skips `git blame`. Outside a git repository the owner lookup is skipped quietly. The owner is shown by name only; `--show-email` adds the author's email (in the JSON output too).
-- `--allow-remote`: when `FALKORDB_HOST` is not this machine (`localhost`, `127.0.0.1`, `::1`), `scan` prints a one-line warning and refuses to write the graph, which includes the project's source code, unless you pass this flag (or `--offline`, which writes nothing). `graphs --drop` needs it too on a remote database.
 - Findings in test code (a `tests`/`test` directory, `test_*.py`, `*_test.py`, `conftest.py`) are listed in a separate section at `info` and never trip `--fail-on`; `--include-tests` treats them like any other code.
 - `--model` picks the triage model (any LiteLLM model name; default `$GITTRACE_MODEL`, else `ollama/llama3.1:8b`); `--no-llm` makes no model call at all. Test-code findings are not triaged unless `--include-tests`.
 - `--fix` also asks the model for a fix for each finding, shown as a diff checked with `git apply --check` (never applied). Off by default: writing fixes is the slow part of a reply, and a fix is only checked to apply, not to be correct. `--fix` cannot be combined with `--no-llm`.
-- `doctor` checks Python, Docker, FalkorDB (a real round trip), whether the configured database is local, Ollama and both models, free GPU memory against what the models need, and on Windows the power source, power plan, sleep and display timers and Modern Standby (in GitTrace's own evaluation, standby paused single model calls for up to 25 minutes). It exits 1 when a check fails.
-- `up` starts local FalkorDB in Docker (the `gittrace-falkordb` container, created from `falkordb/falkordb:v4.22.1` the first time, or the repository's docker compose container if it exists), waits until it answers, and checks Ollama and the models; `--pull` pulls the missing ones. It never touches a remote database.
-- `graphs` lists the graphs on the configured FalkorDB; `--drop NAME` deletes graphs by exact name.
-- Exit code **2** means an error: bad arguments, an unscanned project, FalkorDB unreachable, the model cannot be called (Ollama not running, model not pulled).
+- `doctor` checks Python, Ollama and both models, free GPU memory against what the models need, and on Windows the power source, power plan, sleep and display timers and Modern Standby (in GitTrace's own evaluation, standby paused single model calls for up to 25 minutes). It exits 1 when a check fails.
+- `up` checks Ollama and the models; `--pull` pulls the missing ones.
+- Exit code **2** means an error: bad arguments, an unscanned project (or one changed since its scan), the graph cache cannot be written, the model cannot be called (Ollama not running, model not pulled).
 
 ### Interactive mode
 
@@ -200,11 +195,11 @@ gittrace              # in a terminal: the interactive mode
 gittrace --no-anim    # the same, with a still logo
 ```
 
-Run with no arguments in a terminal, GitTrace opens a full-screen session (built with [Textual](https://textual.textualize.io)). A header shows a turning graph logo, the version, the current project, the model(s), and the database as `local` or `remote` with `up` or `down` (a real round trip, `GRAPH.LIST` with a 3 s timeout; never the address). Below it is a scrollable output area drawn exactly as the commands above draw, and a prompt at the bottom:
+Run with no arguments in a terminal, GitTrace opens a full-screen session (built with [Textual](https://textual.textualize.io)). A header shows a turning graph logo, the version, the current project and the model(s). Below it is a scrollable output area drawn exactly as the commands above draw, and a prompt at the bottom:
 
 | Command | Does |
 |---|---|
-| `/scan [path] [--offline] [--no-llm] [--fix] [--include-tests] [--no-blame] [--show-email] [--allow-remote]` | `scan` with its default options |
+| `/scan [path] [--offline] [--no-llm] [--fix] [--include-tests] [--no-blame] [--show-email]` | `scan` with its default options |
 | `/explain [path] [--no-llm] [--all] [--yes]` | `explain` of the whole project |
 | `/trace <file:line>` | `trace` in the current project |
 | `/blast-radius <function-id>` | `blast-radius` in the current project |
@@ -218,12 +213,10 @@ Run with no arguments in a terminal, GitTrace opens a full-screen session (built
 
 ### Settings
 
-Nothing needs configuring for the defaults (local Docker FalkorDB, local Ollama). To change something, set environment variables, or put them in a `.env` file: GitTrace reads the first of `$GITTRACE_ENV_FILE`, `.env` in a source checkout, and `.env` in your user config directory (e.g. `~/.config/gittrace/.env`, `%LOCALAPPDATA%\gittrace\.env`; `gittrace doctor` shows which). It never reads the `.env` of the directory you are in, which is usually the project being scanned. Environment variables win over the file. See `.env.example`.
+Nothing needs configuring for the defaults (local Ollama). To change something, set environment variables, or put them in a `.env` file: GitTrace reads the first of `$GITTRACE_ENV_FILE`, `.env` in a source checkout, and `.env` in your user config directory (e.g. `~/.config/gittrace/.env`, `%LOCALAPPDATA%\gittrace\.env`; `gittrace doctor` shows which). It never reads the `.env` of the directory you are in, which is usually the project being scanned. Environment variables win over the file. See `.env.example`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `FALKORDB_HOST` / `FALKORDB_PORT` | `localhost` / `6379` (local Docker) | FalkorDB instance; any other host is remote and `scan` needs `--allow-remote` to write to it |
-| `FALKORDB_USER` / `FALKORDB_PASSWORD` | none | Credentials, for a remote instance |
 | `GITTRACE_MODEL` | `ollama/llama3.1:8b` | Triage model; `--model` wins |
 | `GITTRACE_EXPLAIN_MODEL` | `ollama/qwen2.5-coder:7b` | `explain` model; `--model` wins; `GITTRACE_MODEL` does not apply to `explain` |
 | `GITTRACE_LLM_TIMEOUT` | 120 | Seconds to wait for one reply |
@@ -231,7 +224,7 @@ Nothing needs configuring for the defaults (local Docker FalkorDB, local Ollama)
 | `GITTRACE_ENV_FILE` | none | A `.env` file to read first |
 | `OLLAMA_API_BASE` | `http://localhost:11434` | Where Ollama listens |
 
-GitTrace describes the database only as `local` or `remote`: the host, port and password are left out of every message, error and log line, and tracebacks never print local variables. The integration tests only ever use a local FalkorDB. See [SECURITY.md](SECURITY.md) for what GitTrace trusts and what it does not.
+The graph stays on this machine, in the scanned project's `.gittrace/` folder (which gets a `*` `.gitignore`). The cache leaves out function source code, so hardcoded secrets in the project are not copied into it; finding snippets are masked as everywhere else. Tracebacks never print local variables. See [SECURITY.md](SECURITY.md) for what GitTrace trusts and what it does not.
 
 ## Rules
 
@@ -285,7 +278,7 @@ After the rules and the severity table, `scan` asks a model about each finding i
 
 ## Explain
 
-`gittrace explain <path>` describes a project for the person who owns it but did not write most of it. It needs no FalkorDB: it reads the same analysis as `scan --offline`.
+`gittrace explain <path>` describes a project for the person who owns it but did not write most of it. It writes no graph: it reads the same analysis as `scan --offline`.
 
 **Facts first** (`gittrace/core/explain.py`, `gittrace/languages/python/facts.py`; all of it works with `--no-llm`):
 
@@ -307,52 +300,38 @@ After the rules and the severity table, `scan` asks a model about each finding i
 
 **Output.** `--format rich` (default), `md` or `json`; `--out EXPLAIN.md` writes the Markdown version to a file and prints a one-line note. The scanned code is fenced as untrusted data and hardcoded secrets are masked in the prompts and the output, as in `scan`.
 
-## Why a graph database?
+## Why a stored graph?
 
-A scan could compute everything in memory (`--offline` does), so FalkorDB has to earn its place:
+A scan could compute everything from the analysis alone (`--offline` does), so the stored graph has to earn its place:
 
-- **Persistence across commands.** `scan` writes the project's graph once; `trace`, `blast-radius` and the MCP tools then answer from it without re-parsing the code, and a re-scan updates it in place.
-- **Querying from outside the CLI.** The findings, call graph and routes are plain nodes and edges, so they can be explored with Cypher (e.g. in the FalkorDB Browser) or by an agent over MCP, for questions the CLI does not ask.
-- **Scaling beyond memory.** Bounded variable-length traversal and native `shortestPath` run in the database, so the call graph of a large codebase does not have to fit in, or be walked by, the Python process.
+- **Persistence across commands.** `scan` writes the project's graph once; `trace`, `blast-radius` and the MCP tools then answer from it without re-parsing the code or re-running the rules and `git blame`.
+- **Querying from outside the CLI.** The findings, call graph and routes are plain nodes and edges, so an agent can explore them over MCP, for questions the CLI does not ask.
+
+The graph is held in memory (NetworkX) and cached as JSON, so the whole call graph of the project has to fit in memory; no database server is involved.
 
 ## Reachability and blast radius
 
 For the function F that contains a finding, with depth D:
 
-```cypher
-// upstream callers: the blast radius
-MATCH (c:Function)-[:CALLS*1..D]->(f:Function {id: $id})
-WHERE c.id <> $id
-RETURN DISTINCT c.id ORDER BY c.id
+- **Upstream callers (the blast radius):** a breadth-first walk backwards over `CALLS` edges, 1 to D hops, without F itself (a cycle back to F does not make F its own caller). Each caller is counted once, at its shortest distance.
+- **Routes:** every Endpoint whose handler is F or one of those callers, each with one shortest path Endpoint `-HANDLED_BY->` handler `-CALLS*->` F, so at most D + 1 edges. When several shortest paths tie, the one through the smallest function ids is taken.
 
-// routes: endpoints whose handler is F or a caller, with one shortest path each
-MATCH (f:Function {id: $id})
-OPTIONAL MATCH (c:Function)-[:CALLS*1..D]->(f)
-WITH f, collect(DISTINCT c) + [f] AS handlers
-UNWIND handlers AS h
-MATCH (e:Endpoint)-[:HANDLED_BY]->(h)
-WITH DISTINCT e, f
-WITH e, shortestPath((e)-[:HANDLED_BY|CALLS*1..D+1]->(f)) AS p
-WHERE p IS NOT NULL
-RETURN e.id, e.method, e.path, e.auth_required, e.prefix_resolved, [n IN nodes(p) | n.id]
-```
-
-The first query narrows the candidate endpoints, so FalkorDB's native `shortestPath` only runs for endpoints that can reach F. Routes are reported unauthenticated first, then by hops. The same computation runs in memory for `--offline`; the test suites check both give identical findings.
+Routes are reported unauthenticated first, then by hops. The same computation runs on the analysis directly for `--offline`; the test suites check both give identical results.
 
 ## Graph model
 
-One graph per project, `gittrace_<folder>_<8 hex of the absolute path>`, rebuilt by every scan: each node and edge is written with `MERGE` on a stable ID and stamped with the scan, and whatever an older scan wrote and this one did not is deleted. Re-scanning unchanged code leaves the graph identical.
+One graph per project, `gittrace_<folder>_<8 hex of the absolute path>`, built from scratch by every scan and cached in `<project>/.gittrace/graph.json` (written to a temporary file, then renamed into place) with the sha256 of every source file. Each node and edge is merged on a stable ID, and each label has its own key space. Re-scanning unchanged code gives the identical graph.
 
 | Node | Key properties |
 |---|---|
 | `(:Project)` | `id` (graph name), `name`, `root`, `scanned_at`, counts, `findings`, `findings_<level>` |
 | `(:File)` | `path`, `language`, `sha256`, `lines` |
-| `(:Function {resolved: true})` | `id` = `relative/path.py::QualifiedName` (e.g. `app/db.py::Repo.get_user`), `kind` (`function`/`method`/`nested`/`module`), `start_line`, `end_line`, `source`, `is_async` |
+| `(:Function {resolved: true})` | `id` = `relative/path.py::QualifiedName` (e.g. `app/db.py::Repo.get_user`), `kind` (`function`/`method`/`nested`/`module`), `start_line`, `end_line`, `source` (in memory only; not cached), `is_async` |
 | `(:Function {resolved: false})` | `id` = `external::<dotted name>` (e.g. `external::subprocess.run`, aliases expanded), `origin` (`builtin`/`import`/`project`/`unknown`) — one node per name, shared by every call site |
 | `(:Endpoint)` | `id` = `METHOD path -> handler`, `framework`, `method`, `path`, `auth_required`, `auth_evidence`, `prefix_resolved` |
 | `(:Sink)` | `id` = `path.py::line::col` — one per finding: `rule_id`, `severity`, `score`, `reasons`, `snippet`, `callee`, `evidence`, `params`, `endpoints`, `blast_radius`, `uncertain`, `owner_*` |
 
-Edges: `(File)-[:DECLARES]->(Function|Endpoint)`, `(Endpoint)-[:HANDLED_BY]->(Function)`, `(Function)-[:CALLS {lines}]->(Function)`, `(Function)-[:REACHES_SINK]->(Sink)`. Code that runs at import time (module-level calls, decorators, default arguments) belongs to a `path.py::<module>` function. Indexes on `Function.id`, `File.path`, `Endpoint.id`, `Sink.id`.
+Edges: `(File)-[:DECLARES]->(Function|Endpoint)`, `(Endpoint)-[:HANDLED_BY]->(Function)`, `(Function)-[:CALLS {lines}]->(Function)`, `(Function)-[:REACHES_SINK]->(Sink)`. Code that runs at import time (module-level calls, decorators, default arguments) belongs to a `path.py::<module>` function. Each node pair has at most one edge.
 
 ### What ingestion resolves
 
@@ -389,20 +368,17 @@ The MCP tools are named `list_findings_tool`, `trace_attack_path_tool`, `blast_r
 
 ```bash
 pip install -r requirements.txt                  # this checkout, editable, plus pytest and build
-python -m pytest tests -q                        # everything; DB and model tests skip without Docker / Ollama
+python -m pytest tests -q                        # everything; the live model test skips without Ollama
 python -m pytest tests/test_llm_live.py -v          # one real triage; skips without Ollama
-
-gittrace up                                      # or: docker compose up -d falkordb
-GITTRACE_REQUIRE_FALKORDB=1 python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -q
 ```
 
-- The expected functions, calls and endpoints of `tests/fixtures/sample_app` are written out by hand in `tests/expected_sample_app.py`, and its expected findings, severities, routes and blast radii in `tests/expected_findings.py`. The offline suites check the parser, the rules and the in-memory scan against them; the integration suites check the same facts in a real FalkorDB graph (Sink nodes, `REACHES_SINK` edges, stored severities, every tool's Cypher) and that both reachability backends agree.
+- The expected functions, calls and endpoints of `tests/fixtures/sample_app` are written out by hand in `tests/expected_sample_app.py`, and its expected findings, severities, routes and blast radii in `tests/expected_findings.py`. The offline suites check the parser, the rules and the in-memory scan against them; the integration suites check the same facts in the real graph store and its cache (Sink nodes, `REACHES_SINK` edges, stored severities, every tool's graph query) and that both reachability backends agree. `tests/test_memstore.py` covers the store itself: depth limits, cycles, ties, the cache's invalidation and atomic writes, and that no raw secret or source code is cached.
 - `tests/snapshots/sample_app_scan.json` is a reviewed snapshot of `scan --format json`; a test also checks it against the hand-written expectations. Regenerate with `GITTRACE_UPDATE_SNAPSHOTS=1 pytest tests/test_scan.py -k snapshot` and review the diff.
 - `tests/test_llm.py` covers the model layer with the model mocked: schema validation, the retry, every error path (including the out-of-GPU-memory recovery), prompt-injection comments in scanned code, the token budget, cache hits and misses, the fix check, and the CLI (triage next to the rules' results, the likely-harmless section, the gate, `--no-llm`). `tests/test_llm_live.py` runs one real triage against Ollama and skips when it is not running.
 - `tests/test_explain.py` covers `explain` with the model mocked: the facts (entry points, imports, side effects call by call, services, important functions, flow trees, findings), the bottom-up order, the prompt budget, the fence and secret masking, the grounding check, the cache, errors, and the CLI (formats, `--out`, `--file`, `--function`, `--all`, the confirmation above 10 minutes).
 - `tests/test_eval_hygiene.py` fails if a raw secret value from the eval targets appears in `eval/results/` or a review file (see `eval/README.md`).
-- `tests/test_connection.py`, `tests/test_config.py` and `tests/test_machine.py` cover the database target (local by default, redaction, `--allow-remote`), where settings come from, and `doctor` / `up` against a fake machine; `tests/test_interactive.py` and `tests/test_logo.py` the interactive mode.
-- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13, the integration suites against a FalkorDB service container, and a `package` job on Linux and Windows that builds the wheel, installs it with pipx and runs the installed `gittrace` outside the checkout. Locally the integration suites skip when no local FalkorDB answers, and never use a remote one.
+- `tests/test_config.py` and `tests/test_machine.py` cover where settings come from, and `doctor` / `up` against a fake machine; `tests/test_interactive.py` and `tests/test_logo.py` the interactive mode.
+- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13, the integration suites, and a `package` job on Linux and Windows that builds the wheel, installs it with pipx and runs the installed `gittrace` outside the checkout. No service container is needed.
 
 ## Evaluation
 
@@ -567,7 +543,7 @@ The `timing-battery` pass measures the battery more than the models: qwen2.5-cod
 ## Limitations
 
 - **Python only**, and only FastAPI, Flask and Flask-RESTful/RESTX routes.
-- **A full run needs Docker and Ollama** on the machine (see [First run](#first-run-docker-and-ollama)); `--offline --no-llm` needs neither. `doctor`'s power and sleep checks are Windows-only.
+- **A full run needs Ollama** on the machine (see [First run](#first-run-ollama)); `--no-llm` does not. `doctor`'s power and sleep checks are Windows-only.
 - **Intraprocedural data flow.** A dangerous value is tracked through assignments inside one function (and closures), not across calls, and a query passed in unchanged as a parameter is not a finding.
 - **Known false negative: SQL built in another function.** When one function builds the SQL string and another executes it, nothing is reported:
 

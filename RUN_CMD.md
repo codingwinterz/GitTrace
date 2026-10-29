@@ -58,24 +58,23 @@ If cmd says `'gittrace' is not recognized as an internal or external command`, e
 virtual environment is not active (B) or the PATH change from `pipx ensurepath` needs a new
 cmd window (A). `where gittrace` shows which `gittrace.exe` cmd finds.
 
-## 3. Start Docker and Ollama (only for a full scan)
+## 3. Start Ollama (only for the model's triage and summaries)
 
-A full `gittrace scan` uses **Docker Desktop** (for the FalkorDB graph database) and
-**Ollama** (for the local model). Start both from the Start menu, then:
+GitTrace needs no database: the code graph is built in the GitTrace process. A full
+`gittrace scan` uses **Ollama** (for the local model). Start it from the Start menu, then:
 
 ```bat
 gittrace up --pull
 gittrace doctor
 ```
 
-- `up --pull` starts FalkorDB in Docker and downloads the two models (about 9.6 GB the
-  first time).
-- `doctor` checks Docker, FalkorDB, Ollama, the models, free GPU memory, and Windows power
+- `up --pull` checks Ollama and downloads the two models (about 9.6 GB the first time).
+- `doctor` checks Ollama, the models, free GPU memory, and Windows power
   and sleep settings. It exits with code 1 when something is not ready (`echo %ERRORLEVEL%`
   shows it).
 
-**Without Docker or Ollama** you can still use GitTrace: add `--offline --no-llm` to `scan`
-and `--no-llm` to `explain` (see below).
+**Without Ollama** you can still use GitTrace: add `--no-llm` to `scan` and `explain`
+(see below).
 
 ## 4. Open the interactive mode
 
@@ -85,8 +84,8 @@ Type `gittrace` with nothing after it:
 gittrace
 ```
 
-This opens a full-screen view with the logo, the current project, the models and the
-FalkorDB status, and a prompt at the bottom. Type commands starting with `/`:
+This opens a full-screen view with the logo, the current project and the models, and a
+prompt at the bottom. Type commands starting with `/`:
 
 | Type this | What it does |
 |---|---|
@@ -132,7 +131,7 @@ gittrace explain C:\path\to\project --file app/db.py
 gittrace explain C:\path\to\project --function app/db.py::Repo.get_user
 ```
 
-- `--offline` scans in memory without FalkorDB; `--no-llm` skips the model.
+- `--offline` scans without writing the graph cache (`.gittrace\graph.json`); `--no-llm` skips the model.
 - `--fix` adds a suggested fix as a diff. GitTrace never changes your files.
 - File and function ids inside a project (`app/db.py`, `app/db.py::Repo.get_user`) always
   use forward slashes, as GitTrace prints them.
@@ -146,7 +145,7 @@ for files meant to be read by other programs.
 
 ## 6. Settings in cmd
 
-No settings file is needed for local Docker and Ollama. To change something for the
+No settings file is needed for local Ollama. To change something for the
 current window only, use `set` (no spaces around `=`):
 
 ```bat
