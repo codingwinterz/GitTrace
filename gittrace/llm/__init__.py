@@ -7,6 +7,7 @@ and an optional fix, which GitTrace turns into a diff and checks but never
 applies.
 
     client   one structured call: model choice, options, schema validation, one retry
+    gateway  the same calls through an in-process Respan Gateway (opt-in)
     schemas  the pydantic schema each task's reply must match
     prompts  the instructions, and the fence around untrusted scanned code
     context  what the model sees about one finding, within a token budget

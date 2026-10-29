@@ -84,7 +84,7 @@ All numbers come from `eval/` (scripts, labels and per-finding results are commi
 
 So: **comparable to Bandit in these categories, with added reachability and ownership context**: which route reaches each finding, whether that route needs authentication, the path, how many callers and endpoints depend on it, and who last changed the line. On real projects most findings are real patterns that are not exploitable (SQL built from trusted table names); that context, and the model's triage, are how GitTrace helps you sort them. Details: [Evaluation](#evaluation).
 
-**Reachability (is the finding reached from a route?).** Of the 20 true positives on the vulnerable apps that a route truly reaches (per the ground truth), GitTrace marks **7, and 0 wrongly**. The 13 it misses are all in vulnpy: **11 are reached through `getattr` dispatch** and **2 through Falcon routes**, neither of which GitTrace follows. The same in the untouched, after-tuning and after-reachability runs; counting and per-run table in [`eval/README.md`](eval/README.md#reachability).
+**Reachability (is the finding reached from a route?).** Of the 20 true positives on the vulnerable apps that a route truly reaches (per the ground truth), GitTrace marks **7, and 0 wrongly**. The 13 it misses are all in vulnpy: **11 are reached through `getattr` dispatch** (a function looked up by name, returned, and called later), which GitTrace does not follow, and **2 through Falcon routes**: GitTrace detects Falcon routes now, but vulnpy's Falcon app is rebound under a condition (`app = ContrastMiddleware(app)`), so GitTrace does not resolve which object the routes hang off. The same in the untouched, after-tuning, after-reachability and after-reach-fixes runs; counting and per-run table in [`eval/README.md`](eval/README.md#reachability).
 
 **Known weakness: many false positives on real projects.** On CTFd and mealie most findings are dangerous-looking patterns that are not vulnerabilities: before tuning, 10 of 10 (CTFd) and 63 of 65 (mealie) were false positives; after tuning, 3 of 3 and 13 of 15 (open-webui, held out: 27 of 29).
 
@@ -223,8 +223,38 @@ Nothing needs configuring for the defaults (local Ollama). To change something, 
 | `GITTRACE_SHOW_EMAIL` | off | `1` adds the git blame email to the graph tools' results (MCP, `trace`, `blast-radius`); `scan` uses `--show-email` |
 | `GITTRACE_ENV_FILE` | none | A `.env` file to read first |
 | `OLLAMA_API_BASE` | `http://localhost:11434` | Where Ollama listens |
+| `GITTRACE_GATEWAY` | off | `1` sends the model calls through an in-process Respan Gateway instead of LiteLLM (see below) |
+| `GITTRACE_GATEWAY_CONFIG` | none | A `gateway.toml` for that gateway; without it, it is built from the provider keys in the environment |
 
 The graph stays on this machine, in the scanned project's `.gittrace/` folder (which gets a `*` `.gitignore`). The cache leaves out function source code, so hardcoded secrets in the project are not copied into it; finding snippets are masked as everywhere else. Tracebacks never print local variables. See [SECURITY.md](SECURITY.md) for what GitTrace trusts and what it does not.
+
+### Model layer through the Respan Gateway
+
+`GITTRACE_GATEWAY=1` sends every model call (scan triage, `explain` summaries, the `--fix` request) through the open-source [Respan Gateway](https://github.com/respanai/respan-gateway), in the same process, instead of LiteLLM calling the provider directly. Nothing else about the call changes: the same prompt, temperature, seed, reply-token limit, JSON-schema reply and timeout, validated and retried the same way, and a reply that is invalid or unavailable fails the same way. The gateway is the Rust gateway of [`respanai/respan-gateway`](https://github.com/respanai/respan-gateway) (its `python/README.md` documents the Python API), installed from PyPI as `respan-gateway==0.3.0` by the optional `gateway` extra, which a plain install leaves out. Install GitTrace with it (from the default branch: the `v2.0.0` tag has no gateway):
+
+```bash
+pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"
+```
+
+From a clone, `pipx install --force ".[gateway]"`. It spends your own provider keys; a Respan account, credits and a tracing export are separate, optional features and no part of this.
+
+```bash
+# in the environment (or a .env file, see Settings): provider keys, the switch, a model
+export OPENAI_API_KEY=...            # or ANTHROPIC_API_KEY, GEMINI_API_KEY, ... (or none, for local Ollama)
+export GITTRACE_GATEWAY=1
+export GITTRACE_MODEL=gpt-4o-mini    # the gateway's model name, not a LiteLLM one
+
+gittrace scan path/to/project        # the usual command; triage now goes through the gateway
+gittrace explain path/to/project     # GITTRACE_EXPLAIN_MODEL works the same way
+```
+
+- **Without `GITTRACE_GATEWAY_CONFIG`** the gateway is built from the provider keys found in the environment, plus local Ollama, which is how respan-gateway configures itself with no config file. GitTrace's default `ollama/llama3.1:8b` is then the gateway's `ollama` provider, so the default setup reaches the same local model by the same name (`OLLAMA_API_BASE` is honoured).
+- **With `GITTRACE_GATEWAY_CONFIG=/path/to/gateway.toml`** the gateway reads that config instead: providers, secrets written `key = "env:NAME"`, client keys and routing. Its guide is [configuration.md](https://github.com/respanai/respan-gateway/blob/v0.3.0/docs/configuration.md).
+- **Routes are model names.** `GITTRACE_MODEL=smart` with `[routes.smart] to = ["anthropic/claude-haiku-5-5", "openai/gpt-6-luna"]` makes each finding's triage try the first, then the second. GitTrace passes the name through untouched, so the reports, the cache and `--model` all show what you asked for.
+- **The scanned project's `gateway.toml` is never read**, as its `.env` is not: a file in the directory you run from must not decide where your provider keys are sent.
+- **When it cannot work** (not installed, a config that does not parse, no provider that can be reached) the scan stops with exit 2 and says which, like a model that cannot be called at all. `--no-llm` is unaffected.
+
+**Smoke-tested offline** (`tests/test_gateway.py`): a real in-process gateway whose only provider is an OpenAI-compatible fixture on loopback answered all 13 findings of `gittrace scan tests/fixtures/sample_app --offline --no-blame` — 13 requests each carrying the `TriageVerdict` JSON schema, the verdicts and severity adjustments in the JSON report, 0 errors — and a `[routes.smart]` in the test's `gateway.toml` reached the provider as the model that route names. **No live provider request was made:** this environment has no provider keys, so the fixture is what proves the path. With your own keys (and Ollama running, or the provider's model) the same path is a real call, and the run command does not change.
 
 ## Rules
 
@@ -542,7 +572,7 @@ The `timing-battery` pass measures the battery more than the models: qwen2.5-cod
 
 ## Limitations
 
-- **Python only**, and only FastAPI, Flask and Flask-RESTful/RESTX routes.
+- **Python only**, and only FastAPI, Flask (decorators and `add_url_rule`), Flask-RESTful/RESTX and Falcon (`app.add_route`) routes. A route object assigned more than one way (e.g. `app = Middleware(app)` under an `if`) is not resolved, so its routes are not found.
 - **A full run needs Ollama** on the machine (see [First run](#first-run-ollama)); `--no-llm` does not. `doctor`'s power and sleep checks are Windows-only.
 - **Intraprocedural data flow.** A dangerous value is tracked through assignments inside one function (and closures), not across calls, and a query passed in unchanged as a parameter is not a finding.
 - **Known false negative: SQL built in another function.** When one function builds the SQL string and another executes it, nothing is reported:
@@ -555,7 +585,7 @@ The `timing-battery` pass measures the battery more than the models: qwen2.5-cod
   ```
 
   This exact case is in `tests/fixtures/sample_app/app/db.py:24`, and the tests assert that it is *not* reported, so a fix will show up as a deliberate test change.
-- **Call resolution is static and conservative.** Calls on parameters, attributes or return values (`db_session.query`, `self.repo.get`) stay unresolved, so paths through them are missed; dynamic dispatch (plugin registries, `getattr` / `import_module` lookups, routes added in loops with computed names) is invisible, by design: GitTrace does not guess those edges.
+- **Call resolution is static and conservative.** Calls on parameters, attributes or return values (`db_session.query`, `self.repo.get`) stay unresolved, so paths through them are missed, including a callback passed as an argument and called by the receiver. Followed: an immediate `getattr(obj, name)()` on a project object held in a variable, and a `threading.Thread(target=f)` (both as `dynamic` edges), and routes registered with `add_url_rule` in loops (a computed rule is kept as `${...}`, unresolved). Not followed, by design: a function looked up with `getattr` / `import_module`, returned and called later, and plugin registries; GitTrace does not guess those edges. Future work: report such findings in a separate, labelled "possibly reachable (dynamic dispatch)" tier that never changes the "reachable" count; not built, because it needs return-value flow GitTrace does not have.
 - **Rules are pattern rules.** A finding means the dangerous pattern is there, not that it is exploitable: a query formatted from trusted schema names is still reported, with a lower severity when no route reaches it.
 - **Auth detection is name-based** and only sees obvious dependencies, decorators and checks at the top of the handler's own body; a check made in a function the handler calls, or further down the body, is not recognised, and names outside the pattern (open-webui's `get_verified_user`) make an authenticated route look unauthenticated.
 - **Secrets are only checked where they are bound to a name**, an attribute or a string subscript; a password passed as a keyword argument (`User(password="...")`) or held in a dict literal is not reported.

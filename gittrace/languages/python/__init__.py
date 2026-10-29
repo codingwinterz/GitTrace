@@ -65,7 +65,7 @@ class PythonPlugin(LanguagePlugin):
     def resolve_calls(self, parsed: ParsedProject) -> list[CallSite]:
         assert isinstance(parsed, PythonProject)
         resolver = parsed.resolver
-        return [resolver.resolve_call(m, c) for m in parsed.modules for c in m.calls]
+        return [site for m in parsed.modules for c in m.calls for site in resolver.resolve_call(m, c)]
 
     def detect_routes(self, parsed: ParsedProject) -> list[EndpointDef]:
         assert isinstance(parsed, PythonProject)

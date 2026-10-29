@@ -67,6 +67,8 @@ class Analysis:
             "unresolved_import": origins["import"],
             "unresolved_project": origins["project"],
             "unresolved_unknown": origins["unknown"],
+            "unresolved_dynamic": origins["dynamic"],
+            "dynamic_dispatch_calls": sum(1 for c in self.calls if c.dynamic),
             "external_callees": len({c.dotted for c in unresolved}),
         }
 

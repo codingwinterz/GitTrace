@@ -46,7 +46,9 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 # Calls whose arguments the route detector needs. Other calls keep only the
 # callee name, so large literal arguments are not copied for nothing.
 _KEEP_ARGS = frozenset({"include_router", "register_blueprint", "mount",
-                        "add_resource", "add_namespace", "init_app"})       # routes.py reads these
+                        "add_resource", "add_namespace", "init_app",
+                        "add_route", "add_url_rule",
+                        "Thread"})                      # routes.py / the resolver's thread targets read these
 _MAIN_GUARD = re.compile(r"""^\(?\s*(?:__name__\s*==\s*(['"])__main__\1|(['"])__main__\2\s*==\s*__name__)\s*\)?$""")
 _DEPENDENCY_CALLS = frozenset({"Depends", "Security"})
 _TEXT_LIMIT = 200
@@ -141,6 +143,9 @@ class RawCall:
     site: SiteFacts | None = None
     args: tuple[ArgFact, ...] = ()
     kwargs: tuple[tuple[str, ArgFact], ...] = ()
+    # An immediate `getattr(obj, name)(...)`: the getattr call itself, so the
+    # resolver can read the receiver (args[0]) and the attribute name (args[1]).
+    dispatch: Value | None = None
 
 
 @dataclass(eq=False)
@@ -519,9 +524,12 @@ class _Builder:
         return function_id(self.path, MODULE_SCOPE)
 
     def _call(self, node: Node, scope: Scope) -> None:
-        parts = self._chain(node.child_by_field_name("function"))
-        value = self._value(node, with_args=parts[-1] in _KEEP_ARGS, parts=parts)
+        function = node.child_by_field_name("function")
+        parts = self._chain(function)
+        value = self._value(node, with_args=parts[-1] in _KEEP_ARGS or _passes_target(node), parts=parts)
         raw = RawCall(self._caller(scope), scope, value)
+        if function is not None and function.type == "call" and _is_getattr(function):
+            raw.dispatch = self._value(function, with_args=True)
         self.calls.append(raw)
         self._pending_calls.append((raw, node))
 
@@ -963,6 +971,29 @@ def _docstring(body: Node | None) -> str | None:
         return None
     para = re.split(r"\n\s*\n", text.strip())[0]
     return " ".join(para.split())[:300]
+
+
+
+def _passes_target(node: Node) -> bool:
+    """A call with a `target=` keyword (a thread built under any name, e.g.
+    `from threading import Thread as T`): the resolver reads its arguments."""
+    arguments = node.child_by_field_name("arguments")
+    if arguments is None or arguments.type != "argument_list":
+        return False
+    return any(arg.type == "keyword_argument" and _text(arg.child_by_field_name("name")) == "target"
+               for arg in arguments.named_children)
+
+
+def _is_getattr(node: Node) -> bool:
+    """A `getattr(x, y)` call (plain or `builtins.getattr`) used as the callee
+    of another call: `getattr(obj, "name")(...)` — dynamic dispatch."""
+    fn = node.child_by_field_name("function")
+    if fn is None:
+        return False
+    if fn.type == "attribute":
+        return (_text(fn.child_by_field_name("attribute")) == "getattr"
+                and _text(fn.child_by_field_name("object")) in ("builtins", "_builtins"))
+    return fn.type == "identifier" and _text(fn) == "getattr"
 
 
 def _string_literal(node: Node) -> str | None:

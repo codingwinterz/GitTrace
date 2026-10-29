@@ -7,6 +7,22 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 GitTrace no longer needs Docker, Redis or a database server: `pipx install` and run.
 
+### Added
+
+- **Falcon routes:** `app.add_route("/a", Resource())` on `falcon.App` / `falcon.API` /
+  `falcon.asgi.App`, one endpoint per responder (`on_get`, `on_post`, ...; `suffix=`).
+- **Flask `add_url_rule`**, also in loops: an endpoint when the view resolves; a computed rule
+  is kept as `${...}` with `prefix_resolved: false`.
+- **Thread targets:** `threading.Thread(target=f)` is a `dynamic` call edge to `f`.
+- **Model layer through the Respan Gateway:** `GITTRACE_GATEWAY=1` routes scan triage,
+  `explain` summaries and `--fix` through an in-process
+  [Respan Gateway](https://github.com/respanai/respan-gateway) (`respan-gateway==0.3.0`, the optional `gateway` extra:
+  `pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"`;
+  configured by `GITTRACE_GATEWAY_CONFIG` or the provider keys in the environment) instead of
+  LiteLLM calling the provider directly. The same prompt, JSON schema, timeout and errors;
+  the gateway's model names, routes and provider keys. Off by default, no Respan account or
+  credits involved, and the `gateway.toml` of the scanned project is never read.
+
 ### Changed
 
 - **The graph is in-process:** FalkorDB is replaced by a NetworkX graph held in memory

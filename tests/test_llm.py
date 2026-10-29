@@ -74,6 +74,8 @@ def reply(verdict="likely_real", reason="the query is built from a request param
 def _no_model_env(monkeypatch):
     monkeypatch.delenv("GITTRACE_MODEL", raising=False)
     monkeypatch.delenv("GITTRACE_LLM_TIMEOUT", raising=False)
+    monkeypatch.delenv("GITTRACE_GATEWAY", raising=False)
+    monkeypatch.delenv("GITTRACE_GATEWAY_CONFIG", raising=False)
 
 
 @pytest.fixture

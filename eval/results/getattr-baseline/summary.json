@@ -1,0 +1,209 @@
+{
+  "label": "getattr-baseline",
+  "bandit_version": "1.9.4",
+  "gittrace_mode": "offline",
+  "vulnerable": {
+    "vulpy-bad": {
+      "gittrace": {
+        "ground_truth": 5,
+        "tp": 5,
+        "fp": 1,
+        "fp_benign": 1,
+        "fn": 0,
+        "precision": 0.833,
+        "precision_ignoring_benign": 1.0,
+        "recall": 1.0,
+        "tp_reachable_unauthenticated": 3,
+        "tp_reachable_any": 3
+      },
+      "bandit": {
+        "ground_truth": 5,
+        "tp": 5,
+        "fp": 2,
+        "fp_benign": 2,
+        "fn": 0,
+        "precision": 0.714,
+        "precision_ignoring_benign": 1.0,
+        "recall": 1.0
+      },
+      "ground_truth_reachable_unauthenticated": 3,
+      "gittrace_test_findings": 0
+    },
+    "vulpy-good": {
+      "gittrace": {
+        "ground_truth": 5,
+        "tp": 5,
+        "fp": 0,
+        "fp_benign": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ignoring_benign": 1.0,
+        "recall": 1.0,
+        "tp_reachable_unauthenticated": 0,
+        "tp_reachable_any": 0
+      },
+      "bandit": {
+        "ground_truth": 5,
+        "tp": 4,
+        "fp": 0,
+        "fp_benign": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "precision_ignoring_benign": 1.0,
+        "recall": 0.8
+      },
+      "ground_truth_reachable_unauthenticated": 0,
+      "gittrace_test_findings": 0
+    },
+    "vulnerable-flask-app": {
+      "gittrace": {
+        "ground_truth": 6,
+        "tp": 4,
+        "fp": 0,
+        "fp_benign": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "precision_ignoring_benign": 1.0,
+        "recall": 0.667,
+        "tp_reachable_unauthenticated": 1,
+        "tp_reachable_any": 2
+      },
+      "bandit": {
+        "ground_truth": 6,
+        "tp": 6,
+        "fp": 1,
+        "fp_benign": 0,
+        "fn": 0,
+        "precision": 0.857,
+        "precision_ignoring_benign": 0.857,
+        "recall": 1.0
+      },
+      "ground_truth_reachable_unauthenticated": 1,
+      "gittrace_test_findings": 0
+    },
+    "vulnpy": {
+      "gittrace": {
+        "ground_truth": 15,
+        "tp": 15,
+        "fp": 0,
+        "fp_benign": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "precision_ignoring_benign": 1.0,
+        "recall": 1.0,
+        "tp_reachable_unauthenticated": 2,
+        "tp_reachable_any": 2
+      },
+      "bandit": {
+        "ground_truth": 15,
+        "tp": 10,
+        "fp": 2,
+        "fp_benign": 2,
+        "fn": 5,
+        "precision": 0.833,
+        "precision_ignoring_benign": 1.0,
+        "recall": 0.667
+      },
+      "ground_truth_reachable_unauthenticated": 15,
+      "gittrace_test_findings": 1
+    }
+  },
+  "real_world": {
+    "ctfd": {
+      "target": {
+        "name": "ctfd",
+        "repo": "https://github.com/CTFd/CTFd",
+        "commit": "738f1de09ac4a8ccbd65bf74577acdc1dbecd08e",
+        "scan_path": ".",
+        "framework": "flask"
+      },
+      "scanned": {
+        "files": 350,
+        "parse_failures": 0,
+        "functions": 1716,
+        "endpoints": 243,
+        "calls": 18737
+      },
+      "gittrace_findings": 3,
+      "gittrace_test_findings": 16,
+      "by_rule": {
+        "GT-SQLI-001": 2,
+        "GT-SECRET-001": 1
+      },
+      "by_severity": {
+        "medium": 3
+      },
+      "reachable": 0,
+      "unauthenticated": 0,
+      "bandit_findings_same_categories": 267,
+      "bandit_by_category": {
+        "hardcoded-secret": 265,
+        "sql-injection": 2
+      },
+      "reviewed": 3,
+      "unreviewed": [],
+      "false_positives": 3,
+      "false_positive_rate": 1.0
+    },
+    "mealie": {
+      "target": {
+        "name": "mealie",
+        "repo": "https://github.com/mealie-recipes/mealie",
+        "commit": "c3893a3e64304e2b8cfe3d9b11362d1e0be08e3c",
+        "scan_path": ".",
+        "framework": "fastapi"
+      },
+      "scanned": {
+        "files": 695,
+        "parse_failures": 0,
+        "functions": 4007,
+        "endpoints": 213,
+        "calls": 27366
+      },
+      "gittrace_findings": 15,
+      "gittrace_test_findings": 11,
+      "by_rule": {
+        "GT-SQLI-001": 13,
+        "GT-SECRET-001": 2
+      },
+      "by_severity": {
+        "medium": 15
+      },
+      "reachable": 0,
+      "unauthenticated": 0,
+      "bandit_findings_same_categories": 101,
+      "bandit_by_category": {
+        "hardcoded-secret": 69,
+        "sql-injection": 32
+      },
+      "reviewed": 15,
+      "unreviewed": [],
+      "false_positives": 13,
+      "false_positive_rate": 0.867
+    }
+  },
+  "overall": {
+    "gittrace": {
+      "ground_truth": 31,
+      "tp": 29,
+      "fp": 1,
+      "fp_benign": 1,
+      "fn": 2,
+      "precision": 0.967,
+      "precision_ignoring_benign": 1.0,
+      "recall": 0.935,
+      "tp_reachable_unauthenticated": 6,
+      "tp_reachable_any": 7
+    },
+    "bandit": {
+      "ground_truth": 31,
+      "tp": 25,
+      "fp": 5,
+      "fp_benign": 4,
+      "fn": 6,
+      "precision": 0.833,
+      "precision_ignoring_benign": 0.962,
+      "recall": 0.806
+    }
+  }
+}

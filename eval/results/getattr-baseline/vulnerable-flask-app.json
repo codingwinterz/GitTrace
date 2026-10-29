@@ -1,0 +1,254 @@
+{
+  "target": {
+    "name": "vulnerable-flask-app",
+    "repo": "https://github.com/we45/Vulnerable-Flask-App",
+    "commit": "b6a4f97afd466e83e1f60781494252dec1c37039",
+    "scan_path": "."
+  },
+  "gittrace_findings": [
+    {
+      "tool": "gittrace",
+      "id": "app/app.py::329::17",
+      "rule": "GT-DESER-001",
+      "category": "unsafe-deserialization",
+      "file": "app/app.py",
+      "lines": [
+        329
+      ],
+      "severity": "critical",
+      "score": 9,
+      "reachable": true,
+      "unauthenticated": true,
+      "snippet": "ydata = yaml.load(y)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "app/app.py::265::36",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "app/app.py",
+      "lines": [
+        265
+      ],
+      "severity": "high",
+      "score": 7,
+      "reachable": true,
+      "unauthenticated": false,
+      "snippet": "search_query = db.engine.execute(str_query)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "app/app.py::28::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "app/app.py",
+      "lines": [
+        28
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "app.secret_key = 'F12****************************'"
+    },
+    {
+      "tool": "gittrace",
+      "id": "app/app.py::63::9",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "app/app.py",
+      "lines": [
+        63
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "user.password = 'adm*****'"
+    }
+  ],
+  "bandit_findings": [
+    {
+      "tool": "bandit",
+      "id": "app/app.py:26:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "app/app.py",
+      "lines": [
+        26
+      ],
+      "severity": "low",
+      "snippet": "25 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'"
+    },
+    {
+      "tool": "bandit",
+      "id": "app/app.py:27:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "app/app.py",
+      "lines": [
+        27
+      ],
+      "severity": "low",
+      "snippet": "26 app.config['SECRET_KEY_HMAC'] = 'sec***'"
+    },
+    {
+      "tool": "bandit",
+      "id": "app/app.py:28:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "app/app.py",
+      "lines": [
+        28
+      ],
+      "severity": "low",
+      "snippet": "27 app.config['SECRET_KEY_HMAC_2'] = 'am0************'"
+    },
+    {
+      "tool": "bandit",
+      "id": "app/app.py:63:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "app/app.py",
+      "lines": [
+        63
+      ],
+      "severity": "low",
+      "snippet": "62         user.username = 'admin'"
+    },
+    {
+      "tool": "bandit",
+      "id": "app/app.py:261:B608",
+      "rule": "B608",
+      "category": "sql-injection",
+      "file": "app/app.py",
+      "lines": [
+        261
+      ],
+      "severity": "medium",
+      "snippet": "260                     print(search_term)"
+    },
+    {
+      "tool": "bandit",
+      "id": "app/app.py:329:B506",
+      "rule": "B506",
+      "category": "unsafe-deserialization",
+      "file": "app/app.py",
+      "lines": [
+        329
+      ],
+      "severity": "medium",
+      "snippet": "328 "
+    },
+    {
+      "tool": "bandit",
+      "id": "tests/e2e_zap.py:15:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "tests/e2e_zap.py",
+      "lines": [
+        15
+      ],
+      "severity": "low",
+      "snippet": "14 "
+    }
+  ],
+  "gittrace_test_findings": [],
+  "gittrace": {
+    "ground_truth": 6,
+    "tp": 4,
+    "fp": 0,
+    "fp_benign": 0,
+    "fn": 2,
+    "duplicates": 0,
+    "precision": 1.0,
+    "precision_ignoring_benign": 1.0,
+    "recall": 0.667,
+    "true_positives": {
+      "VF-1": [
+        "app/app.py::265::36"
+      ],
+      "VF-2": [
+        "app/app.py::329::17"
+      ],
+      "VF-5": [
+        "app/app.py::28::1"
+      ],
+      "VF-6": [
+        "app/app.py::63::9"
+      ]
+    },
+    "false_positives": [],
+    "false_positives_benign": [],
+    "false_negatives": [
+      {
+        "id": "VF-3",
+        "category": "hardcoded-secret",
+        "file": "app/app.py",
+        "lines": [
+          26
+        ],
+        "detail": "app.config['SECRET_KEY_HMAC'] = 'sec***' (the key that signs and verifies the JWTs)"
+      },
+      {
+        "id": "VF-4",
+        "category": "hardcoded-secret",
+        "file": "app/app.py",
+        "lines": [
+          27
+        ],
+        "detail": "app.config['SECRET_KEY_HMAC_2'] = 'am0************'"
+      }
+    ],
+    "tp_reachable_unauthenticated": 1,
+    "tp_reachable_any": 2
+  },
+  "bandit": {
+    "ground_truth": 6,
+    "tp": 6,
+    "fp": 1,
+    "fp_benign": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "precision": 0.857,
+    "precision_ignoring_benign": 0.857,
+    "recall": 1.0,
+    "true_positives": {
+      "VF-1": [
+        "app/app.py:261:B608"
+      ],
+      "VF-2": [
+        "app/app.py:329:B506"
+      ],
+      "VF-3": [
+        "app/app.py:26:B105"
+      ],
+      "VF-4": [
+        "app/app.py:27:B105"
+      ],
+      "VF-5": [
+        "app/app.py:28:B105"
+      ],
+      "VF-6": [
+        "app/app.py:63:B105"
+      ]
+    },
+    "false_positives": [
+      {
+        "tool": "bandit",
+        "id": "tests/e2e_zap.py:15:B105",
+        "rule": "B105",
+        "category": "hardcoded-secret",
+        "file": "tests/e2e_zap.py",
+        "lines": [
+          15
+        ],
+        "severity": "low",
+        "snippet": "14 "
+      }
+    ],
+    "false_positives_benign": [],
+    "false_negatives": []
+  },
+  "ground_truth_reachable_unauthenticated": 1
+}

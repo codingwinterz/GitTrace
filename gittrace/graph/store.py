@@ -88,20 +88,27 @@ def write_analysis(graph, analysis, graph_name: str, sinks=()) -> str:
     # project class with no __init__ runs no project code: no node, no edge.
     externals: dict[str, dict] = {}
     edges: dict[tuple[str, str], set[int]] = defaultdict(set)
+    dynamic_edges: set[tuple[str, str]] = set()
     for call in analysis.calls:
         if call.resolved:
-            edges[(call.caller_id, call.callee_id)].add(call.line)
+            key = (call.caller_id, call.callee_id)
         elif call.origin != "class":
             eid = external_id(call.dotted)
             externals.setdefault(eid, {
                 "id": eid, "name": call.dotted.rsplit(".", 1)[-1], "qualified_name": call.dotted,
                 "kind": "external", "origin": call.origin, "resolved": False,
             })
-            edges[(call.caller_id, eid)].add(call.line)
+            key = (call.caller_id, eid)
+        else:
+            continue                            # instantiating a class runs no project code
+        edges[key].add(call.line)
+        if call.dynamic:                       # getattr dispatch: an inferred target set
+            dynamic_edges.add(key)
     for eid, props in externals.items():
         graph.merge_node("Function", eid, {**props, **stamp})
     for (a, b), lines in edges.items():
-        graph.merge_edge("CALLS", ("Function", a), ("Function", b), {"lines": sorted(lines), **stamp})
+        graph.merge_edge("CALLS", ("Function", a), ("Function", b),
+                         {"lines": sorted(lines), "dynamic": (a, b) in dynamic_edges, **stamp})
 
     for e in analysis.endpoints:
         graph.merge_node("Endpoint", e.id, {

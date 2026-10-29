@@ -14,7 +14,11 @@ substring. What it follows:
   - `self.method()` / `cls.method()` / `super().method()`, through project base
     classes (left-to-right, depth-first);
   - a local or module variable assigned exactly once from a project class
-    (`repo = Repo(); repo.get()`), and `Class()` itself, which runs __init__.
+    (`repo = Repo(); repo.get()`), and `Class()` itself, which runs __init__;
+  - `getattr(obj, "name")(...)` (dynamic dispatch): with a literal name it is
+    resolved exactly as `obj.name()` would be; with a computed name every
+    member the receiver is known to hold becomes a low-confidence (dynamic)
+    edge, and an unknown receiver leaves an unresolved `dynamic` marker.
 
 Everything else is reported unresolved with the best full name available
 (aliases expanded) — those are the sink candidates for Phase 4.
@@ -30,6 +34,10 @@ from gittrace.languages.python.parser import PyClass, PyModule, RawCall, Scope, 
 
 BUILTINS = frozenset(dir(builtins))
 _MAX_DEPTH = 25
+# A computed-name getattr dispatch fans out to the receiver's members. Beyond
+# this many candidates the set says nothing useful; the site stays a marker.
+_MAX_DYNAMIC_CANDIDATES = 25
+_MARKER_TEXT = 60
 
 
 # -- symbols ------------------------------------------------------------------
@@ -107,6 +115,10 @@ def _root_origin(sym: object | None) -> str:
     if isinstance(sym, (ModSym, ClassSym, FuncSym)):
         return "project"
     return "unknown"
+
+
+# Constructors whose `target=` runs in another thread (a call edge to it).
+THREAD_CTORS = frozenset({"threading.Thread"})
 
 
 class Resolver:
@@ -357,10 +369,99 @@ class Resolver:
 
     # -- calls ---------------------------------------------------------------
 
-    def resolve_call(self, mod: PyModule, call: RawCall) -> CallSite:
+    def resolve_call(self, mod: PyModule, call: RawCall) -> list[CallSite]:
+        """Every CallSite for one parsed call: one normally, one per candidate
+        target for a getattr dispatch whose name is computed at run time."""
+        if call.dispatch is not None:
+            return self._dispatch(mod, call)
         dotted, origin, callee_id = self._target(mod, call)
-        return CallSite(call.caller_id, call.call.line, dotted, origin, callee_id,
-                        site=call.site, args=call.args, kwargs=call.kwargs)
+        sites = [CallSite(call.caller_id, call.call.line, dotted, origin, callee_id,
+                          site=call.site, args=call.args, kwargs=call.kwargs)]
+        if dotted in THREAD_CTORS:
+            sites += self._thread_target(mod, call)
+        return sites
+
+    def _thread_target(self, mod: PyModule, call: RawCall) -> list[CallSite]:
+        """`threading.Thread(target=f)`: the thread runs `f`, so the function
+        that builds the thread gets a (dynamic) edge to it. Whether `.start()`
+        is called is not checked."""
+        c = call.call
+        target = c.kwarg("target") or (c.args[1] if len(c.args) > 1 else None)
+        if target is None or target.kind != "ref":
+            return []
+        ref = RawCall(call.caller_id, call.scope, Value("ref", target.text, c.line, parts=target.parts))
+        dotted, origin, callee_id = self._target(mod, ref)
+        if callee_id is None:
+            return []
+        return [CallSite(call.caller_id, c.line, dotted, origin, callee_id, site=call.site, dynamic=True)]
+
+    # -- getattr dispatch -----------------------------------------------------
+
+    def _dispatch(self, mod: PyModule, call: RawCall) -> list[CallSite]:
+        """`getattr(receiver, name)(...)` — dynamic dispatch.
+
+        A string-literal name resolves exactly as `receiver.name()` would.
+        A name computed at run time has no single target, so it is not
+        dropped: every function the receiver is known to hold becomes a
+        low-confidence (dynamic) edge, and a receiver whose contents are
+        unknown leaves a documented unresolved `dynamic` marker instead of
+        nothing at all.
+        """
+        args = call.dispatch.args if call.dispatch is not None else ()
+        receiver = args[0] if len(args) > 0 else None
+        name = args[1] if len(args) > 1 else None
+        literal = name is not None and name.kind == "str" and bool(name.string)
+        if (literal and name is not None and receiver is not None and receiver.kind == "ref"
+                and name.string.isidentifier()):
+            dotted, origin, callee_id = self._target(mod, self._as_attribute(receiver, name.string, call))
+            return [CallSite(call.caller_id, call.call.line, dotted, origin, callee_id,
+                             site=call.site, args=call.args, kwargs=call.kwargs, dynamic=True)]
+        if not literal:                       # a computed name: the target set may be knowable
+            candidates = self._dispatch_candidates(mod, call, receiver)
+            if candidates:
+                return candidates
+        # No target to point at: an unknown receiver, or a literal name no
+        # function can carry. Keep the dispatch as a documented marker.
+        dotted = f"getattr({_expression(receiver)}, {_expression(name)})"
+        return [CallSite(call.caller_id, call.call.line, dotted, "dynamic", None,
+                         site=call.site, args=call.args, kwargs=call.kwargs, dynamic=True)]
+
+    def _as_attribute(self, receiver: Value, attr: str, call: RawCall) -> RawCall:
+        """The same call written `receiver.attr(...)`: one synthesized reference."""
+        return RawCall(call.caller_id, call.scope,
+                       Value("ref", receiver.text, call.call.line,
+                             parts=receiver.parts + (attr,)))
+
+    def _dispatch_candidates(self, mod: PyModule, call: RawCall,
+                             receiver: Value | None) -> list[CallSite]:
+        """The functions `getattr(receiver, <computed>)()` could call: every
+        member of the class, instance or module `receiver` resolves to, when
+        that is a bounded set (one low-confidence CallSite per member)."""
+        if receiver is None or receiver.kind != "ref":
+            return []
+        sym = self.resolve_ref(mod, call.scope, receiver.parts).sym
+        if isinstance(sym, VarSym):
+            sym = self.deref(sym)
+        members: list[str] = []
+        if isinstance(sym, ModSym):
+            target = self.modules.get(sym.path)
+            members = sorted(n for n in (target.scope.defs if target is not None else ())
+                             if not n.startswith("__"))
+        elif isinstance(sym, (ClassSym, InstSym)):
+            for cls in (self.mro(sym.cls) if isinstance(sym, InstSym) else self.mro(sym)):
+                target = self._class(cls)
+                if target is not None:
+                    members.extend(n for n in sorted(target.scope.defs)
+                                   if not n.startswith("__") and n not in members)
+        if not members or len(members) > _MAX_DYNAMIC_CANDIDATES:
+            return []
+        out: list[CallSite] = []
+        for member in members:
+            dotted, origin, callee_id = self._target(mod, self._as_attribute(receiver, member, call))
+            if callee_id is not None:
+                out.append(CallSite(call.caller_id, call.call.line, dotted, origin, callee_id,
+                                    site=call.site, args=call.args, kwargs=call.kwargs, dynamic=True))
+        return out
 
     def _target(self, mod: PyModule, call: RawCall) -> tuple[str, str, str | None]:
         """(dotted name, origin, project function id or None) for a call."""
@@ -382,6 +483,14 @@ class Resolver:
         if isinstance(sym, ExtSym) and sym is not r.sym:      # run = subprocess.run; run()
             return sym.dotted, sym.origin, None
         return r.name, r.origin, None
+
+
+def _expression(value: Value | None) -> str:
+    """A short single-line rendering of one argument, for a marker's name."""
+    if value is None:
+        return "..."
+    text = " ".join(value.text.split())[:_MARKER_TEXT]
+    return text or "..."
 
 
 def _module_names(mod: PyModule, package_dirs: set[str]) -> list[str]:
