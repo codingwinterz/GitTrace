@@ -9,6 +9,9 @@
 //      text anywhere in src/ (found with the TypeScript parser), and no
 //      numeric literal passed as a claim's marked/wrong
 //   4. the terminal and the call path come from the real scan in public/
+//      (both captures: 60 columns for the square video, 100 for the wide one)
+//   5. both compositions, GitTrace (1080x1080) and GitTrace16x9 (1920x1080),
+//      render the same shared GitTrace component, so 1-4 cover both
 //
 //   node scripts/check-claims.mjs
 
@@ -77,13 +80,35 @@ const finding = scan.findings.find((f) => f.id === "libuser.py::12::12");
 if (!finding?.reachability.routes.some((r) => r.endpoint === "GET /user/login -> mod_user.py::do_login")) {
   problems.push("public/scan_result.json: the drawn route GET /user/login is not in the scan");
 }
-const output = read(join(promo, "public", "scan_output.txt"));
-if (!output.includes("gittrace scan · bad") || !output.includes("Reached from: GET /user/login")) {
-  problems.push("public/scan_output.txt is not the captured `gittrace scan bad` output");
+for (const file of ["scan_output.txt", "scan_output_100.txt"]) {
+  const output = read(join(promo, "public", file));
+  if (!output.includes("gittrace scan · bad") || !output.includes("Reached from: GET /user/login")) {
+    problems.push(`public/${file} is not the captured \`gittrace scan bad\` output`);
+  }
+}
+
+// 5. Both compositions, read from src/Root.tsx.
+const compositions = [];
+walk(parse(join(promo, "src", "Root.tsx")), (n) => {
+  if (ts.isJsxSelfClosingElement(n) && n.tagName.getText() === "Composition") {
+    const value = (name) => {
+      const v = n.attributes.properties.find((a) => a.name?.getText() === name)?.initializer;
+      return v && ts.isStringLiteral(v) ? v.text : v?.expression?.getText();
+    };
+    compositions.push({ id: value("id"), component: value("component"), width: value("width"), height: value("height") });
+  }
+});
+const want = { GitTrace: ["SIZE", "SIZE"], GitTrace16x9: ["1920", "1080"] };
+for (const [id, [w, h]] of Object.entries(want)) {
+  const c = compositions.find((x) => x.id === id);
+  if (!c) problems.push(`src/Root.tsx: no composition ${id}`);
+  else if (c.component !== "GitTrace" || c.width !== w || c.height !== h) {
+    problems.push(`src/Root.tsx: ${id} must render the shared GitTrace at ${w}x${h} (has ${c.component} at ${c.width}x${c.height})`);
+  }
 }
 
 if (problems.length) {
   for (const p of problems) console.error("PROBLEM:", p);
   process.exit(1);
 }
-console.log(`ok: ${shown.length} shown claims are records in eval/claims.json and match their results; no hand-typed numbers; the scan data is real`);
+console.log(`ok: compositions ${compositions.map((c) => c.id).join(", ")}; ${shown.length} shown claims are records in eval/claims.json and match their results; no hand-typed numbers; the scan data is real`);

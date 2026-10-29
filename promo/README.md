@@ -13,7 +13,10 @@ From the repository root:
 cd promo
 npm install
 npx remotion render GitTrace out/gittrace_promo_1080.mp4
+npx remotion render GitTrace16x9 out/gittrace_promo_1920x1080.mp4 --codec h264 --pixel-format yuv420p --image-format png
 ```
+
+GitTrace16x9 is the 1920x1080 version: the same scenes, data and timing with a wide layout (src/layout.tsx); its terminal replays the same scan captured at COLUMNS=100 (public/scan_output_100.txt).
 
 `npm run render` does the same after running the check below. The MP4 lands
 in `promo/out/gittrace_promo_1080.mp4` (not committed). `npx remotion studio`
