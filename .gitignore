@@ -40,3 +40,7 @@ node_modules/
 /out/
 /captures/
 *.mp4
+
+# The promo video (promo/): build output and dependencies
+promo/out/
+promo/node_modules/
