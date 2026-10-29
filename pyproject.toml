@@ -29,7 +29,6 @@ classifiers = [
 dependencies = [
     "networkx>=3.2",
     "litellm>=1.0.0",
-    "respan-gateway==0.3.0",
     "python-dotenv>=1.0.0",
     "platformdirs>=4.0",
     "pydantic>=2.0.0",
@@ -44,6 +43,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "build>=1.2"]
+gateway = ["respan-gateway==0.3.0"]      # GITTRACE_GATEWAY=1 (gittrace.llm.gateway)
 
 [project.scripts]
 gittrace = "gittrace.cli:main"
