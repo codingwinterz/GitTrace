@@ -31,7 +31,8 @@ GitTrace no longer needs Docker, Redis or a database server: `pipx install` and 
   is changed, added or removed; the graph tools then ask for a new `scan`. Function source code
   is not cached. The graph tools keep their names, arguments and result shapes, and reachability
   is unchanged on the evaluation targets (`eval/results/baseline_reachability.json` and
-  `after_reachability_port.json` are identical: 7 truly reachable true positives, 6 without auth).
+  `after_reachability_port.json` are identical, Sink by Sink; neither records a run label, so their
+  counts are not cited here; see `eval/README.md`, Reachability).
 - **`gittrace up [--pull]`** now only checks Ollama and pulls missing models.
 - **`gittrace doctor`** no longer checks Docker, FalkorDB or the database location.
 - **Interactive mode:** the header no longer shows a database status.
@@ -85,8 +86,9 @@ in the README ("Results at a glance") and `eval/`.
   identity among the handler's first five statements marks the route as authenticated.
 - **Evaluation:** ground truth written before running anything; untouched, after-tuning
   and held-out runs against Bandit, for triage, and for explain; an `after-reachability` run
-  for the two route changes above (detection unchanged; reachability: 7 of 20 truly reachable
-  true positives marked, 0 wrongly; without auth 6 marked, all correct, was 7 with 1 wrong).
+  for the two route changes above (detection unchanged; of 20 truly reachable true positives, marked
+  reachable: `untouched`: 7 marked, 0 wrong; `after-reachability`: 7 marked, 0 wrong; marked
+  reachable without auth: `untouched`: 7 marked, 1 wrong; `after-reachability`: 6 marked, 0 wrong).
 
 ### Changed
 

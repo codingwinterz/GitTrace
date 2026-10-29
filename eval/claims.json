@@ -1,0 +1,194 @@
+{
+ "about": "Reachability claims in the docs. Each one is recounted from source_file by eval/claims.py; tests/test_claims.py fails when the label, the numbers or the wording no longer match.",
+ "claims": [
+  {
+   "claim_id": "readme-reach-untouched",
+   "doc": "README.md",
+   "label": "untouched",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "readme-reach-after-reach-fixes",
+   "doc": "README.md",
+   "label": "after-reach-fixes",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/after_reach_fixes.json"
+  },
+  {
+   "claim_id": "readme-unauth-untouched",
+   "doc": "README.md",
+   "label": "untouched",
+   "dimension": "unauthenticated",
+   "marked": 7,
+   "wrong": 1,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "readme-unauth-after-reach-fixes",
+   "doc": "README.md",
+   "label": "after-reach-fixes",
+   "dimension": "unauthenticated",
+   "marked": 6,
+   "wrong": 0,
+   "source_file": "eval/results/after_reach_fixes.json"
+  },
+  {
+   "claim_id": "readme-context-unauth-after-reachability",
+   "doc": "README.md",
+   "label": "after-reachability",
+   "dimension": "unauthenticated",
+   "marked": 6,
+   "wrong": 0,
+   "source_file": "eval/results/after-reachability/summary.json"
+  },
+  {
+   "claim_id": "release-reach-untouched",
+   "doc": "RELEASE_NOTES_2.0.0.md",
+   "label": "untouched",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "release-reach-after-reachability",
+   "doc": "RELEASE_NOTES_2.0.0.md",
+   "label": "after-reachability",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/after-reachability/summary.json"
+  },
+  {
+   "claim_id": "release-unauth-untouched",
+   "doc": "RELEASE_NOTES_2.0.0.md",
+   "label": "untouched",
+   "dimension": "unauthenticated",
+   "marked": 7,
+   "wrong": 1,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "release-unauth-after-reachability",
+   "doc": "RELEASE_NOTES_2.0.0.md",
+   "label": "after-reachability",
+   "dimension": "unauthenticated",
+   "marked": 6,
+   "wrong": 0,
+   "source_file": "eval/results/after-reachability/summary.json"
+  },
+  {
+   "claim_id": "changelog-reach-untouched",
+   "doc": "CHANGELOG.md",
+   "label": "untouched",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "changelog-reach-after-reachability",
+   "doc": "CHANGELOG.md",
+   "label": "after-reachability",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/after-reachability/summary.json"
+  },
+  {
+   "claim_id": "changelog-unauth-untouched",
+   "doc": "CHANGELOG.md",
+   "label": "untouched",
+   "dimension": "unauthenticated",
+   "marked": 7,
+   "wrong": 1,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "changelog-unauth-after-reachability",
+   "doc": "CHANGELOG.md",
+   "label": "after-reachability",
+   "dimension": "unauthenticated",
+   "marked": 6,
+   "wrong": 0,
+   "source_file": "eval/results/after-reachability/summary.json"
+  },
+  {
+   "claim_id": "eval-reach-untouched",
+   "doc": "eval/README.md",
+   "label": "untouched",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "eval-unauth-untouched",
+   "doc": "eval/README.md",
+   "label": "untouched",
+   "dimension": "unauthenticated",
+   "marked": 7,
+   "wrong": 1,
+   "source_file": "eval/results/untouched/summary.json"
+  },
+  {
+   "claim_id": "eval-reach-after-tuning",
+   "doc": "eval/README.md",
+   "label": "after-tuning",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/after-tuning/summary.json"
+  },
+  {
+   "claim_id": "eval-unauth-after-tuning",
+   "doc": "eval/README.md",
+   "label": "after-tuning",
+   "dimension": "unauthenticated",
+   "marked": 7,
+   "wrong": 1,
+   "source_file": "eval/results/after-tuning/summary.json"
+  },
+  {
+   "claim_id": "eval-reach-after-reachability",
+   "doc": "eval/README.md",
+   "label": "after-reachability",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/after-reachability/summary.json"
+  },
+  {
+   "claim_id": "eval-unauth-after-reachability",
+   "doc": "eval/README.md",
+   "label": "after-reachability",
+   "dimension": "unauthenticated",
+   "marked": 6,
+   "wrong": 0,
+   "source_file": "eval/results/after-reachability/summary.json"
+  },
+  {
+   "claim_id": "eval-reach-after-reach-fixes",
+   "doc": "eval/README.md",
+   "label": "after-reach-fixes",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/after_reach_fixes.json"
+  },
+  {
+   "claim_id": "eval-unauth-after-reach-fixes",
+   "doc": "eval/README.md",
+   "label": "after-reach-fixes",
+   "dimension": "unauthenticated",
+   "marked": 6,
+   "wrong": 0,
+   "source_file": "eval/results/after_reach_fixes.json"
+  }
+ ]
+}
