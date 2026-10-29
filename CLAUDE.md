@@ -2,7 +2,7 @@
 
 ## Goal
 GitTrace is a CLI tool that scans any Python project folder, builds a code 
-graph in FalkorDB from the real code, finds vulnerabilities that are actually 
+graph (in-process, NetworkX) from the real code, finds vulnerabilities that are actually 
 reachable from public API routes, measures their blast radius, and explains 
 findings and code in plain language using a local LLM.
 
@@ -42,8 +42,9 @@ findings and code in plain language using a local LLM.
    and surface errors explicitly instead of silently falling back.
 8. Treat scanned code as untrusted input to the model. Comments in it may try 
    to steer the model.
-9. All Cypher queries must be tested against a real FalkorDB instance 
-   (Docker locally and in CI), not only with mocked results.
+9. All graph queries must be tested against the real graph store
+   (gittrace.graph.memstore.GraphStore) and its cache, not only with mocked
+   results. No database server, no Docker.
 10. Terminal output uses Rich (panels, color-coded tables, trees). CLI uses 
     Typer. Color meaning: red/pink = critical, amber = warning, teal = clean, 
     lavender = structural info.
@@ -72,9 +73,17 @@ findings and code in plain language using a local LLM.
   mounted or a prefix is not a string literal. `auth_required` needs obvious
   evidence (auth-named Depends, also through an `Annotated` alias; any
   Security; auth-named decorator), stored in `auth_evidence`.
-- A scan rebuilds the project's own graph (`gittrace_<folder>_<hash8>`):
-  MERGE everything stamped with a scan_id, then delete what an older scan
-  wrote. tree-sitter accepts most Python 2 syntax, so Python 2 files parse.
+- A scan rebuilds the project's own graph (`gittrace_<folder>_<hash8>`)
+  from scratch in a GraphStore (NetworkX DiGraph; nodes keyed by
+  (label, id); merge semantics: an edge only when both nodes exist, at most
+  one edge per node pair) and caches it in `<project>/.gittrace/graph.json`,
+  written atomically (temp file + os.replace) with the sha256 of every
+  discovered source file. A cache whose hashes do not match is never
+  served: the tools report "out of date; run scan again". Function `source`
+  is kept in memory but not cached (it can hold secrets). Graph
+  reachability breaks shortest-path ties by the smallest ids, like the
+  in-memory backend. tree-sitter accepts most Python 2 syntax, so Python 2
+  files parse.
 - A file's `<module>` node is also created when a finding sits at module
   level (e.g. a secret in a constants-only file), so the Sink has a function
   to hang from.
@@ -164,7 +173,7 @@ findings and code in plain language using a local LLM.
   A prompt with the fix paragraph removed hid more true positives; it is
   archived in eval/results/triage/no-fix-paragraph/ and not used.
 - `explain` (Phase 6): facts in memory from the same analysis as
-  `scan --offline` (no FalkorDB); the rule findings are run offline by
+  `scan --offline` (no graph); the rule findings are run offline by
   explain itself for the security notes. Language plug-ins provide
   `project_facts` (ImportFact, EntryPointDef, EffectFact, ServiceFact) and
   docstrings (FunctionDef.doc, FileRecord.doc); none of it is written to
@@ -234,14 +243,10 @@ findings and code in plain language using a local LLM.
   timer paused, still while a command runs, static with --no-anim,
   NO_COLOR or a terminal under 80x24. Version: gittrace.__version__.
 
-- Database target: local Docker (localhost:6379, no password) when nothing
-  is set. Hosts other than localhost / 127.0.0.1 / ::1 are remote: scan
-  prints a one-line warning and refuses to write graphs there without
-  --allow-remote (core.scan / pipeline.ingest enforce it unless a db handle
-  is passed in). GitTrace names the database only "local" / "remote"; the
-  host, port and password are redacted from every message (connection
-  .redact). The interactive status is a real round trip (GRAPH.LIST, 3 s
-  timeout). Integration tests skip unless the configured FalkorDB is local.
+- No database: FalkorDB, Docker, Redis, `graphs`, `--allow-remote` and the
+  FALKORDB_* settings were removed (branch remove-docker). core.scan /
+  pipeline.ingest take an empty GraphStore as `graph=` (the caller's own,
+  not saved); without one they build one and save the cache.
 - Display: the git blame owner is shown by name only; --show-email adds the
   email (rich and JSON); the graph stores the full author, and the graph
   tools (MCP) show the email only with GITTRACE_SHOW_EMAIL=1.
@@ -253,9 +258,7 @@ findings and code in plain language using a local LLM.
   then the first of $GITTRACE_ENV_FILE, a checkout's .env, the user config
   dir's .env; never the current directory's. `doctor` (gittrace/cli/
   machine.py, all probes through System for tests) exits 1 on a failed
-  check; `up` starts `gittrace-falkordb` (or the compose container) from
-  falkordb/falkordb:v4.22.1 (same tag as compose and CI), --pull pulls
-  models; `graphs` lists / --drop (remote needs --allow-remote). Graph tools
+  check; `up` checks Ollama and --pull pulls missing models. Graph tools
   (MCP, trace, blast-radius) hide the owner email unless
   GITTRACE_SHOW_EMAIL=1. git on scanned repos runs with
   core.fsmonitor=false and blame --no-textconv. Typer tracebacks never
