@@ -230,7 +230,13 @@ The graph stays on this machine, in the scanned project's `.gittrace/` folder (w
 
 ### Model layer through the Respan Gateway
 
-`GITTRACE_GATEWAY=1` sends every model call (scan triage, `explain` summaries, the `--fix` request) through the open-source [Respan Gateway](https://github.com/respanai/respan-gateway?utm_source=freebuff&utm_medium=paid&utm_campaign=respan-gateway&bfcid=bfc_1.eyJpZCI6Ijg4NmQzY2FlLWIzNGYtNDY1NC04ZDYwLTY4YzhlNWYyZDVjNyIsImMiOiIyMDM2ODZkZS1mMzg0LTQ4NTQtYmViNC1hYzBiYWRmNmM1NTUiLCJrIjoiM2IxMGE4YmUtNzgyOS00MmJhLWFmNmEtYmI0YWUxZTRhY2Y4IiwiaWF0IjoxNzkzMTk2NzU1fQ.NAK8t132vfyGs_2s7svHj2PQMTp3BNQzhohnxdLymdQ), in the same process, instead of LiteLLM calling the provider directly. Nothing else about the call changes: the same prompt, temperature, seed, reply-token limit, JSON-schema reply and timeout, validated and retried the same way, and a reply that is invalid or unavailable fails the same way. The gateway is the Rust gateway of [`respanai/respan-gateway`](https://github.com/respanai/respan-gateway) (its `python/README.md` documents the Python API), installed from PyPI as `respan-gateway==0.3.0`. It spends your own provider keys; a Respan account, credits and a tracing export are separate, optional features and no part of this.
+`GITTRACE_GATEWAY=1` sends every model call (scan triage, `explain` summaries, the `--fix` request) through the open-source [Respan Gateway](https://github.com/respanai/respan-gateway?utm_source=freebuff&utm_medium=paid&utm_campaign=respan-gateway&bfcid=bfc_1.eyJpZCI6Ijg4NmQzY2FlLWIzNGYtNDY1NC04ZDYwLTY4YzhlNWYyZDVjNyIsImMiOiIyMDM2ODZkZS1mMzg0LTQ4NTQtYmViNC1hYzBiYWRmNmM1NTUiLCJrIjoiM2IxMGE4YmUtNzgyOS00MmJhLWFmNmEtYmI0YWUxZTRhY2Y4IiwiaWF0IjoxNzkzMTk2NzU1fQ.NAK8t132vfyGs_2s7svHj2PQMTp3BNQzhohnxdLymdQ), in the same process, instead of LiteLLM calling the provider directly. Nothing else about the call changes: the same prompt, temperature, seed, reply-token limit, JSON-schema reply and timeout, validated and retried the same way, and a reply that is invalid or unavailable fails the same way. The gateway is the Rust gateway of [`respanai/respan-gateway`](https://github.com/respanai/respan-gateway) (its `python/README.md` documents the Python API), installed from PyPI as `respan-gateway==0.3.0` by the optional `gateway` extra, which a plain install leaves out. Install GitTrace with it (from the default branch: the `v2.0.0` tag has no gateway):
+
+```bash
+pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"
+```
+
+From a clone, `pipx install --force ".[gateway]"`. It spends your own provider keys; a Respan account, credits and a tracing export are separate, optional features and no part of this.
 
 ```bash
 # in the environment (or a .env file, see Settings): provider keys, the switch, a model

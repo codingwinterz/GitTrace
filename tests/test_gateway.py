@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import shutil
 import sys
 import threading
@@ -43,6 +44,8 @@ runner = CliRunner()
 HAS_RESPAN = importlib.util.find_spec("respan_gateway") is not None
 
 REASON = "the name comes from the URL path and reaches the query"
+# The install command the README gives for the gateway extra.
+INSTALL = 'pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"'
 
 
 def reply(**extra) -> str:
@@ -285,8 +288,18 @@ class TestErrors:
     def test_the_package_not_installed_is_unavailable(self, monkeypatch):
         monkeypatch.setenv(gateway_mod.GATEWAY_ENV, "1")
         with patch.dict(sys.modules, {"respan_gateway": None}):      # an import of it fails
-            with pytest.raises(ModelUnavailable, match="pip install respan-gateway==0.3.0"):
+            with pytest.raises(ModelUnavailable, match=re.escape(INSTALL)):
                 ModelClient("gpt-x", timeout=42).complete("sys", "user", TriageVerdict)
+
+    def test_the_cli_prints_the_install_command_in_full(self, monkeypatch, tmp_path):
+        # The CLI prints errors through Rich: "[gateway]" must not be read as markup.
+        project = tmp_path / "sample_app"
+        shutil.copytree(ROOT, project, ignore=shutil.ignore_patterns(".gittrace"))
+        monkeypatch.setenv(gateway_mod.GATEWAY_ENV, "1")
+        with patch.dict(sys.modules, {"respan_gateway": None}):
+            out = runner.invoke(app, ["scan", str(project), "--no-blame"], env={"COLUMNS": "300"})
+        assert out.exit_code == 2
+        assert INSTALL in " ".join(out.output.split())
 
     def test_a_reply_with_no_message_fails(self, monkeypatch):
         monkeypatch.setenv(gateway_mod.GATEWAY_ENV, "1")

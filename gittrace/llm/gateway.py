@@ -113,6 +113,10 @@ def complete(model: str, messages: list[dict], schema: type[BaseModel], *, timeo
     return content or ""
 
 
+# The install command, as the README gives it (the extra is not in v2.0.0).
+INSTALL = 'pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"'
+
+
 def _import():
     """respan_gateway (and the httpx it brings), or ModelUnavailable: the wheel
     covers a limited set of platforms, so GitTrace reports it and the LiteLLM
@@ -123,7 +127,8 @@ def _import():
     except ImportError as exc:
         raise ModelUnavailable(
             f"${GATEWAY_ENV} is set but respan-gateway is not installed "
-            f"(pip install respan-gateway==0.3.0, or unset ${GATEWAY_ENV} to use LiteLLM)"
+            f"(install GitTrace with the gateway extra: {INSTALL}; "
+            f"or unset ${GATEWAY_ENV} to use LiteLLM)"
         ) from exc
     return respan_gateway, httpx
 

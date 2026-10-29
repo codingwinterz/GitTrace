@@ -43,6 +43,7 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.text import Text
 
 from gittrace.cli import render
@@ -118,7 +119,7 @@ def _print_json(data: dict) -> None:
 
 def _fail(message: str) -> None:
     # soft_wrap: one logical line, so a suggested command or a path is never split mid-way
-    Console(stderr=True, highlight=False, soft_wrap=True).print(f"[bold red]error:[/] {message}")
+    Console(stderr=True, highlight=False, soft_wrap=True).print(f"[bold red]error:[/] {escape(message)}")
     raise typer.Exit(EXIT_ERROR)
 
 
