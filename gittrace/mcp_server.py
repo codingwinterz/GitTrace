@@ -1,7 +1,7 @@
 """
 gittrace.mcp_server — GitTrace MCP server.
 
-Exposes the FalkorDB graph tools over the Model Context Protocol (MCP) so any
+Exposes the graph tools over the Model Context Protocol (MCP) so any
 MCP-capable agent host (Claude Desktop, custom agents, etc.) can query the
 codebase dependency graph.
 

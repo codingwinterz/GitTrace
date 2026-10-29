@@ -11,8 +11,8 @@ that exists fills in what is not set:
 
 The current directory is never read: it is usually the project being
 scanned, and its `.env` must not configure GitTrace (or hand it that
-project's secrets). With no file at all, the defaults apply: local Docker
-FalkorDB, local Ollama models.
+project's secrets). With no file at all, the defaults apply: local Ollama
+models.
 """
 
 from __future__ import annotations

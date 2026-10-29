@@ -1,16 +1,12 @@
 """
-gittrace.graph.store — write a scanned project to its own FalkorDB graph.
+gittrace.graph.store — write a scanned project to its own graph
+(gittrace.graph.memstore.GraphStore, cached in <project>/.gittrace/graph.json).
 
 One graph per project (`graph_name_for`), so scans of different projects never
-share data. A scan rebuilds the graph in place:
-
-  1. every node and edge is written with MERGE on its stable ID and stamped
-     with this scan's `scan_id`;
-  2. whatever still carries an older stamp — a function, file or call that no
-     longer exists — is deleted.
-
-Re-scanning unchanged code therefore leaves the same nodes, edges and
-properties; only `scan_id` / `scanned_at` on the Project node move.
+share data. A scan builds the graph from scratch, so a function, file or call
+that no longer exists is gone. Nodes and edges are merged on their stable
+IDs: re-scanning unchanged code leaves the same nodes, edges and properties;
+only `scanned_at` on the Project node moves.
 
 Schema (language-neutral):
   (:Project {id, name, root, scanned_at, ...counts})
@@ -47,12 +43,8 @@ import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 from gittrace.languages.base import external_id
-
-INDEXES = (("Function", "id"), ("File", "path"), ("Endpoint", "id"), ("Sink", "id"))
-BATCH = 500
 
 
 def graph_name_for(root: str | os.PathLike) -> str:
@@ -64,29 +56,12 @@ def graph_name_for(root: str | os.PathLike) -> str:
     return f"gittrace_{slug}_{digest}"
 
 
-def ensure_indexes(graph) -> None:
-    rows = graph.query("CALL db.indexes() YIELD label, properties RETURN label, properties").result_set
-    existing = {(label, prop) for label, props in rows for prop in props}
-    for label, prop in INDEXES:
-        if (label, prop) not in existing:
-            graph.query(f"CREATE INDEX FOR (n:{label}) ON (n.{prop})")
-
-
-def _batches(rows: list, size: int = BATCH) -> Iterable[list]:
-    for i in range(0, len(rows), size):
-        yield rows[i:i + size]
-
-
-def _write(graph, cypher: str, rows: list, scan_id: str) -> None:
-    for chunk in _batches(rows):
-        graph.query(cypher, params={"rows": chunk, "scan": scan_id})
-
-
 def write_analysis(graph, analysis, graph_name: str, sinks=()) -> str:
-    """Rebuild `graph` from `analysis` (a gittrace.core.pipeline.Analysis) and
-    the rule matches in `sinks` (gittrace.rules.base.Match). Returns the scan_id."""
+    """Build `graph` (an empty GraphStore) from `analysis` (a
+    gittrace.core.pipeline.Analysis) and the rule matches in `sinks`
+    (gittrace.rules.base.Match). Returns the scan_id stamped on everything."""
     scan_id = uuid.uuid4().hex
-    ensure_indexes(graph)
+    stamp = {"scan_id": scan_id}
 
     project = {
         "name": analysis.root.name,
@@ -94,32 +69,20 @@ def write_analysis(graph, analysis, graph_name: str, sinks=()) -> str:
         "scanned_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         **analysis.counts(),
     }
-    graph.query(
-        "MERGE (p:Project {id: $id}) SET p += $props, p.scan_id = $scan",
-        params={"id": graph_name, "props": project, "scan": scan_id},
-    )
+    graph.merge_node("Project", graph_name, {"id": graph_name, **project, **stamp})
 
-    _write(graph, (
-        "UNWIND $rows AS r MERGE (f:File {path: r.path}) "
-        "SET f.language = r.language, f.sha256 = r.sha256, f.lines = r.lines, f.scan_id = $scan"
-    ), [vars(f) for f in analysis.files], scan_id)
+    for f in analysis.files:
+        graph.merge_node("File", f.path, {"path": f.path, "language": f.language, "sha256": f.sha256,
+                                          "lines": f.lines, **stamp})
 
-    functions = [{
-        "id": f.id,
-        "file": f.file,
-        "props": {
-            "name": f.name, "qualified_name": f.qualified_name, "file": f.file,
+    for f in analysis.functions:
+        graph.merge_node("Function", f.id, {
+            "id": f.id, "name": f.name, "qualified_name": f.qualified_name, "file": f.file,
             "kind": f.kind, "start_line": f.start_line, "end_line": f.end_line,
-            "source": f.source, "is_async": f.is_async, "resolved": True,
-        },
-    } for f in analysis.functions]
-    _write(graph, (
-        "UNWIND $rows AS r MERGE (fn:Function {id: r.id}) SET fn += r.props, fn.scan_id = $scan"
-    ), functions, scan_id)
-    _write(graph, (
-        "UNWIND $rows AS r MATCH (f:File {path: r.file}) MATCH (fn:Function {id: r.id}) "
-        "MERGE (f)-[d:DECLARES]->(fn) SET d.scan_id = $scan"
-    ), functions, scan_id)
+            "source": f.source, "is_async": f.is_async, "resolved": True, **stamp,
+        })
+    for f in analysis.functions:
+        graph.merge_edge("DECLARES", ("File", f.file), ("Function", f.id), stamp)
 
     # Unresolved callees: one node per full dotted name. Instantiating a
     # project class with no __init__ runs no project code: no node, no edge.
@@ -131,80 +94,49 @@ def write_analysis(graph, analysis, graph_name: str, sinks=()) -> str:
         elif call.origin != "class":
             eid = external_id(call.dotted)
             externals.setdefault(eid, {
-                "id": eid,
-                "props": {
-                    "name": call.dotted.rsplit(".", 1)[-1], "qualified_name": call.dotted,
-                    "kind": "external", "origin": call.origin, "resolved": False,
-                },
+                "id": eid, "name": call.dotted.rsplit(".", 1)[-1], "qualified_name": call.dotted,
+                "kind": "external", "origin": call.origin, "resolved": False,
             })
             edges[(call.caller_id, eid)].add(call.line)
-    _write(graph, (
-        "UNWIND $rows AS r MERGE (fn:Function {id: r.id}) SET fn += r.props, fn.scan_id = $scan"
-    ), list(externals.values()), scan_id)
-    _write(graph, (
-        "UNWIND $rows AS r MATCH (a:Function {id: r.caller}) MATCH (b:Function {id: r.callee}) "
-        "MERGE (a)-[c:CALLS]->(b) SET c.lines = r.lines, c.scan_id = $scan"
-    ), [{"caller": a, "callee": b, "lines": sorted(lines)} for (a, b), lines in edges.items()], scan_id)
+    for eid, props in externals.items():
+        graph.merge_node("Function", eid, {**props, **stamp})
+    for (a, b), lines in edges.items():
+        graph.merge_edge("CALLS", ("Function", a), ("Function", b), {"lines": sorted(lines), **stamp})
 
-    endpoints = [{
-        "id": e.id,
-        "file": e.file,
-        "handler": e.handler_id,
-        "props": {
-            "framework": e.framework, "method": e.method, "path": e.path,
+    for e in analysis.endpoints:
+        graph.merge_node("Endpoint", e.id, {
+            "id": e.id, "framework": e.framework, "method": e.method, "path": e.path,
             "handler": e.handler_id, "file": e.file, "line": e.line,
             "auth_required": e.auth_required, "auth_evidence": list(e.auth_evidence),
-            "prefix_resolved": e.prefix_resolved,
-        },
-    } for e in analysis.endpoints]
-    _write(graph, (
-        "UNWIND $rows AS r MERGE (e:Endpoint {id: r.id}) SET e += r.props, e.scan_id = $scan"
-    ), endpoints, scan_id)
-    _write(graph, (
-        "UNWIND $rows AS r MATCH (f:File {path: r.file}) MATCH (e:Endpoint {id: r.id}) "
-        "MERGE (f)-[d:DECLARES]->(e) SET d.scan_id = $scan"
-    ), endpoints, scan_id)
-    _write(graph, (
-        "UNWIND $rows AS r MATCH (e:Endpoint {id: r.id}) MATCH (fn:Function {id: r.handler}) "
-        "MERGE (e)-[h:HANDLED_BY]->(fn) SET h.scan_id = $scan"
-    ), endpoints, scan_id)
+            "prefix_resolved": e.prefix_resolved, **stamp,
+        })
+    for e in analysis.endpoints:
+        graph.merge_edge("DECLARES", ("File", e.file), ("Endpoint", e.id), stamp)
+    for e in analysis.endpoints:
+        graph.merge_edge("HANDLED_BY", ("Endpoint", e.id), ("Function", e.handler_id), stamp)
 
-    sink_rows = [{
-        "id": m.sink_id,
-        "function": m.function_id,
-        "props": {
-            "rule_id": m.rule_id, "category": m.category, "title": m.title,
+    for m in sinks:
+        graph.merge_node("Sink", m.sink_id, {
+            "id": m.sink_id, "rule_id": m.rule_id, "category": m.category, "title": m.title,
             "base_severity": m.base_severity, "file": m.site.file, "line": m.site.line,
             "column": m.site.column, "end_line": m.site.end_line, "snippet": m.site.snippet,
             "function": m.function_id, "callee": m.callee or "", "message": m.message,
             "evidence": list(m.evidence), "param_derived": m.param_derived,
-            "params": list(m.params), "flow_sensitive": m.flow_sensitive,
-        },
-    } for m in sinks]
-    _write(graph, (
-        "UNWIND $rows AS r MERGE (s:Sink {id: r.id}) SET s += r.props, s.scan_id = $scan"
-    ), sink_rows, scan_id)
-    _write(graph, (
-        "UNWIND $rows AS r MATCH (fn:Function {id: r.function}) MATCH (s:Sink {id: r.id}) "
-        "MERGE (fn)-[e:REACHES_SINK]->(s) SET e.scan_id = $scan"
-    ), sink_rows, scan_id)
-
-    # Drop what this scan did not write: edges first (between surviving
-    # nodes), then nodes, which takes their remaining edges with them.
-    graph.query("MATCH ()-[r]->() WHERE r.scan_id IS NULL OR r.scan_id <> $scan DELETE r",
-                params={"scan": scan_id})
-    graph.query("MATCH (n) WHERE n.scan_id IS NULL OR n.scan_id <> $scan DETACH DELETE n",
-                params={"scan": scan_id})
+            "params": list(m.params), "flow_sensitive": m.flow_sensitive, **stamp,
+        })
+    for m in sinks:
+        graph.merge_edge("REACHES_SINK", ("Function", m.function_id), ("Sink", m.sink_id), stamp)
     return scan_id
 
 
 def write_findings(graph, graph_name: str, findings) -> None:
     """Record the computed severity, reachability and owner on each Sink
     (gittrace.core.scan.Finding), and the totals on the Project node."""
-    rows = []
     for f in findings:
+        if graph.props("Sink", f.id) is None:
+            continue
         owner = f.owner
-        rows.append({"id": f.id, "props": {
+        graph.merge_node("Sink", f.id, {
             "severity": f.severity, "score": f.score, "reasons": list(f.reasons),
             "reachable": f.reachable, "unauthenticated": f.unauthenticated,
             "uncertain": f.uncertain, "endpoints": [r.endpoint_id for r in f.routes],
@@ -215,16 +147,13 @@ def write_findings(graph, graph_name: str, findings) -> None:
             "owner_email": (owner.email if owner else None) or "",
             "owner_commit": (owner.commit if owner else None) or "",
             "owner_date": (owner.date if owner else None) or "",
-        }})
-    for chunk in _batches(rows):
-        graph.query("UNWIND $rows AS r MATCH (s:Sink {id: r.id}) SET s += r.props",
-                    params={"rows": chunk})
+        })
     main = [f for f in findings if not f.in_tests]
     by_level = {level: 0 for level in ("critical", "high", "medium", "low", "info")}
     for f in main:
         by_level[f.severity] += 1
-    graph.query(
-        "MATCH (p:Project {id: $id}) SET p.findings = $total, p.findings_tests = $tests, p += $levels",
-        params={"id": graph_name, "total": len(main), "tests": len(findings) - len(main),
-                "levels": {f"findings_{k}": v for k, v in by_level.items()}},
-    )
+    if graph.props("Project", graph_name) is not None:
+        graph.merge_node("Project", graph_name, {
+            "findings": len(main), "findings_tests": len(findings) - len(main),
+            **{f"findings_{k}": v for k, v in by_level.items()},
+        })

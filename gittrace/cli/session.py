@@ -61,10 +61,10 @@ class Spec:
 
 SPECS: dict[str, Spec] = {
     "/scan": Spec("/scan [path] [--offline] [--no-llm] [--fix] [--include-tests] [--no-blame] "
-                  "[--show-email] [--allow-remote]",
+                  "[--show-email]",
                   "Scan a project: findings, attack paths from routes, blast radius, the model's triage.",
                   0, 1, frozenset({"--offline", "--no-llm", "--fix", "--include-tests", "--no-blame",
-                                   "--show-email", "--allow-remote"})),
+                                   "--show-email"})),
     "/explain": Spec("/explain [path] [--no-llm] [--all] [--yes]",
                      "Explain a project in plain language: endpoints, modules, flows, summaries.",
                      0, 1, frozenset({"--no-llm", "--all", "--yes"})),
@@ -127,15 +127,6 @@ def parse(line: str) -> Command | None:
     if not spec.min_args <= len(args) <= spec.max_args:
         raise CommandError(f"usage: {spec.usage}")
     return Command(name, tuple(args), frozenset(flags))
-
-
-def falkordb_status() -> tuple[str, str]:
-    """('up' | 'down', 'local' | 'remote'): a real round trip with a short
-    timeout (gittrace.graph.connection.check). Never the host itself."""
-    from gittrace.graph import connection
-
-    ok, _ = connection.check()
-    return ("up" if ok else "down"), connection.location()
 
 
 SAMPLE = "tests/fixtures/sample_app"
@@ -212,21 +203,12 @@ class Session:
             raise CommandError("--fix asks the model for fixes; it cannot be combined with --no-llm")
         path = self._project_arg(cmd)
         offline, blame = "--offline" in flags, "--no-blame" not in flags
-        allow_remote = "--allow-remote" in flags
-        if not offline:
-            from gittrace.cli import REMOTE_WARNING
-            from gittrace.graph import connection
-
-            if not connection.is_local():
-                console.print(Text(REMOTE_WARNING, style=render.AMBER))
-                if not allow_remote:
-                    raise CommandError("add --allow-remote to write to it, or --offline to write nothing")
         status(f"scanning {path}")
         try:
             result = run_scan(path, depth=DEFAULT_DEPTH, blame=blame, offline=offline,
-                              include_tests="--include-tests" in flags, allow_remote=allow_remote)
-        except RuntimeError as exc:     # FalkorDB unreachable, misconfigured, ...
-            raise CommandError(f"{exc} (add --offline to scan without FalkorDB)") from None
+                              include_tests="--include-tests" in flags)
+        except OSError as exc:          # the graph cache could not be written
+            raise CommandError(f"{exc} (add --offline to scan without writing the graph cache)") from None
         triage = llm = None
         if "--no-llm" not in flags:
             triage, llm = self._triage(result, "--fix" in flags, console, status)
@@ -323,7 +305,7 @@ class Session:
     def _tool(self, fn, target: str) -> dict:
         try:
             data = fn(str(self.project), target, DEFAULT_DEPTH)
-        except RuntimeError as exc:     # FalkorDB unreachable or misconfigured
+        except RuntimeError as exc:
             raise CommandError(str(exc)) from None
         if "error" in data:
             raise CommandError(data["error"])

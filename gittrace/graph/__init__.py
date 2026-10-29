@@ -1,1 +1,1 @@
-"""FalkorDB connection and the per-project graph store."""
+"""The per-project graph store (in memory, cached in .gittrace/graph.json)."""

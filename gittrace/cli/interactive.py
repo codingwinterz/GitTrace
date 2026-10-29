@@ -4,7 +4,7 @@ gittrace.cli.interactive — the interactive mode (Textual), opened by running
 
     +-----------------------------------------------------------------+
     |  logo    GitTrace  version                                       |
-    |  (12     project, model(s), FalkorDB status                      |
+    |  (12     project, model(s)                                       |
     |  rows)   /help, ctrl+q                                           |
     +-----------------------------------------------------------------+
       output: the same Rich rendering as the CLI commands, scrollable
@@ -42,7 +42,7 @@ from textual.widgets import Input, RichLog, Static
 
 from gittrace import __version__
 from gittrace.cli import logo, render
-from gittrace.cli.session import NAMES, Command, CommandError, Session, falkordb_status, first_hint, parse
+from gittrace.cli.session import NAMES, Command, CommandError, Session, first_hint, parse
 
 MIN_COLS, MIN_ROWS = 80, 24
 DIM_HEX = "#9e9e9e"                    # render.DIM (grey62); Textual CSS has no grey62
@@ -192,13 +192,11 @@ class GitTraceApp(App):
     """
     BINDINGS = [Binding("ctrl+q", "quit", "Quit", priority=True)]
 
-    def __init__(self, session: Session | None = None, animate: bool = True, falkordb=falkordb_status):
+    def __init__(self, session: Session | None = None, animate: bool = True):
         super().__init__()
         self.session = session or Session()
         self.animate_logo = animate         # not `animate`: App.animate is Textual's
         self.busy = False
-        self.falkordb: tuple[str, str] | None = None
-        self._falkordb_check = falkordb
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="header"):
@@ -212,7 +210,6 @@ class GitTraceApp(App):
     def on_mount(self) -> None:
         self._fit(self.size.width, self.size.height)
         self.refresh_info()
-        self.check_falkordb()
         output = self.query_one(RichLog)
         if not output.lines:                    # an empty output area: say what to type first
             output.write(Text(first_hint(self.session.project), style=render.DIM))
@@ -239,29 +236,11 @@ class GitTraceApp(App):
             text.append(f"{s.scan_model()}\n")
             text.append(" " * 10 + "explain  ", render.DIM)
             text.append(f"{s.explain_model()}\n")
-        text.append("FalkorDB  ", render.DIM)
-        if self.falkordb is None:
-            text.append("checking…", render.DIM)
-        else:
-            state, where = self.falkordb       # "local" / "remote": never the host
-            text.append(f"● {state}", render.TEAL if state == "up" else render.AMBER)
-            text.append(f"  {where}", render.DIM if where == "local" else render.AMBER)
-            if state == "down" and where == "local":
-                text.append("  (docker compose up -d falkordb, or /scan --offline)", render.DIM)
-        text.append("\n\n/help for commands · ctrl+q to quit", render.DIM)
+        text.append("\n/help for commands · ctrl+q to quit", render.DIM)
         return text
 
     def refresh_info(self) -> None:
         self.query_one("#info", Static).update(self.info_text())
-
-    def check_falkordb(self) -> None:
-        def check() -> None:
-            self._from_thread(self._set_falkordb, self._falkordb_check())
-        threading.Thread(target=check, name="gittrace-falkordb", daemon=True).start()
-
-    def _set_falkordb(self, status: tuple[str, str]) -> None:
-        self.falkordb = status
-        self.refresh_info()
 
     # -- commands -------------------------------------------------------------
 
@@ -326,8 +305,6 @@ class GitTraceApp(App):
         self.query_one(Logo).set_busy(False)
         self.set_status(f"{cmd.name} {'failed' if error else 'done'} in {seconds:.1f} s")
         self.refresh_info()
-        if cmd.name in ("/scan", "/trace", "/blast-radius"):
-            self.check_falkordb()
 
     def _from_thread(self, fn, *args) -> None:
         try:

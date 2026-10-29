@@ -3,8 +3,8 @@ gittrace.languages.base — the language plug-in interface and the
 language-neutral records every plug-in produces.
 
 A plug-in turns source files into these records; it never touches the graph.
-gittrace.graph.store writes them to FalkorDB with the same schema whatever the
-language, so adding a language means adding a plug-in, nothing else.
+gittrace.graph.store writes them to the project graph with the same schema
+whatever the language, so adding a language means adding a plug-in, nothing else.
 
 IDs follow the project rule: `relative/posix/path.py::QualifiedName`
 (e.g. `app/db.py::Repo.get_user`). Two pseudo forms exist:

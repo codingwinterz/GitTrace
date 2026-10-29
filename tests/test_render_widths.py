@@ -7,10 +7,8 @@ import re
 
 import pytest
 from rich.console import Console
-from typer.testing import CliRunner
 
-from gittrace.cli import app, machine, render
-from gittrace.graph import connection
+from gittrace.cli import machine, render
 
 WIDTHS = (80, 100, 110, 120, 200)
 REASON = (
@@ -158,22 +156,3 @@ def test_doctor_table_wraps_long_detail_without_cutting_text(width, monkeypatch)
     _assert_fits_width(text, width)
     assert _without_whitespace(detail) in _without_whitespace(text)
     assert "settings" in text and "INFO" in text
-
-
-@pytest.mark.parametrize("width", WIDTHS)
-def test_graph_listing_wraps_long_graph_names_without_cutting(width, monkeypatch):
-    monkeypatch.setenv("COLUMNS", str(width))
-    graph_name = "gittrace_" + "project_component_" * 7 + "01234567"
-
-    class FakeDatabase:
-        def list_graphs(self):
-            return [graph_name]
-
-    monkeypatch.setattr(connection, "location", lambda: "local")
-    monkeypatch.setattr(connection, "get_db", lambda: FakeDatabase())
-    result = CliRunner().invoke(app, ["graphs"], env={"COLUMNS": str(width)})
-
-    assert result.exit_code == 0, result.output
-    _assert_fits_width(result.output, width)
-    assert _without_whitespace(graph_name) in _without_whitespace(result.output)
-    assert "1 graph(s) on the local FalkorDB" in result.output
