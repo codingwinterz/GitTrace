@@ -1,0 +1,273 @@
+{
+  "target": {
+    "name": "mealie",
+    "repo": "https://github.com/mealie-recipes/mealie",
+    "commit": "c3893a3e64304e2b8cfe3d9b11362d1e0be08e3c",
+    "scan_path": ".",
+    "framework": "fastapi"
+  },
+  "scanned": {
+    "files": 695,
+    "parse_failures": 0,
+    "functions": 4007,
+    "endpoints": 213,
+    "calls": 27366
+  },
+  "gittrace_findings": 15,
+  "gittrace_test_findings": 11,
+  "by_rule": {
+    "GT-SQLI-001": 13,
+    "GT-SECRET-001": 2
+  },
+  "by_severity": {
+    "medium": 15
+  },
+  "reachable": 0,
+  "unauthenticated": 0,
+  "bandit_findings_same_categories": 101,
+  "bandit_by_category": {
+    "hardcoded-secret": 69,
+    "sql-injection": 32
+  },
+  "reviewed": 15,
+  "unreviewed": [],
+  "false_positives": 13,
+  "false_positive_rate": 0.867,
+  "findings": [
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py::183::13",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2023-10-04-14.29.26_dded3119c1fe_added_unique_constraints.py",
+      "lines": [
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "query = sa.text("
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::105::21",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py",
+      "lines": [
+        105
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(sa.text(sql_statement), household_data)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::121::41",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py",
+      "lines": [
+        121
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "group_preferences = session.execute(sa.text(sql_statement), {\"group_id\": group_id}).fetchone()"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py::143::21",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2024-07-12-16.16.29_feecc8ffb956_add_households.py",
+      "lines": [
+        143
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(sa.text(sql_statement), preferences_data)"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::24::28",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py",
+      "lines": [
+        24
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "rows = session.execute(text(f\"SELECT id, {', '.join(source_columns)} FROM {table}\")).fetchall()"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py::33::25",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-05-10-18.44.53_c7427796f7b6_more_aggresive_normalization.py",
+      "lines": [
+        33
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(text(f\"UPDATE {table} SET {set_clause} WHERE id = :id\"), {**updates, \"id\": id_})"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/schema/recipe/recipe.py::414::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/schema/recipe/recipe.py",
+      "lines": [
+        414
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "text(f\"set pg_trgm.word_similarity_threshold = {cls._fuzzy_ingredient_similarity_threshold};\")"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/schema/recipe/recipe.py::431::29",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/schema/recipe/recipe.py",
+      "lines": [
+        431
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(text(f\"set pg_trgm.word_similarity_threshold = {cls._fuzzy_similarity_threshold};\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/backups_v2/alchemy_exporter.py::44::41",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/services/backups_v2/alchemy_exporter.py",
+      "lines": [
+        44
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "self.connection.execute(text(f\"SET session_replication_role = '{initial_state}';\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/services/backups_v2/alchemy_exporter.py::47::41",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/services/backups_v2/alchemy_exporter.py",
+      "lines": [
+        47
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "self.connection.execute(text(f\"PRAGMA foreign_keys = {initial_state};\"))"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::191::25",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+      "lines": [
+        191
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "session.execute(text(f\"UPDATE recipes SET {assignments} WHERE id = :id\"), {**updates, \"id\": recipe_id})"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::207::13",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+      "lines": [
+        207
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "text(f\"SELECT id, {field}_seconds FROM recipes WHERE {field} IS NULL AND {field}_seconds IS NOT NULL\")"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py::211::17",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "mealie/alembic/versions/2026-09-24-13.16.56_27621d27c7e1_add_structured_recipe_times.py",
+      "lines": [
+        211
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "text(f\"UPDATE recipes SET {field} = :value WHERE id = :id\"),"
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/core/settings/db_providers.py::38::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/core/settings/db_providers.py",
+      "lines": [
+        38
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "POSTGRES_PASSWORD: str = \"mea***\""
+    },
+    {
+      "tool": "gittrace",
+      "id": "mealie/core/settings/settings.py::290::5",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "mealie/core/settings/settings.py",
+      "lines": [
+        290
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "_DEFAULT_PASSWORD: str = \"MyP*******\""
+    }
+  ]
+}

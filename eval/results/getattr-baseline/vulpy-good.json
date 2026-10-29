@@ -1,0 +1,208 @@
+{
+  "target": {
+    "name": "vulpy-good",
+    "repo": "https://github.com/fportantier/vulpy",
+    "commit": "5249cc8b05a1c37f6b2f757b1cf16a509c327122",
+    "scan_path": "good"
+  },
+  "gittrace_findings": [
+    {
+      "tool": "gittrace",
+      "id": "libuser.py::61::5",
+      "rule": "GT-SQLI-001",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        61
+      ],
+      "severity": "medium",
+      "score": 5,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "c.execute(\"INSERT INTO users (username, password, salt, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%s', '%d', '%d', '%s')\" %(username, '', '', 0, 0"
+    },
+    {
+      "tool": "gittrace",
+      "id": "libapi.py::10::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "libapi.py",
+      "lines": [
+        10
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "secret = 'MYS*************'"
+    },
+    {
+      "tool": "gittrace",
+      "id": "libsession.py::9::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "libsession.py",
+      "lines": [
+        9
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "key = 'JHt*****************************************'"
+    },
+    {
+      "tool": "gittrace",
+      "id": "vulpy-ssl.py::13::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "vulpy-ssl.py",
+      "lines": [
+        13
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "app.config['SECRET_KEY'] = 'aaa****'"
+    },
+    {
+      "tool": "gittrace",
+      "id": "vulpy.py::17::1",
+      "rule": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "file": "vulpy.py",
+      "lines": [
+        17
+      ],
+      "severity": "medium",
+      "score": 4,
+      "reachable": false,
+      "unauthenticated": false,
+      "snippet": "app.config['SECRET_KEY'] = '123*************************************************************'"
+    }
+  ],
+  "bandit_findings": [
+    {
+      "tool": "bandit",
+      "id": "libapi.py:10:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "libapi.py",
+      "lines": [
+        10
+      ],
+      "severity": "low",
+      "snippet": "9 "
+    },
+    {
+      "tool": "bandit",
+      "id": "libuser.py:61:B608",
+      "rule": "B608",
+      "category": "sql-injection",
+      "file": "libuser.py",
+      "lines": [
+        61
+      ],
+      "severity": "medium",
+      "snippet": "60     c = conn.cursor()"
+    },
+    {
+      "tool": "bandit",
+      "id": "vulpy-ssl.py:13:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "vulpy-ssl.py",
+      "lines": [
+        13
+      ],
+      "severity": "low",
+      "snippet": "12 app = Flask('vulpy')"
+    },
+    {
+      "tool": "bandit",
+      "id": "vulpy.py:17:B105",
+      "rule": "B105",
+      "category": "hardcoded-secret",
+      "file": "vulpy.py",
+      "lines": [
+        17
+      ],
+      "severity": "low",
+      "snippet": "16 app = Flask('vulpy')"
+    }
+  ],
+  "gittrace_test_findings": [],
+  "gittrace": {
+    "ground_truth": 5,
+    "tp": 5,
+    "fp": 0,
+    "fp_benign": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "precision": 1.0,
+    "precision_ignoring_benign": 1.0,
+    "recall": 1.0,
+    "true_positives": {
+      "VG-1": [
+        "libuser.py::61::5"
+      ],
+      "VG-2": [
+        "vulpy.py::17::1"
+      ],
+      "VG-3": [
+        "vulpy-ssl.py::13::1"
+      ],
+      "VG-4": [
+        "libapi.py::10::1"
+      ],
+      "VG-5": [
+        "libsession.py::9::1"
+      ]
+    },
+    "false_positives": [],
+    "false_positives_benign": [],
+    "false_negatives": [],
+    "tp_reachable_unauthenticated": 0,
+    "tp_reachable_any": 0
+  },
+  "bandit": {
+    "ground_truth": 5,
+    "tp": 4,
+    "fp": 0,
+    "fp_benign": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "precision": 1.0,
+    "precision_ignoring_benign": 1.0,
+    "recall": 0.8,
+    "true_positives": {
+      "VG-1": [
+        "libuser.py:61:B608"
+      ],
+      "VG-2": [
+        "vulpy.py:17:B105"
+      ],
+      "VG-3": [
+        "vulpy-ssl.py:13:B105"
+      ],
+      "VG-4": [
+        "libapi.py:10:B105"
+      ]
+    },
+    "false_positives": [],
+    "false_positives_benign": [],
+    "false_negatives": [
+      {
+        "id": "VG-5",
+        "category": "hardcoded-secret",
+        "file": "libsession.py",
+        "lines": [
+          9
+        ],
+        "detail": "key = 'JHtM1wEt...' (Fernet key encrypting the session cookie)"
+      }
+    ]
+  },
+  "ground_truth_reachable_unauthenticated": 0
+}

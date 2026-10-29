@@ -11,6 +11,10 @@ gittrace.llm.client — one structured model call, through LiteLLM.
               one is sent back once with the validation error, and a second
               invalid reply raises InvalidOutput.
 
+With $GITTRACE_GATEWAY set, the call goes to an in-process Respan Gateway
+instead of LiteLLM, and the model name is the gateway's (see
+gittrace.llm.gateway); everything else here is the same.
+
 `ollama/<name>` goes to Ollama's chat endpoint (LiteLLM's `ollama_chat/`
 provider). LiteLLM's plain `ollama/` provider flattens the messages into one
 prompt string, which would put the instructions and the untrusted code in the
@@ -178,6 +182,9 @@ class ModelClient:
         self.sleep = time.sleep if sleep is None else sleep
 
     def _call(self, messages: list[dict], schema: type[BaseModel], num_ctx: int = NUM_CTX) -> str:
+        from gittrace.llm import gateway      # respan_gateway itself is imported only when it is on
+        if gateway.enabled():
+            return gateway.complete(self.model, messages, schema, timeout=self.timeout)
         try:
             import litellm
         except ImportError as exc:

@@ -137,6 +137,16 @@ class CallSite:
       unknown  — rooted in a local variable or an expression (cursor.execute)
       class    — instantiates a project class with no __init__ of its own;
                  no project code runs, so no edge is written for it
+      dynamic  — an immediate `getattr(obj, name)()` whose receiver and name
+                 could not be pinned down: a documented marker, kept so the
+                 dispatch is visible instead of dropped
+
+    `dynamic` marks every site that came from `getattr` dispatch: with a
+    literal attribute name it is the direct edge the literal `obj.name()`
+    would give, with a computed name it is a low-confidence edge to each
+    member the receiver could hold (see gittrace.languages.python.resolver).
+    Reachability and blast radius traverse those edges like any other; the
+    flag is what says the target set was inferred rather than named.
     """
 
     caller_id: str
@@ -147,6 +157,7 @@ class CallSite:
     site: SiteFacts | None = None
     args: tuple[ArgFact, ...] = ()
     kwargs: tuple[tuple[str, ArgFact], ...] = ()
+    dynamic: bool = False
 
     @property
     def resolved(self) -> bool:

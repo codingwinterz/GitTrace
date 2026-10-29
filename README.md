@@ -223,8 +223,32 @@ Nothing needs configuring for the defaults (local Ollama). To change something, 
 | `GITTRACE_SHOW_EMAIL` | off | `1` adds the git blame email to the graph tools' results (MCP, `trace`, `blast-radius`); `scan` uses `--show-email` |
 | `GITTRACE_ENV_FILE` | none | A `.env` file to read first |
 | `OLLAMA_API_BASE` | `http://localhost:11434` | Where Ollama listens |
+| `GITTRACE_GATEWAY` | off | `1` sends the model calls through an in-process Respan Gateway instead of LiteLLM (see below) |
+| `GITTRACE_GATEWAY_CONFIG` | none | A `gateway.toml` for that gateway; without it, it is built from the provider keys in the environment |
 
 The graph stays on this machine, in the scanned project's `.gittrace/` folder (which gets a `*` `.gitignore`). The cache leaves out function source code, so hardcoded secrets in the project are not copied into it; finding snippets are masked as everywhere else. Tracebacks never print local variables. See [SECURITY.md](SECURITY.md) for what GitTrace trusts and what it does not.
+
+### Model layer through the Respan Gateway
+
+`GITTRACE_GATEWAY=1` sends every model call (scan triage, `explain` summaries, the `--fix` request) through the open-source [Respan Gateway](https://github.com/respanai/respan-gateway?utm_source=freebuff&utm_medium=paid&utm_campaign=respan-gateway&bfcid=bfc_1.eyJpZCI6Ijg4NmQzY2FlLWIzNGYtNDY1NC04ZDYwLTY4YzhlNWYyZDVjNyIsImMiOiIyMDM2ODZkZS1mMzg0LTQ4NTQtYmViNC1hYzBiYWRmNmM1NTUiLCJrIjoiM2IxMGE4YmUtNzgyOS00MmJhLWFmNmEtYmI0YWUxZTRhY2Y4IiwiaWF0IjoxNzkzMTk2NzU1fQ.NAK8t132vfyGs_2s7svHj2PQMTp3BNQzhohnxdLymdQ), in the same process, instead of LiteLLM calling the provider directly. Nothing else about the call changes: the same prompt, temperature, seed, reply-token limit, JSON-schema reply and timeout, validated and retried the same way, and a reply that is invalid or unavailable fails the same way. The gateway is the Rust gateway of [`respanai/respan-gateway`](https://github.com/respanai/respan-gateway) (its `python/README.md` documents the Python API), installed from PyPI as `respan-gateway==0.3.0`. It spends your own provider keys; a Respan account, credits and a tracing export are separate, optional features and no part of this.
+
+```bash
+# in the environment (or a .env file, see Settings): provider keys, the switch, a model
+export OPENAI_API_KEY=...            # or ANTHROPIC_API_KEY, GEMINI_API_KEY, ... (or none, for local Ollama)
+export GITTRACE_GATEWAY=1
+export GITTRACE_MODEL=gpt-4o-mini    # the gateway's model name, not a LiteLLM one
+
+gittrace scan path/to/project        # the usual command; triage now goes through the gateway
+gittrace explain path/to/project     # GITTRACE_EXPLAIN_MODEL works the same way
+```
+
+- **Without `GITTRACE_GATEWAY_CONFIG`** the gateway is built from the provider keys found in the environment, plus local Ollama, which is how respan-gateway configures itself with no config file. GitTrace's default `ollama/llama3.1:8b` is then the gateway's `ollama` provider, so the default setup reaches the same local model by the same name (`OLLAMA_API_BASE` is honoured).
+- **With `GITTRACE_GATEWAY_CONFIG=/path/to/gateway.toml`** the gateway reads that config instead: providers, secrets written `key = "env:NAME"`, client keys and routing. Its guide is [configuration.md](https://github.com/respanai/respan-gateway/blob/v0.3.0/docs/configuration.md).
+- **Routes are model names.** `GITTRACE_MODEL=smart` with `[routes.smart] to = ["anthropic/claude-haiku-5-5", "openai/gpt-6-luna"]` makes each finding's triage try the first, then the second. GitTrace passes the name through untouched, so the reports, the cache and `--model` all show what you asked for.
+- **The scanned project's `gateway.toml` is never read**, as its `.env` is not: a file in the directory you run from must not decide where your provider keys are sent.
+- **When it cannot work** (not installed, a config that does not parse, no provider that can be reached) the scan stops with exit 2 and says which, like a model that cannot be called at all. `--no-llm` is unaffected.
+
+**Smoke-tested offline** (`tests/test_gateway.py`): a real in-process gateway whose only provider is an OpenAI-compatible fixture on loopback answered all 13 findings of `gittrace scan tests/fixtures/sample_app --offline --no-blame` — 13 requests each carrying the `TriageVerdict` JSON schema, the verdicts and severity adjustments in the JSON report, 0 errors — and a `[routes.smart]` in the test's `gateway.toml` reached the provider as the model that route names. **No live provider request was made:** this environment has no provider keys, so the fixture is what proves the path. With your own keys (and Ollama running, or the provider's model) the same path is a real call, and the run command does not change.
 
 ## Rules
 

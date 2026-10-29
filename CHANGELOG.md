@@ -7,6 +7,16 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 GitTrace no longer needs Docker, Redis or a database server: `pipx install` and run.
 
+### Added
+
+- **Model layer through the Respan Gateway:** `GITTRACE_GATEWAY=1` routes scan triage,
+  `explain` summaries and `--fix` through an in-process
+  [Respan Gateway](https://github.com/respanai/respan-gateway) (`respan-gateway==0.3.0`,
+  configured by `GITTRACE_GATEWAY_CONFIG` or the provider keys in the environment) instead of
+  LiteLLM calling the provider directly. The same prompt, JSON schema, timeout and errors;
+  the gateway's model names, routes and provider keys. Off by default, no Respan account or
+  credits involved, and the `gateway.toml` of the scanned project is never read.
+
 ### Changed
 
 - **The graph is in-process:** FalkorDB is replaced by a NetworkX graph held in memory
