@@ -145,6 +145,8 @@ class CallSite:
     literal attribute name it is the direct edge the literal `obj.name()`
     would give, with a computed name it is a low-confidence edge to each
     member the receiver could hold (see gittrace.languages.python.resolver).
+    It also marks the edge to a thread's target (`threading.Thread(target=f)`
+    calls `f`), the other call that is not written as one.
     Reachability and blast radius traverse those edges like any other; the
     flag is what says the target set was inferred rather than named.
     """

@@ -3,6 +3,7 @@ tests/test_reach_fixes.py — general reachability patterns, on small fixtures:
 
   1. Falcon routes: `app.add_route("/a", Resource())` and the resource's
      `on_get` / `on_post` / ... responders
+  2. thread targets: `threading.Thread(target=f)` is a (dynamic) call to f
 
 Run:  pytest tests/test_reach_fixes.py -v
 """
@@ -124,3 +125,67 @@ class TestFalcon:
         (route,) = GraphReachability(g, 10).reach("app.py::Upload.on_post").routes
         assert route.nodes == ("POST /upload -> app.py::Upload.on_post", "app.py::Upload.on_post")
         assert route.auth_required is False
+
+
+class TestThreadTarget:
+    FILES = {"jobs.py": """
+        import threading
+        from threading import Thread as T
+
+        def work(n):
+            pass
+
+        class Worker:
+            def run(self):
+                pass
+
+            def go(self):
+                threading.Thread(target=self.run).start()
+
+        def spawn(n):
+            threading.Thread(target=work, args=(n,)).start()
+
+        def spawn_aliased():
+            T(target=work).start()
+
+        def spawn_positional():
+            threading.Thread(None, work).start()
+
+        def spawn_unknown(fn):
+            threading.Thread(target=fn).start()
+            threading.Thread(target=lambda: work(1)).start()
+    """}
+
+    def test_the_target_is_a_dynamic_call(self):
+        calls, _ = _analyze(self.FILES)
+        edges = {(c.caller_id, c.callee_id): c.dynamic for c in calls if c.callee_id}
+        assert edges[("jobs.py::spawn", "jobs.py::work")] is True
+        assert edges[("jobs.py::Worker.go", "jobs.py::Worker.run")] is True        # a bound method
+        assert edges[("jobs.py::spawn_aliased", "jobs.py::work")] is True          # from threading import Thread as T
+        assert edges[("jobs.py::spawn_positional", "jobs.py::work")] is True       # Thread(group, target)
+        # A parameter or a lambda is not a known target: no thread edge is guessed.
+        # (The lambda's own body, work(1), is an ordinary call of spawn_unknown.)
+        assert not [c for c in calls if c.caller_id == "jobs.py::spawn_unknown" and c.dynamic]
+        # The constructor call itself is still recorded, unresolved, as before.
+        assert any(c.caller_id == "jobs.py::spawn" and c.dotted == "threading.Thread" and not c.dynamic
+                   for c in calls)
+
+    def test_a_route_reaches_a_sink_through_a_thread(self, tmp_path):
+        g = _scan(tmp_path, {"app.py": """
+            import os
+            import threading
+            from flask import Flask, request
+
+            app = Flask(__name__)
+
+            def work(cmd):
+                os.system("echo " + cmd)
+
+            @app.route("/run")
+            def run():
+                threading.Thread(target=work, args=(request.args["c"],)).start()
+                return "ok"
+        """})
+        (route,) = GraphReachability(g, 10).reach("app.py::work").routes
+        assert route.nodes == ("GET /run -> app.py::run", "app.py::run", "app.py::work")
+        assert g.g.edges[("Function", "app.py::run"), ("Function", "app.py::work")]["props"]["dynamic"] is True

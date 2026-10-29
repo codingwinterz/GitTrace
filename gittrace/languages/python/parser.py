@@ -47,7 +47,8 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 # callee name, so large literal arguments are not copied for nothing.
 _KEEP_ARGS = frozenset({"include_router", "register_blueprint", "mount",
                         "add_resource", "add_namespace", "init_app",
-                        "add_route"})                                       # routes.py reads these
+                        "add_route",
+                        "Thread"})                      # routes.py / the resolver's thread targets read these
 _MAIN_GUARD = re.compile(r"""^\(?\s*(?:__name__\s*==\s*(['"])__main__\1|(['"])__main__\2\s*==\s*__name__)\s*\)?$""")
 _DEPENDENCY_CALLS = frozenset({"Depends", "Security"})
 _TEXT_LIMIT = 200
@@ -525,7 +526,7 @@ class _Builder:
     def _call(self, node: Node, scope: Scope) -> None:
         function = node.child_by_field_name("function")
         parts = self._chain(function)
-        value = self._value(node, with_args=parts[-1] in _KEEP_ARGS, parts=parts)
+        value = self._value(node, with_args=parts[-1] in _KEEP_ARGS or _passes_target(node), parts=parts)
         raw = RawCall(self._caller(scope), scope, value)
         if function is not None and function.type == "call" and _is_getattr(function):
             raw.dispatch = self._value(function, with_args=True)
@@ -970,6 +971,17 @@ def _docstring(body: Node | None) -> str | None:
         return None
     para = re.split(r"\n\s*\n", text.strip())[0]
     return " ".join(para.split())[:300]
+
+
+
+def _passes_target(node: Node) -> bool:
+    """A call with a `target=` keyword (a thread built under any name, e.g.
+    `from threading import Thread as T`): the resolver reads its arguments."""
+    arguments = node.child_by_field_name("arguments")
+    if arguments is None or arguments.type != "argument_list":
+        return False
+    return any(arg.type == "keyword_argument" and _text(arg.child_by_field_name("name")) == "target"
+               for arg in arguments.named_children)
 
 
 def _is_getattr(node: Node) -> bool:

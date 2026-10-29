@@ -117,6 +117,10 @@ def _root_origin(sym: object | None) -> str:
     return "unknown"
 
 
+# Constructors whose `target=` runs in another thread (a call edge to it).
+THREAD_CTORS = frozenset({"threading.Thread"})
+
+
 class Resolver:
     def __init__(self, modules: list[PyModule]):
         self.modules = {m.path: m for m in modules}
@@ -371,8 +375,25 @@ class Resolver:
         if call.dispatch is not None:
             return self._dispatch(mod, call)
         dotted, origin, callee_id = self._target(mod, call)
-        return [CallSite(call.caller_id, call.call.line, dotted, origin, callee_id,
-                         site=call.site, args=call.args, kwargs=call.kwargs)]
+        sites = [CallSite(call.caller_id, call.call.line, dotted, origin, callee_id,
+                          site=call.site, args=call.args, kwargs=call.kwargs)]
+        if dotted in THREAD_CTORS:
+            sites += self._thread_target(mod, call)
+        return sites
+
+    def _thread_target(self, mod: PyModule, call: RawCall) -> list[CallSite]:
+        """`threading.Thread(target=f)`: the thread runs `f`, so the function
+        that builds the thread gets a (dynamic) edge to it. Whether `.start()`
+        is called is not checked."""
+        c = call.call
+        target = c.kwarg("target") or (c.args[1] if len(c.args) > 1 else None)
+        if target is None or target.kind != "ref":
+            return []
+        ref = RawCall(call.caller_id, call.scope, Value("ref", target.text, c.line, parts=target.parts))
+        dotted, origin, callee_id = self._target(mod, ref)
+        if callee_id is None:
+            return []
+        return [CallSite(call.caller_id, c.line, dotted, origin, callee_id, site=call.site, dynamic=True)]
 
     # -- getattr dispatch -----------------------------------------------------
 
