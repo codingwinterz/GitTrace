@@ -47,7 +47,7 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 # callee name, so large literal arguments are not copied for nothing.
 _KEEP_ARGS = frozenset({"include_router", "register_blueprint", "mount",
                         "add_resource", "add_namespace", "init_app",
-                        "add_route",
+                        "add_route", "add_url_rule",
                         "Thread"})                      # routes.py / the resolver's thread targets read these
 _MAIN_GUARD = re.compile(r"""^\(?\s*(?:__name__\s*==\s*(['"])__main__\1|(['"])__main__\2\s*==\s*__name__)\s*\)?$""")
 _DEPENDENCY_CALLS = frozenset({"Depends", "Security"})

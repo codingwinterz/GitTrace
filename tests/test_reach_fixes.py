@@ -4,6 +4,8 @@ tests/test_reach_fixes.py — general reachability patterns, on small fixtures:
   1. Falcon routes: `app.add_route("/a", Resource())` and the resource's
      `on_get` / `on_post` / ... responders
   2. thread targets: `threading.Thread(target=f)` is a (dynamic) call to f
+  3. Flask `add_url_rule`, also in loops: an endpoint when the view resolves;
+     a rule that is not a literal is kept as `${...}`, unresolved
 
 Run:  pytest tests/test_reach_fixes.py -v
 """
@@ -189,3 +191,87 @@ class TestThreadTarget:
         (route,) = GraphReachability(g, 10).reach("app.py::work").routes
         assert route.nodes == ("GET /run -> app.py::run", "app.py::run", "app.py::work")
         assert g.g.edges[("Function", "app.py::run"), ("Function", "app.py::work")]["props"]["dynamic"] is True
+
+
+class TestAddUrlRule:
+    FILES = {"app.py": """
+        from flask import Blueprint, Flask
+
+        app = Flask(__name__)
+        bp = Blueprint("bp", __name__, url_prefix="/bp")
+        PAGES = ["a", "b"]
+
+        def index():
+            pass
+
+        def page():
+            pass
+
+        def secret():
+            pass
+
+        app.add_url_rule("/", "index", index)
+        app.add_url_rule("/form", view_func=index, methods=["GET", "POST"])
+
+        for name in PAGES:
+            app.add_url_rule("/p/" + name, name, page)
+
+        def register(name):
+            def _view():
+                pass
+            bp.add_url_rule("/{}/".format(name), name, _view)
+
+        for name in PAGES:
+            register(name)
+
+        app.register_blueprint(bp)
+        app.add_url_rule("/x", "x", VIEWS["x"])            # a view that does not resolve
+        app.add_url_rule("/secret", "secret", login_required(secret))
+
+        class Other:
+            def add_url_rule(self, *a, **k):
+                pass
+
+        Other().add_url_rule("/not-flask", "n", index)
+    """}
+
+    def test_resolvable_views_become_endpoints(self):
+        _, endpoints = _analyze(self.FILES)
+        assert _endpoints(endpoints) == {
+            "GET / -> app.py::index": ("flask", False, True),
+            "GET /form -> app.py::index": ("flask", False, True),
+            "POST /form -> app.py::index": ("flask", False, True),
+            # The rule is built in the loop: kept, marked unresolved.
+            'GET ${"/p/" + name} -> app.py::page': ("flask", False, False),
+            # A nested view registered by a helper the loop calls; the blueprint prefix applies.
+            'GET /bp/${"/{}/".format(name)} -> app.py::register._view': ("flask", False, False),
+        }
+
+    def test_a_rule_registered_in_a_loop_reaches_a_sink(self, tmp_path):
+        g = _scan(tmp_path, {"app.py": """
+            import os
+            from flask import Flask, request
+
+            app = Flask(__name__)
+
+            def make(name):
+                def _view():
+                    os.system("echo " + request.args["q"])
+                    return name
+                return _view
+
+            for name in ["one", "two"]:
+                view = make(name)
+                app.add_url_rule("/" + name, name, make(name).__call__)
+
+            def run():
+                os.system("ls " + request.args["d"])
+
+            for name in ["ls"]:
+                app.add_url_rule("/run/" + name, name, run)
+        """})
+        (route,) = GraphReachability(g, 10).reach("app.py::run").routes
+        assert route.nodes == ('GET ${"/run/" + name} -> app.py::run', "app.py::run")
+        assert route.prefix_resolved is False
+        # A view returned by a factory is not followed (no parameter or return flow).
+        assert GraphReachability(g, 10).reach("app.py::make._view").routes == ()

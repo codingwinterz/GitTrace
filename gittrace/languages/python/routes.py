@@ -16,6 +16,12 @@ Prefixes:
   A router that is never included (or a non-literal prefix) still yields its
   endpoints, with `prefix_resolved=False` and the prefix it does know.
 
+Flask `app.add_url_rule(rule, endpoint, view_func, methods=[...])` (also on
+a blueprint, also called in a loop or a helper) is an endpoint when the view
+resolves to a project function; a rule that is not a string literal is kept
+as `${expression}` with `prefix_resolved=False` rather than dropped. A view
+that does not resolve (`View.as_view(...)`, a value from a dict) gives none.
+
 Flask-RESTful / Flask-RESTX (and Flask-RESTPlus) resources: a class
 registered with `api.add_resource(Cls, "/a", "/b")` or decorated with
 `@api.route("/a")` / `@ns.route("/a")` is an endpoint per URL for each of
@@ -428,7 +434,33 @@ class _Detector:
                         for method in methods:
                             self._add(endpoints, obj, method, path, fn, dec.line, found,
                                       chain.resolved and route_ok)
+        for mod in self.modules:
+            for call in mod.calls:                    # app.add_url_rule("/a", "a", view, methods=[...])
+                c = call.call
+                if c.parts[-1] != "add_url_rule" or len(c.parts) < 2:
+                    continue
+                obj = self.route_object(mod, call.scope, c.parts[:-1])
+                if obj is None or obj.framework != "flask" or obj.resources:
+                    continue
+                view = c.args[2] if len(c.args) > 2 else c.kwarg("view_func")
+                fn = self._view_function(mod, call.scope, view)
+                if fn is None:
+                    continue
+                route, route_ok = _literal(c.args[0] if c.args else c.kwarg("rule"))
+                evidence = _decorator_evidence(fn.decorators, None) + self.body_evidence(fn)
+                for chain in self.chains(obj):
+                    for method in _listed_methods(c.kwarg("methods")):
+                        self._add(endpoints, obj, method, flask_join(chain.prefix, route), fn, c.line,
+                                  evidence, chain.resolved and route_ok)
         return list(endpoints.values())
+
+    def _view_function(self, mod: PyModule, scope, view: Value | None) -> PyFunction | None:
+        if view is None or view.kind != "ref":
+            return None
+        sym = self.resolver.resolve_ref(mod, scope, view.parts).sym
+        if isinstance(sym, VarSym):
+            sym = self.resolver.deref(sym)
+        return self.functions.get(sym.id) if isinstance(sym, FuncSym) else None
 
     @staticmethod
     def _add(endpoints: dict[str, EndpointDef], obj: RouteObject, method: str, path: str,
@@ -462,7 +494,11 @@ def _methods(framework: str, dec: Value) -> list[str]:
             return [verb.upper()]
         if verb != "route":
             return []
-    listed = dec.kwarg("methods")
+    return _listed_methods(dec.kwarg("methods"))
+
+
+def _listed_methods(listed: Value | None) -> list[str]:
+    """`methods=[...]`: GET when absent, `*` when not a list of string literals."""
     if listed is None:
         return ["GET"]
     if listed.kind != "list" or any(i.kind != "str" for i in listed.items):
