@@ -2,7 +2,7 @@
 gittrace.core.tools — the graph tools: questions about a scanned project.
 
 Each tool takes the project folder that `gittrace scan` was run on, reads that
-project's FalkorDB graph (gittrace.graph.store.graph_name_for), and returns a
+project's cached graph (gittrace.graph.memstore.GraphStore), and returns a
 JSON-ready dict. Failures come back as {"error": ...}, never as exceptions, so
 the CLI, the MCP server and the agent can all show them as they are.
 
@@ -29,18 +29,18 @@ class ToolError(Exception):
 
 
 def _graph(project: str):
-    from gittrace.graph import connection, store
+    from gittrace.graph import store
+    from gittrace.graph.memstore import GraphStore, StaleCache
 
     root = Path(project).resolve()
-    name = store.graph_name_for(root)
-    db = connection.get_db()
-    if name not in db.list_graphs():
-        raise ToolError(f"no graph for {root}; run `gittrace scan {project}` first")
-    return db.select_graph(name), name, root
-
-
-def _rows(graph, cypher: str, params: dict | None = None) -> list:
-    return graph.query(cypher, params=params).result_set
+    try:
+        graph = GraphStore.load(root)
+    except StaleCache as exc:
+        if str(exc) == "no graph":
+            raise ToolError(f"no graph for {root}; run `gittrace scan {project}` first") from None
+        raise ToolError(f"the graph for {root} is out of date ({exc}); "
+                        f"run `gittrace scan {project}` again") from None
+    return graph, store.graph_name_for(root), root
 
 
 SHOW_EMAIL_ENV = "GITTRACE_SHOW_EMAIL"
@@ -104,7 +104,7 @@ def _reach_dict(reach: Reach) -> dict:
 def _find_sinks(graph, root: Path, finding: str) -> list[dict]:
     """A Sink id (`path.py::line::col`) or `path.py:line` -> matching Sink properties."""
     if "::" in finding:
-        rows = _rows(graph, "MATCH (s:Sink {id: $id}) RETURN properties(s)", {"id": finding})
+        rows = [s for s in [graph.sink(finding)] if s is not None]
     else:
         file, sep, line = finding.rpartition(":")
         if not sep or not file or not line.strip().isdigit():
@@ -116,29 +116,20 @@ def _find_sinks(graph, root: Path, finding: str) -> list[dict]:
             except ValueError as exc:
                 raise ToolError(f"{file} is not inside {root}") from exc
         file = file.replace("\\", "/").removeprefix("./")
-        rows = _rows(graph, (
-            "MATCH (s:Sink) WHERE s.file = $file AND s.line = $line "
-            "RETURN properties(s) ORDER BY s.column"
-        ), {"file": file, "line": int(line)})
+        rows = graph.sinks_at(file, int(line))
     if not rows:
         raise ToolError(f"no finding at {finding}")
-    return [r[0] for r in rows]
+    return rows
 
 
 def _guard(fn):
     """Turn the tools' expected failures into {"error": ...} results."""
     @functools.wraps(fn)
     def wrapped(*args, **kwargs) -> dict[str, Any]:
-        from redis.exceptions import RedisError
-
         try:
             return fn(*args, **kwargs)
         except (ToolError, ValueError) as exc:
             return {"error": str(exc)}
-        except RedisError as exc:               # driver errors quote the host
-            from gittrace.graph import connection
-            return {"error": f"the {connection.location()} FalkorDB failed: "
-                             f"{type(exc).__name__}: {connection.redact(str(exc))}"}
     return wrapped
 
 
@@ -148,8 +139,7 @@ def list_findings(project: str, min_severity: str = "info", rule_id: str | None 
     if min_severity not in SEVERITIES:
         raise ToolError(f"min_severity must be one of {', '.join(SEVERITIES)}")
     graph, name, root = _graph(project)
-    rows = _rows(graph, "MATCH (s:Sink) RETURN properties(s)")
-    findings = [_finding_summary(r[0]) for r in rows]
+    findings = [_finding_summary(s) for s in graph.sinks()]
     floor = severity_rank(min_severity)
     findings = [f for f in findings
                 if severity_rank(f["severity"] or "info") >= floor
@@ -176,14 +166,11 @@ def blast_radius(project: str, function_id: str, depth: int = DEFAULT_DEPTH) -> 
     """Upstream callers of a function and the endpoints that reach it."""
     check_depth(depth)
     graph, name, root = _graph(project)
-    rows = _rows(graph, (
-        "MATCH (f:Function {id: $id, resolved: true}) "
-        "OPTIONAL MATCH (f)-[:REACHES_SINK]->(s:Sink) "
-        "RETURN f.file, f.start_line, f.end_line, collect(s.id)"
-    ), {"id": function_id})
-    if not rows:
+    found = graph.function(function_id)
+    if found is None:
         raise ToolError(f"no function {function_id!r} in {name} (ids look like app/db.py::Repo.get_user)")
-    file, start, end, sinks = rows[0]
+    props, sinks = found
+    file, start, end = props.get("file"), props.get("start_line"), props.get("end_line")
     reach = GraphReachability(graph, depth).reach(function_id)
     data = _reach_dict(reach)
     return {

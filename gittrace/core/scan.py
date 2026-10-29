@@ -199,28 +199,15 @@ def _exposure(match: Match, reach: Reach | None) -> Exposure:
 
 
 def scan(root: str | os.PathLike, *, depth: int = DEFAULT_DEPTH, blame: bool = True,
-         offline: bool = False, db=None, graph_name: str | None = None,
-         include_tests: bool = False, allow_remote: bool = False) -> ScanResult:
-    """Without `offline`, the project's graph is written to the configured
-    FalkorDB, which must be local unless `allow_remote` (a `db` handle passed in
-    is the caller's own choice and is used as is). Database failures raise
-    RuntimeError with the host, port and password redacted."""
-    if offline:
-        return _scan(root, depth, blame, offline, db, graph_name, include_tests)
-    from redis.exceptions import RedisError
-
-    from gittrace.graph import connection
-
-    if db is None:
-        connection.require_local_or_allowed(allow_remote)
-    try:
-        return _scan(root, depth, blame, offline, db, graph_name, include_tests)
-    except RedisError as exc:
-        raise RuntimeError(f"the {connection.location()} FalkorDB failed: "
-                           f"{type(exc).__name__}: {connection.redact(str(exc))}") from None
+         offline: bool = False, graph=None, graph_name: str | None = None,
+         include_tests: bool = False) -> ScanResult:
+    """Without `offline`, the project's graph is built and saved to
+    <project>/.gittrace/graph.json (gittrace.graph.memstore). An empty
+    GraphStore passed in as `graph` is the caller's own: it is filled and not saved."""
+    return _scan(root, depth, blame, offline, graph, graph_name, include_tests)
 
 
-def _scan(root, depth, blame, offline, db, graph_name, include_tests) -> ScanResult:
+def _scan(root, depth, blame, offline, graph, graph_name, include_tests) -> ScanResult:
     check_depth(depth)
     analysis = pipeline.analyze(root)
     matches = run_rules(analysis.rules, analysis.calls, analysis.assignments)
@@ -233,16 +220,18 @@ def _scan(root, depth, blame, offline, db, graph_name, include_tests) -> ScanRes
             analysis.functions.append(analysis.module_scopes[m.function_id])
             present.add(m.function_id)
 
-    graph = name = None
+    name = None
+    save = False
     if offline:
+        graph = None
         reachability = MemoryReachability(analysis, depth)
     else:
-        from gittrace.graph import connection, store
+        from gittrace.graph import store
+        from gittrace.graph.memstore import GraphStore
 
-        if db is None:
-            db = connection.get_db()
         name = graph_name or store.graph_name_for(analysis.root)
-        graph = db.select_graph(name)
+        if graph is None:
+            graph, save = GraphStore(name), True
         store.write_analysis(graph, analysis, name, sinks=matches)
         reachability = GraphReachability(graph, depth)
 
@@ -283,6 +272,8 @@ def _scan(root, depth, blame, offline, db, graph_name, include_tests) -> ScanRes
         from gittrace.graph import store
 
         store.write_findings(graph, name, findings)
+        if save:
+            graph.save(analysis.root)
     return ScanResult(project=analysis.root.name, root=analysis.root, graph=name,
                       depth=depth, findings=[f for f in findings if not f.in_tests],
                       analysis=analysis, test_findings=[f for f in findings if f.in_tests])

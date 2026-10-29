@@ -1,13 +1,13 @@
 """
-test_core.py — offline tests for gittrace.core's tool layer (no database, no API key).
+test_core.py — offline tests for gittrace.core's tool layer (no API key).
 
 Covers:
   1. the tool registry: one entry drives the LLM schemas and the MCP server
-  2. the tools' error handling with the database mocked out
+  2. the tools' error handling, against a real (empty) graph cache
   3. the MCP server: tools mirror the registry; nothing is written to stdout
   4. the generic agent loop against a mocked LiteLLM
 
-The tools' Cypher runs unmocked in tests/test_scan_integration.py.
+The tools' graph queries on a real scan run in tests/test_scan_integration.py.
 
 Run:  pytest tests/test_core.py -v
 """
@@ -31,7 +31,8 @@ from gittrace.core import agent, tools
 from gittrace.core.agent import AgentError, run_agent
 from gittrace.core.models import AgentResponse
 from gittrace.core.registry import TOOL_REGISTRY, GraphTool, call_tool, tool_schemas
-from gittrace.graph import connection
+from gittrace.graph import store
+from gittrace.graph.memstore import GraphStore
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -80,37 +81,28 @@ class TestRegistry:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def no_graphs():
-    db = MagicMock()
-    db.list_graphs.return_value = []
-    with patch.object(connection, "get_db", return_value=db):
-        yield db
+def scanned(tmp_path):
+    """An empty project with a real, current graph cache."""
+    GraphStore(store.graph_name_for(tmp_path)).save(tmp_path)
+    return tmp_path
 
 
 class TestToolErrors:
-    def test_unscanned_project(self, no_graphs, tmp_path):
+    def test_unscanned_project(self, tmp_path):
         out = tools.list_findings(str(tmp_path))
         assert "run `gittrace scan" in out["error"]
-        no_graphs.select_graph.assert_not_called()
+        assert not (tmp_path / ".gittrace").exists()
 
-    def test_bad_severity(self, no_graphs):
+    def test_bad_severity(self):
         assert "min_severity must be one of" in tools.list_findings(".", min_severity="urgent")["error"]
 
     @pytest.mark.parametrize("finding", ["app.py", "app.py:x", ":12"])
-    def test_bad_finding_reference(self, finding, tmp_path):
-        db = MagicMock()
-        from gittrace.graph import store
-        db.list_graphs.return_value = [store.graph_name_for(tmp_path)]
-        with patch.object(connection, "get_db", return_value=db):
-            out = tools.trace_attack_path(str(tmp_path), finding)
+    def test_bad_finding_reference(self, finding, scanned):
+        out = tools.trace_attack_path(str(scanned), finding)
         assert "expected a finding id" in out["error"]
 
-    def test_bad_depth(self, tmp_path):
-        db = MagicMock()
-        from gittrace.graph import store
-        db.list_graphs.return_value = [store.graph_name_for(tmp_path)]
-        with patch.object(connection, "get_db", return_value=db):
-            out = tools.blast_radius(str(tmp_path), "a.py::f", depth=99)
+    def test_bad_depth(self, scanned):
+        out = tools.blast_radius(str(scanned), "a.py::f", depth=99)
         assert "depth must be an integer from 1 to 50" in out["error"]
 
 
@@ -127,14 +119,14 @@ class TestMCPServer:
         assert set(by_name["list_findings_tool"].input_schema["properties"]) == {
             "project", "min_severity", "rule_id"}
 
-    def test_tool_errors_reach_the_client(self, no_graphs, tmp_path):
+    def test_tool_errors_reach_the_client(self, tmp_path):
         result = asyncio.run(mcp_server.server.call_tool(
             "list_findings_tool", {"project": str(tmp_path)}))
         assert "run `gittrace scan" in json.loads(result.content[0].text)["error"]
 
     def test_nothing_is_written_to_stdout(self):
         # Under the stdio transport stdout *is* the protocol stream.
-        env = {**os.environ, "FALKORDB_HOST": os.environ.get("FALKORDB_HOST", "localhost")}
+        env = dict(os.environ)
         code = (
             "import sys\n"
             "from gittrace import mcp_server\n"

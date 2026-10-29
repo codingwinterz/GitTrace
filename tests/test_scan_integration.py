@@ -1,24 +1,19 @@
 """
-test_scan_integration.py — `gittrace scan`, the graph tools and the CLI against a
-real FalkorDB.
+test_scan_integration.py — `gittrace scan`, the graph tools and the CLI against the
+real graph store (gittrace.graph.memstore) and its cache.
 
-Scans tests/fixtures/sample_app into its graph (the name graph_name_for gives
-the fixture path; dropped afterwards) and checks the exact Sink nodes and
-REACHES_SINK edges, the severities stored on them, that the graph-backed scan
-agrees with the in-memory one, and every tool's Cypher, unmocked.
+Scans tests/fixtures/sample_app, which writes its graph cache
+(tests/fixtures/sample_app/.gittrace/graph.json, removed afterwards), and
+checks the exact Sink nodes and REACHES_SINK edges, the severities stored on
+them, that the graph-backed scan agrees with the in-memory one, and every
+tool's graph query, unmocked.
 
-Local run:
-    docker compose up -d falkordb
-    FALKORDB_HOST=localhost FALKORDB_PORT=6379 FALKORDB_PASSWORD= pytest tests/test_scan_integration.py -v
-
-Skips when FalkorDB is unreachable; GITTRACE_REQUIRE_FALKORDB=1 (set in CI)
-turns the skip into a failure.
+    pytest tests/test_scan_integration.py -v
 """
 
 from __future__ import annotations
 
 import json
-import os
 
 import pytest
 from typer.testing import CliRunner
@@ -28,32 +23,8 @@ import expected_sample_app
 from gittrace.cli import app
 from gittrace.core import tools
 from gittrace.core.scan import scan
-from gittrace.graph import connection, store
-
-
-def _db_reachable() -> bool:
-    if not connection.is_local():       # never write test graphs to a remote database
-        return False
-    try:
-        connection.get_db().connection.ping()
-        return True
-    except Exception:  # noqa: BLE001
-        return False
-
-
-_REACHABLE = _db_reachable()
-
-if not _REACHABLE and os.environ.get("GITTRACE_REQUIRE_FALKORDB") == "1":
-    raise RuntimeError(
-        f"GITTRACE_REQUIRE_FALKORDB=1 but the {connection.location()} FalkorDB is unreachable "
-        "or not local (these tests write graphs; they only run against local Docker)"
-    )
-
-pytestmark = pytest.mark.skipif(
-    not _REACHABLE,
-    reason="no local FalkorDB (start it with `docker compose up -d falkordb`; a remote "
-           "FALKORDB_HOST is never used by these tests, which write graphs)",
-)
+from gittrace.graph import store
+from gittrace.graph.memstore import CACHE_FILE, GraphStore
 
 ROOT = expected_sample_app.ROOT
 PROJECT = str(ROOT)
@@ -62,50 +33,48 @@ runner = CliRunner()
 
 @pytest.fixture(scope="module")
 def scanned():
-    """One real scan of sample_app, in the graph the tools will look for."""
-    db = connection.get_db()
-    name = store.graph_name_for(ROOT)
-    if name in db.list_graphs():
-        db.select_graph(name).delete()
-    result = scan(ROOT, blame=False, db=db)
-    yield result, db.select_graph(name)
-    db.select_graph(name).delete()
+    """One real scan of sample_app, in the cached graph the tools will load."""
+    cache = ROOT / CACHE_FILE
+    cache.unlink(missing_ok=True)
+    result = scan(ROOT, blame=False)
+    yield result, GraphStore.load(ROOT)
+    cache.unlink(missing_ok=True)
 
 
-def _rows(g, cypher: str, params: dict | None = None) -> list:
-    return g.query(cypher, params=params).result_set
+def _sinks(g: GraphStore) -> dict[str, dict]:
+    return {s["id"]: s for s in g.sinks()}
+
+
+def _reaches_sink(g: GraphStore) -> list[tuple[str, str]]:
+    return [(a[1], b[1]) for a, b, d in g.g.edges(data=True) if d["type"] == "REACHES_SINK"]
 
 
 class TestSinks:
     def test_one_sink_per_finding(self, scanned):
         _, g = scanned
-        rows = _rows(g, "MATCH (s:Sink) RETURN s.id, s.rule_id, s.function")
-        assert {r[0]: (r[1], r[2]) for r in rows} == {
+        assert {i: (s["rule_id"], s["function"]) for i, s in _sinks(g).items()} == {
             fid: (v[0], v[3]) for fid, v in expected.FINDINGS.items()}
 
     def test_reaches_sink_edges(self, scanned):
         _, g = scanned
-        rows = _rows(g, "MATCH (f:Function)-[:REACHES_SINK]->(s:Sink) RETURN f.id, s.id")
-        assert sorted((a, b) for a, b in rows) == sorted(
+        assert sorted(_reaches_sink(g)) == sorted(
             (v[3], fid) for fid, v in expected.FINDINGS.items())
 
     def test_sinks_hang_from_project_functions_only(self, scanned):
         _, g = scanned
-        assert _rows(g, ("MATCH (f:Function {resolved: false})-[:REACHES_SINK]->(s) "
-                         "RETURN count(s)")) == [[0]]
+        assert all(g.props("Function", f)["resolved"] is True for f, _ in _reaches_sink(g))
 
     def test_severity_is_stored(self, scanned):
         _, g = scanned
-        rows = _rows(g, ("MATCH (s:Sink) RETURN s.id, s.severity, s.score, s.uncertain, "
-                         "s.endpoints, s.caller_count"))
-        assert {r[0]: tuple(r[1:]) for r in rows} == {
+        assert {i: (s["severity"], s["score"], s["uncertain"], s["endpoints"], s["caller_count"])
+                for i, s in _sinks(g).items()} == {
             fid: (v[1], v[2], v[7], [e for e, _ in v[5]], len(v[6]))
             for fid, v in expected.FINDINGS.items()}
 
     def test_site_properties(self, scanned):
         _, g = scanned
-        row = _rows(g, ("MATCH (s:Sink {id: 'app/routers/users.py::27::14'}) RETURN s.file, s.line, "
-                        "s.column, s.callee, s.param_derived, s.params, s.evidence, s.snippet"))[0]
+        s = g.sink("app/routers/users.py::27::14")
+        row = [s[k] for k in ("file", "line", "column", "callee", "param_derived", "params", "evidence", "snippet")]
         assert row == ["app/routers/users.py", 27, 14, "subprocess.check_output", True, ["name"],
                        ["shell=True", "string concatenation (+)", "derived from parameter `name`"],
                        '    output = sp.check_output("ping -c 1 " + name, shell=True)']
@@ -114,20 +83,13 @@ class TestSinks:
         # Three call sites share external::os.system / eval / ... nodes; the
         # findings are the Sinks, one per site.
         _, g = scanned
-        assert _rows(g, "MATCH (s:Sink) RETURN count(s)") == [[len(expected.FINDINGS)]]
-        assert _rows(g, "MATCH (n:Function {id: 'external::eval'})-[]->(s:Sink) RETURN count(s)") == [[0]]
+        assert len(g.sinks()) == len(expected.FINDINGS)
+        assert not [b for a, b in _reaches_sink(g) if a == "external::eval"]
 
     def test_project_totals(self, scanned):
         _, g = scanned
-        row = _rows(g, ("MATCH (p:Project) RETURN p.findings, p.findings_critical, p.findings_high, "
-                        "p.findings_medium"))[0]
-        assert row == [13, 7, 1, 5]
-
-    def test_sink_index(self, scanned):
-        _, g = scanned
-        rows = _rows(g, "CALL db.indexes() YIELD label, properties RETURN label, properties")
-        assert ("Sink", ["id"]) in [(label, props) for label, props in rows]
-
+        (p,) = g.nodes("Project")
+        assert [p["findings"], p["findings_critical"], p["findings_high"], p["findings_medium"]] == [13, 7, 1, 5]
 
 class TestGraphMatchesMemory:
     def test_same_findings_either_way(self, scanned):
@@ -201,23 +163,17 @@ class TestTools:
     def test_owner_email_is_stored_but_shown_only_on_request(self, monkeypatch):
         """The graph keeps the full blame author; tool results (MCP) carry the email
         only with GITTRACE_SHOW_EMAIL=1. The fixture's lines are committed in this repository."""
-        db = connection.get_db()
-        name = "gittrace_test_owner_email"
-        try:
-            scan(ROOT, blame=True, db=db, graph_name=name)
-            rows = db.select_graph(name).query(
-                "MATCH (s:Sink) WHERE s.owner_status = 'committed' RETURN properties(s) LIMIT 1").result_set
-            if not rows:
-                pytest.skip("no committed fixture line (not a git checkout)")
-            props = rows[0][0]
-            assert props["owner_author"] and props["owner_email"]           # stored in full
-            monkeypatch.delenv(tools.SHOW_EMAIL_ENV, raising=False)
-            assert "email" not in tools._finding_summary(props)["owner"]
-            monkeypatch.setenv(tools.SHOW_EMAIL_ENV, "1")
-            assert tools._finding_summary(props)["owner"]["email"] == props["owner_email"]
-        finally:
-            if name in db.list_graphs():
-                db.select_graph(name).delete()
+        g = GraphStore("gittrace_test_owner_email")
+        scan(ROOT, blame=True, graph=g, graph_name=g.name)
+        rows = [s for s in g.sinks() if s.get("owner_status") == "committed"]
+        if not rows:
+            pytest.skip("no committed fixture line (not a git checkout)")
+        props = rows[0]
+        assert props["owner_author"] and props["owner_email"]           # stored in full
+        monkeypatch.delenv(tools.SHOW_EMAIL_ENV, raising=False)
+        assert "email" not in tools._finding_summary(props)["owner"]
+        monkeypatch.setenv(tools.SHOW_EMAIL_ENV, "1")
+        assert tools._finding_summary(props)["owner"]["email"] == props["owner_email"]
 
     def test_mcp_owner_hides_the_email_by_default(self, scanned, monkeypatch):
         monkeypatch.delenv(tools.SHOW_EMAIL_ENV, raising=False)
@@ -229,24 +185,6 @@ class TestTools:
 
 
 class TestCli:
-    def test_graphs_lists_and_drops_exact_names(self):
-        db = connection.get_db()
-        name = "gittrace_test_graphs_cmd"
-        db.select_graph(name).query("CREATE (:Probe {n: 1})")
-        try:
-            listed = json.loads(runner.invoke(app, ["graphs", "--format", "json"]).stdout)
-            assert listed["database"] == "local" and name in listed["graphs"]
-            out = runner.invoke(app, ["graphs", "--drop", name + "_missing"])
-            assert out.exit_code == 2 and name in db.list_graphs()      # unknown name: nothing deleted
-            out = runner.invoke(app, ["graphs", "--drop", name, "--format", "json"])
-            assert out.exit_code == 0, out.output
-            data = json.loads(out.stdout)
-            assert data["dropped"] == [name] and name not in data["graphs"]
-            assert name not in db.list_graphs()
-        finally:
-            if name in db.list_graphs():
-                db.select_graph(name).delete()
-
     def test_trace(self, scanned):
         out = runner.invoke(app, ["trace", "app/utils/shell.py:8", "-p", PROJECT, "--format", "json"])
         assert out.exit_code == 0, out.output
@@ -278,24 +216,17 @@ class TestCli:
 
 
 class TestRescan:
-    def test_rescan_is_idempotent_including_sinks(self, tmp_path):
-        db = connection.get_db()
-        name = f"gittrace_test_scan_{os.getpid()}"
-        try:
-            scan(ROOT, blame=False, db=db, graph_name=name)
-            g = db.select_graph(name)
-            snap = lambda: sorted(  # noqa: E731
-                (r[0], json.dumps({k: v for k, v in r[1].items() if k != "scan_id"}, sort_keys=True))
-                for r in _rows(g, "MATCH (s:Sink) RETURN s.id, properties(s)"))
-            before = snap()
-            scan(ROOT, blame=False, db=db, graph_name=name)
-            assert snap() == before
-            assert _rows(g, "MATCH ()-[e:REACHES_SINK]->() RETURN count(e)") == [[len(expected.FINDINGS)]]
-        finally:
-            if name in db.list_graphs():
-                db.select_graph(name).delete()
+    def test_rescan_is_idempotent_including_sinks(self):
+        snap = lambda g: sorted(  # noqa: E731
+            (s["id"], json.dumps({k: v for k, v in s.items() if k != "scan_id"}, sort_keys=True))
+            for s in g.sinks())
+        first, second = GraphStore("gittrace_test_scan_a"), GraphStore("gittrace_test_scan_a")
+        scan(ROOT, blame=False, graph=first, graph_name=first.name)
+        scan(ROOT, blame=False, graph=second, graph_name=second.name)
+        assert snap(second) == snap(first)
+        assert len(_reaches_sink(second)) == len(expected.FINDINGS)
 
     def test_old_schema_is_gone(self, scanned):
         _, g = scanned
-        labels = {r[0] for r in _rows(g, "MATCH (n) RETURN DISTINCT labels(n)[0]")}
+        labels = {label for label, _ in g.g.nodes}
         assert labels == {"Project", "File", "Function", "Endpoint", "Sink"}

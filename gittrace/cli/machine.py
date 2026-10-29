@@ -1,25 +1,20 @@
 """
 gittrace.cli.machine — is this machine ready to run GitTrace? (`gittrace doctor`)
-and start what can be started (`gittrace up`).
+and fetch what can be fetched (`gittrace up`).
 
 doctor checks, without changing anything:
   python        a supported version
   settings      which .env file is used (gittrace.config), or the defaults
-  docker        installed and running (needed for the default local FalkorDB)
-  falkordb      a real round trip (GRAPH.LIST, 3 s timeout); "local" or "remote" only
-  database      a warning when the configured FalkorDB is not on this machine
   ollama        answering, when a model is an Ollama model
   model:<task>  the triage and explain models are pulled
   vram          free GPU memory against what the models need (NVIDIA only)
   power, sleep  Windows: AC or battery, power plan, sleep and display timers,
                 Modern Standby (long model runs were paused by it in evaluation)
 
-up starts local FalkorDB in Docker (the `gittrace-falkordb` container, or
-the docker compose one if it exists), waits for it, checks Ollama and, with
---pull, pulls missing models. It never starts or changes a remote database.
+up checks Ollama and, with --pull, pulls missing models.
 
 Everything that touches the machine goes through System, so tests can
-replace it. Nothing here prints a database host, port or password.
+replace it.
 """
 
 from __future__ import annotations
@@ -30,7 +25,6 @@ import re
 import shutil
 import subprocess
 import sys
-import time
 import urllib.request
 from dataclasses import asdict, dataclass
 
@@ -40,9 +34,6 @@ from rich.text import Text
 
 from gittrace.cli import render
 
-FALKORDB_IMAGE = "falkordb/falkordb:v4.22.1"   # same tag as docker-compose.yml and CI; bump together
-CONTAINER = "gittrace-falkordb"
-COMPOSE_CONTAINER = "gittrace-falkordb-1"
 OLLAMA_DEFAULT = "http://localhost:11434"
 MIN_PYTHON = (3, 11)
 # GiB of VRAM at num_ctx 8192, measured on the evaluation laptop (README, "Model triage").
@@ -74,7 +65,7 @@ class System:
         return p.returncode, (p.stdout or "") + (p.stderr or "" if p.returncode else "")
 
     def stream(self, args: list[str]) -> int:
-        """Run with the terminal attached (docker pull / ollama pull progress)."""
+        """Run with the terminal attached (ollama pull progress)."""
         try:
             return subprocess.run(args).returncode
         except OSError:
@@ -89,17 +80,6 @@ class System:
                 return json.loads(response.read().decode("utf-8"))
         except Exception:  # noqa: BLE001 - unreachable, refused, not JSON: all "down"
             return None
-
-    def falkordb(self, local_default: bool = False) -> tuple[bool, str]:
-        from gittrace.graph import connection
-        return connection.check(local_default=local_default)
-
-    def location(self) -> str:
-        from gittrace.graph import connection
-        return connection.location()
-
-    def sleep(self, seconds: float) -> None:
-        time.sleep(seconds)
 
 
 def _ollama_base() -> str:
@@ -140,36 +120,8 @@ def check_settings() -> Check:
     from gittrace import config
     loaded = config.load()
     if loaded is None:
-        return Check("settings", "info", "no .env: defaults (local Docker FalkorDB, local Ollama)")
+        return Check("settings", "info", "no .env: defaults (local Ollama)")
     return Check("settings", "info", f"from {loaded}")
-
-
-def check_docker(system: System, needed: bool) -> Check:
-    if system.which("docker") is None:
-        if not needed:
-            return Check("docker", "info", "not installed (not needed: the configured FalkorDB is remote)")
-        return Check("docker", "fail", "not installed", "install Docker Desktop (or Docker Engine on Linux)")
-    rc, out = system.run(["docker", "info", "--format", "{{.ServerVersion}}"])
-    if rc != 0:
-        return Check("docker", "fail" if needed else "info", "installed but not running",
-                     "start Docker Desktop (or the docker service)")
-    return Check("docker", "ok", f"engine {out.strip() or 'running'}")
-
-
-def check_falkordb(system: System) -> list[Check]:
-    where = system.location()
-    ok, _reason = system.falkordb()
-    checks = [Check("falkordb", "ok", f"up ({where})") if ok else
-              Check("falkordb", "fail", f"down ({where})",
-                    "gittrace up" if where == "local" else "check the remote instance, or unset FALKORDB_HOST "
-                                                           "for local Docker; scan --offline needs no database")]
-    if where == "local":
-        checks.append(Check("database", "ok", "local: graphs stay on this machine"))
-    else:
-        checks.append(Check("database", "warn", "remote: FALKORDB_HOST is not this machine; graphs include your "
-                                                "source code, so scan refuses to write there without --allow-remote",
-                            "unset FALKORDB_HOST (or set it to localhost) to use local Docker"))
-    return checks
 
 
 def check_ollama(system: System) -> tuple[list[Check], list[str], list[dict]]:
@@ -270,9 +222,6 @@ def check_power(system: System) -> list[Check]:
 def run_checks(system: System | None = None) -> list[Check]:
     system = system or System()
     checks = [check_python(), check_settings()]
-    local = system.location() == "local"
-    checks.append(check_docker(system, needed=local))
-    checks.extend(check_falkordb(system))
     ollama, _tags, loaded = check_ollama(system)
     checks.extend(ollama)
     checks.append(check_vram(system, loaded))
@@ -308,49 +257,10 @@ def to_json(checks: list[Check]) -> dict:
 # -- up ---------------------------------------------------------------------------
 
 
-def up(console: Console, pull: bool = False, system: System | None = None, wait_s: float = 60) -> int:
-    """0 ready; 1 something is left to the user (Ollama, models); 2 FalkorDB could not be started."""
+def up(console: Console, pull: bool = False, system: System | None = None) -> int:
+    """0 ready; 1 something is left to the user (Ollama, models)."""
     system = system or System()
     say = lambda style, text: console.print(Text(text, style=style))          # noqa: E731
-    if system.location() != "local":
-        say(render.AMBER, "note: FALKORDB_HOST points to a remote FalkorDB; `up` starts a local one, which "
-                          "GitTrace uses only when FALKORDB_HOST is unset or localhost")
-    if system.falkordb(local_default=True)[0]:
-        say(render.TEAL, "FalkorDB: already running (local)")
-    else:
-        if system.which("docker") is None:
-            say(render.RED, "Docker is not installed: install Docker Desktop (or Docker Engine), then run "
-                            "`gittrace up` again")
-            return 2
-        if system.run(["docker", "info", "--format", "{{.ServerVersion}}"])[0] != 0:
-            say(render.RED, "Docker is not running: start Docker Desktop (or the docker service), then run "
-                            "`gittrace up` again")
-            return 2
-        rc, out = system.run(["docker", "ps", "-a", "--filter", f"name={CONTAINER}", "--format", "{{.Names}}"])
-        existing = [n.strip() for n in out.splitlines() if n.strip() in (CONTAINER, COMPOSE_CONTAINER)]
-        if existing:
-            name = CONTAINER if CONTAINER in existing else existing[0]
-            say(render.LAVENDER, f"FalkorDB: starting the existing container {name}")
-            rc, out = system.run(["docker", "start", name], timeout=60)
-        else:
-            say(render.LAVENDER, f"FalkorDB: starting {FALKORDB_IMAGE} as {CONTAINER} (the first time pulls the "
-                                 "image, about 200 MB)")
-            rc = system.stream(["docker", "run", "-d", "--name", CONTAINER, "-p", "6379:6379", "-p", "3000:3000",
-                                FALKORDB_IMAGE])
-            out = ""
-        if rc != 0:
-            say(render.RED, "FalkorDB: docker could not start it" + (f": {out.strip()[:300]}" if out.strip() else "")
-                + " (is port 6379 already taken by another Redis?)")
-            return 2
-        deadline = time.monotonic() + wait_s
-        while not system.falkordb(local_default=True)[0]:
-            if time.monotonic() > deadline:
-                say(render.RED, f"FalkorDB: started but not answering after {wait_s:.0f} s "
-                                f"(docker logs {existing[0] if existing else CONTAINER})")
-                return 2
-            system.sleep(1)
-        say(render.TEAL, "FalkorDB: up (local)")
-
     left = 0
     checks, tags, _ = check_ollama(system)
     for c in checks:

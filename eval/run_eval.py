@@ -3,7 +3,7 @@ eval/run_eval.py — reproduce the GitTrace evaluation (see eval/README.md).
 
     python eval/run_eval.py                       # results in eval/results/untouched/
     python eval/run_eval.py --label after-tuning  # a second, separately labelled run
-    python eval/run_eval.py --graph               # use FalkorDB instead of --offline
+    python eval/run_eval.py --graph               # use the graph cache instead of --offline
     python eval/run_eval.py --targets held-out --label held-out
     python eval/run_eval.py --label held-out --review-only   # fold in review.json, no re-scan
 
@@ -305,7 +305,7 @@ def markdown(s: dict) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--label", default="untouched")
-    parser.add_argument("--graph", action="store_true", help="run gittrace against FalkorDB")
+    parser.add_argument("--graph", action="store_true", help="run gittrace with its graph (not --offline)")
     parser.add_argument("--targets", choices=("tuning", "held-out"), default="tuning",
                         help="the targets the rules were tuned on, or the held-out ones")
     parser.add_argument("--review-only", action="store_true",

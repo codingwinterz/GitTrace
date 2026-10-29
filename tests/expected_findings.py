@@ -5,7 +5,7 @@ Written by hand from the fixture source and the severity model in
 gittrace.core.severity (base: high 6, medium 4; unauthenticated +3,
 authenticated only +1, unreachable -2, parameter-derived +1, blast radius >= 5
 +1; >= 9 critical, 7-8 high, 4-6 medium). Shared by tests/test_scan.py
-(offline) and tests/test_scan_integration.py (FalkorDB).
+(offline) and tests/test_scan_integration.py (the graph store).
 """
 
 LIST_FILES = "GET /api/users/{name}/files -> app/routers/users.py::list_files"

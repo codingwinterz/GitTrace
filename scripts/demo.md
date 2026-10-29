@@ -9,8 +9,8 @@ what the tool does.
 
 ```bash
 cd GitTrace                                   # a clone; run everything from its root
-gittrace up --pull                            # FalkorDB in Docker, both Ollama models
-gittrace doctor                               # every row OK, "database: local"
+gittrace up --pull                            # both Ollama models
+gittrace doctor                               # every row OK
 gittrace scan tests/fixtures/sample_app > /dev/null          # warms the model cache (~1.5 min)
 gittrace explain tests/fixtures/sample_app --yes > /dev/null # warms the explain cache (~1 min)
 ```
@@ -27,7 +27,7 @@ gittrace explain tests/fixtures/sample_app --yes > /dev/null # warms the explain
 
 | Time | Do | Say |
 |---|---|---|
-| 0:00–0:12 | `gittrace --version` | "GitTrace scans a Python web project and shows which dangerous code an HTTP route can actually reach. Everything here runs locally: FalkorDB in Docker, a model in Ollama." |
+| 0:00–0:12 | `gittrace --version` | "GitTrace scans a Python web project and shows which dangerous code an HTTP route can actually reach. Everything here runs locally: the graph in the GitTrace process, a model in Ollama." |
 | 0:12–0:45 | `gittrace scan tests/fixtures/sample_app`, then scroll to finding 1 | "Rules found 13 findings. The first is SQL built with an f-string in `app/db.py`, line 17. It is critical: an unauthenticated route reaches it. Here is the path, `GET /api/users/{name}` to `read_user` to `Repo.get_user`, its blast radius of 5, and who last changed the line." |
 | 0:45–1:00 | Point at the model line under finding 1, then at the "Likely harmless" section | "A local model, llama3.1:8b, gives an opinion on each finding: a verdict, where each value comes from, and an adjustment shown next to the rules' score, never instead of it. It cannot add or remove findings." |
 | 1:00–1:15 | `gittrace blast-radius app/db.py::Repo.get_user -p tests/fixtures/sample_app` | "The graph answers the follow-up questions: everything that calls this function, and every endpoint that reaches it." |

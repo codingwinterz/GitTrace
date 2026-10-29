@@ -3,7 +3,7 @@ expected_sample_app — what ingesting tests/fixtures/sample_app must produce.
 
 Written by hand from the fixture source (line numbers included), not captured
 from the ingester's output. Shared by the offline suite (tests/test_ingest.py)
-and the FalkorDB suite (tests/test_ingest_integration.py).
+and the graph store suite (tests/test_ingest_integration.py).
 """
 
 from pathlib import Path

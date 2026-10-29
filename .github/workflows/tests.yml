@@ -35,24 +35,11 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run offline suites (no database, mocked LLM, no credentials)
-        run: python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py tests/test_explain.py tests/test_eval_hygiene.py tests/test_logo.py tests/test_interactive.py tests/test_connection.py tests/test_machine.py tests/test_config.py -q
+        run: python -m pytest tests/test_core.py tests/test_ingest.py tests/test_rules.py tests/test_scan.py tests/test_llm.py tests/test_explain.py tests/test_eval_hygiene.py tests/test_logo.py tests/test_interactive.py tests/test_machine.py tests/test_config.py tests/test_memstore.py -q
 
   integration:
-    name: integration suite (real FalkorDB)
+    name: integration suite (graph store)
     runs-on: ubuntu-latest
-
-    # Same image tag as docker-compose.yml; bump both together.
-    services:
-      falkordb:
-        image: falkordb/falkordb:v4.22.1
-        ports:
-          - 6379:6379
-
-    env:
-      FALKORDB_HOST: localhost
-      FALKORDB_PORT: "6379"
-      # Fail instead of skipping if the service never came up.
-      GITTRACE_REQUIRE_FALKORDB: "1"
 
     steps:
       - uses: actions/checkout@v5
@@ -70,24 +57,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Wait for FalkorDB
-        run: |
-          python - <<'EOF'
-          import time, redis
-          client = redis.Redis(host="localhost", port=6379)
-          for _ in range(60):
-              try:
-                  if client.ping():
-                      print("FalkorDB is up:", client.execute_command("GRAPH.LIST"))
-                      break
-              except redis.exceptions.ConnectionError:
-                  pass
-              time.sleep(1)
-          else:
-              raise SystemExit("FalkorDB did not come up within 60s")
-          EOF
-
-      - name: Run integration suites (real FalkorDB, a fresh graph per run)
+      - name: Run integration suites (the real graph store and its cache)
         run: python -m pytest tests/test_ingest_integration.py tests/test_scan_integration.py -v
 
   package:
@@ -131,9 +101,12 @@ jobs:
           gittrace --help > /dev/null
           gittrace scan "$SAMPLE" --offline --no-llm --no-blame --format json --fail-on none > scan.json
           python -c "import json; d = json.load(open('scan.json', encoding='utf-8')); n = len(d['findings']); assert n == 13, n; print('scan: findings', n)"
+          cp -r "$SAMPLE" sample && gittrace scan sample --no-llm --no-blame --format json --fail-on none > graph.json
+          python -c "import json; d = json.load(open('graph.json', encoding='utf-8')); n = len(d['findings']); assert n == 13, n; print('scan (graph): findings', n)"
+          test -f sample/.gittrace/graph.json
           gittrace explain "$SAMPLE" --no-llm --format json > explain.json
           python -c "import json; d = json.load(open('explain.json', encoding='utf-8')); print('explain: files', len(d['files']))"
-          # No Docker service or Ollama in this job: doctor must run and report, and fail (exit 1).
+          # No Ollama in this job: doctor must run and report, and fail (exit 1).
           if gittrace doctor --format json > doctor.json; then echo "doctor should report the missing Ollama"; exit 1; fi
           python -c "import json; d = json.load(open('doctor.json', encoding='utf-8')); print({c['name']: c['status'] for c in d['checks']})"
           command -v gittrace-mcp

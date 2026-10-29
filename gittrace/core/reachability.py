@@ -10,13 +10,12 @@ For a vulnerable function F and a depth D (default 10):
 Routes are ordered unauthenticated first, then by hops, then by endpoint id.
 
 Two backends answer the same question:
-  GraphReachability   — Cypher against the project's FalkorDB graph: a bounded
-                        variable-length query for the callers, then FalkorDB's
-                        native shortestPath from each candidate endpoint.
+  GraphReachability   — the project's graph (gittrace.graph.memstore.GraphStore):
+                        a bounded reverse BFS over CALLS edges for the callers,
+                        then one shortest path from each candidate endpoint.
   MemoryReachability  — the same bounded BFS over the in-memory analysis, for
-                        `gittrace scan --offline` and the offline tests. When
-                        several shortest paths tie it picks the one through
-                        the smallest ids, which may differ from FalkorDB's pick.
+                        `gittrace scan --offline` and the offline tests.
+When several shortest paths tie, both pick the one through the smallest ids.
 """
 
 from __future__ import annotations
@@ -64,30 +63,29 @@ class GraphReachability:
     def reach(self, function_id: str) -> Reach:
         if function_id in self._cache:
             return self._cache[function_id]
-        d = self.depth          # validated int: safe to place in the pattern
-        callers = self.graph.query(
-            f"MATCH (c:Function)-[:CALLS*1..{d}]->(f:Function {{id: $id}}) "
-            "WHERE c.id <> $id RETURN DISTINCT c.id ORDER BY c.id",
-            params={"id": function_id},
-        ).result_set
-        rows = self.graph.query(
-            "MATCH (f:Function {id: $id}) "
-            f"OPTIONAL MATCH (c:Function)-[:CALLS*1..{d}]->(f) "
-            "WITH f, collect(DISTINCT c) + [f] AS handlers "
-            "UNWIND handlers AS h "
-            "MATCH (e:Endpoint)-[:HANDLED_BY]->(h) "
-            "WITH DISTINCT e, f "
-            f"WITH e, shortestPath((e)-[:HANDLED_BY|CALLS*1..{d + 1}]->(f)) AS p "
-            "WHERE p IS NOT NULL "
-            "RETURN e.id, e.method, e.path, e.auth_required, e.prefix_resolved, "
-            "[n IN nodes(p) | n.id]",
-            params={"id": function_id},
-        ).result_set
-        routes = [
-            Route(eid, method, path, bool(auth), bool(resolved), len(nodes) - 2, tuple(nodes))
-            for eid, method, path, auth, resolved, nodes in rows
-        ]
-        result = Reach(function_id, tuple(r[0] for r in callers), _ordered(routes))
+        if self.graph.props("Function", function_id) is None:
+            result = Reach(function_id, (), ())
+            self._cache[function_id] = result
+            return result
+        dist = {function_id: 0}
+        frontier = [function_id]
+        for d in range(1, self.depth + 1):
+            nxt = sorted({c for f in frontier for c in self.graph.callers_of(f)} - dist.keys())
+            for c in nxt:
+                dist[c] = d
+            frontier = nxt
+        routes = []
+        for handler, hops in dist.items():
+            for e in self.graph.endpoints_handled_by(handler):
+                nodes = [e["id"], handler]
+                cur = handler
+                while cur != function_id:
+                    cur = min(n for n in self.graph.callees_of(cur) if dist.get(n) == dist[cur] - 1)
+                    nodes.append(cur)
+                routes.append(Route(e["id"], e["method"], e["path"], bool(e["auth_required"]),
+                                    bool(e["prefix_resolved"]), hops, tuple(nodes)))
+        callers = tuple(sorted(k for k in dist if k != function_id))
+        result = Reach(function_id, callers, _ordered(routes))
         self._cache[function_id] = result
         return result
 

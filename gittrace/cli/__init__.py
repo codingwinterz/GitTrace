@@ -15,7 +15,7 @@ Test-code findings are not triaged unless --include-tests. With --fix it
 also asks for a fix and shows it as a checked diff (never applied).
 
 `explain` describes the project in plain language (gittrace.core.explain for
-the facts, gittrace.llm.explain for the summaries). It needs no FalkorDB. Its
+the facts, gittrace.llm.explain for the summaries). It writes no graph. Its
 model is chosen separately (--model, else $GITTRACE_EXPLAIN_MODEL, else
 ollama/qwen2.5-coder:7b; see gittrace.llm.client for why).
 
@@ -26,8 +26,8 @@ before; every other invocation is the CLI unchanged.
 
 Exit codes: 0 ok; 1 `scan` found something at or above --fail-on (default
 high), so it can gate CI; the gate reads the rules' severity, never the
-model's adjustment; 2 an error (bad arguments, no graph, FalkorDB down, the
-model cannot be called).
+model's adjustment; 2 an error (bad arguments, no graph or an out-of-date one,
+the model cannot be called).
 
 Until the package is installed with its `gittrace` entry point (Phase 7),
 run it as `python -m gittrace ...`.
@@ -133,7 +133,7 @@ def scan(
         help="Exit 1 when any finding is at or above this severity (the rules' severity; "
              "the model's adjustment never changes the gate)."),
     offline: bool = typer.Option(False, "--offline",
-                                 help="Compute reachability in memory; do not write the FalkorDB graph."),
+                                 help="Compute reachability in memory; do not write the graph cache (.gittrace/graph.json)."),
     no_blame: bool = typer.Option(False, "--no-blame", help="Skip the git blame owner lookup."),
     include_tests: bool = typer.Option(
         False, "--include-tests",
@@ -146,9 +146,6 @@ def scan(
         False, "--fix",
         help="Also ask the model for a fix per finding, shown as a diff checked with "
              "git apply --check (never applied). Slower."),
-    allow_remote: bool = typer.Option(
-        False, "--allow-remote",
-        help="Allow writing the graph to a remote FalkorDB (FALKORDB_HOST other than localhost)."),
     show_email: bool = typer.Option(False, "--show-email",
                                     help="Show the git blame author's email next to the name."),
 ) -> None:
@@ -161,13 +158,11 @@ def scan(
         _fail(f"not a directory: {path}")
     if fix and no_llm:
         _fail("--fix asks the model for fixes; it cannot be combined with --no-llm")
-    if not offline:
-        _remote_check(allow_remote)
     try:
         result = run_scan(path, depth=depth, blame=not no_blame, offline=offline,
-                          include_tests=include_tests, allow_remote=allow_remote)
-    except RuntimeError as exc:          # FalkorDB unreachable, misconfigured, ...
-        _fail(f"{exc} (use --offline to scan without FalkorDB)")
+                          include_tests=include_tests)
+    except OSError as exc:               # the graph cache could not be written
+        _fail(f"{exc} (use --offline to scan without writing the graph cache)")
     triage = llm = None
     if not no_llm:
         triage, llm = _triage(result, result.at_least(min_severity.value), model, fix)
@@ -179,22 +174,6 @@ def scan(
         render.render_scan(_console(), data, functions, blamed=not no_blame)
     if fail_on is not FailOn.none and result.at_least(fail_on.value):
         raise typer.Exit(EXIT_FINDINGS)
-
-
-REMOTE_WARNING = ("warning: FALKORDB_HOST is a remote FalkorDB; scan writes this project's graph, "
-                  "including its source code, there")
-
-
-def _remote_check(allow_remote: bool) -> None:
-    """One line before a graph write leaves the machine; refuse without --allow-remote."""
-    from gittrace.graph import connection
-
-    if connection.is_local():
-        return
-    Console(stderr=True, highlight=False, soft_wrap=True).print(Text(REMOTE_WARNING, style=render.AMBER))
-    if not allow_remote:
-        _fail("pass --allow-remote to write to it, or --offline to write nothing "
-              "(or point FALKORDB_HOST at local Docker: localhost)")
 
 
 def _triage(result, findings, model: str | None, fix: bool) -> tuple[dict, dict]:
@@ -233,7 +212,7 @@ def _tool_result(data: dict) -> dict:
 def _run_tool(fn, *args):
     try:
         data = fn(*args)
-    except RuntimeError as exc:          # FalkorDB unreachable or misconfigured
+    except RuntimeError as exc:
         _fail(str(exc))
     return _tool_result(data)
 
@@ -274,8 +253,8 @@ def blast_radius(
 
 @app.command()
 def doctor(format: Format = _FORMAT) -> None:
-    """Check that this machine is ready: Python, Docker, FalkorDB, Ollama and its models, free VRAM,
-    power and sleep settings, and whether the configured database is local. Changes nothing."""
+    """Check that this machine is ready: Python, Ollama and its models, free VRAM,
+    power and sleep settings. Changes nothing."""
     from gittrace.cli import machine as doc
 
     checks = doc.run_checks()
@@ -290,55 +269,12 @@ def doctor(format: Format = _FORMAT) -> None:
 @app.command()
 def up(pull: bool = typer.Option(False, "--pull", help="Also pull the Ollama models that are missing "
                                                         "(several GB the first time).")) -> None:
-    """Start local FalkorDB in Docker, wait until it answers, and check Ollama and the models."""
+    """Check Ollama and the models, and with --pull pull the missing ones."""
     from gittrace.cli import machine as doc
 
     code = doc.up(_console(), pull=pull)
     if code:
         raise typer.Exit(code)
-
-
-@app.command()
-def graphs(
-    drop: list[str] = typer.Option(None, "--drop",
-                                   help="Delete the graph with exactly this name (repeat for several)."),
-    allow_remote: bool = typer.Option(False, "--allow-remote",
-                                      help="Allow --drop on a remote FalkorDB (FALKORDB_HOST other than localhost)."),
-    format: Format = _FORMAT,
-) -> None:
-    """List the graphs on the configured FalkorDB, or delete named ones with --drop."""
-    from redis.exceptions import RedisError
-
-    from gittrace.graph import connection
-
-    where = connection.location()
-    drop = list(drop or [])
-    if drop and where != "local" and not allow_remote:
-        _fail("the configured FalkorDB is remote; deleting graphs there needs --allow-remote")
-    try:
-        db = connection.get_db()
-        before = sorted(db.list_graphs())
-        missing = [n for n in drop if n not in before]
-        if missing:
-            _fail(f"no graph named {', '.join(missing)} on the {where} FalkorDB; nothing deleted")
-        for name in drop:
-            db.select_graph(name).delete()
-        after = sorted(db.list_graphs()) if drop else before
-    except RuntimeError as exc:
-        _fail(str(exc))
-    except RedisError as exc:
-        _fail(f"the {where} FalkorDB failed: {type(exc).__name__}: {connection.redact(str(exc))}")
-    data = {"database": where, "graphs": after, "dropped": drop}
-    if format is Format.json:
-        _print_json(data)
-        return
-    console = _console()
-    for name in drop:
-        console.print(Text.assemble(("deleted ", render.AMBER), name))
-    console.print(Text.assemble((f"{len(after)} graph(s) on the {where} FalkorDB", f"bold {render.LAVENDER}")))
-    for name in after:
-        console.print(Text.assemble("  ", name, ("" if name.startswith("gittrace") else "  (not GitTrace's)",
-                                                 render.DIM)))
 
 
 CONFIRM_ABOVE_S = 600

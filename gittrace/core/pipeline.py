@@ -1,6 +1,6 @@
 """
 gittrace.core.pipeline — scan a project folder into language-neutral records,
-and optionally write them to the project's FalkorDB graph.
+and optionally write them to the project's graph.
 
     analyze(path)  -> Analysis        offline: discover, parse, resolve, routes
     ingest(path)   -> (Analysis, graph name)   analyze + gittrace.graph.store
@@ -102,17 +102,17 @@ def analyze(root: str | os.PathLike) -> Analysis:
     return result
 
 
-def ingest(root: str | os.PathLike, db=None, graph_name: str | None = None,
-           allow_remote: bool = False) -> tuple[Analysis, str]:
+def ingest(root: str | os.PathLike, graph=None, graph_name: str | None = None) -> tuple[Analysis, str]:
     """Analyze `root` and rebuild its graph. Returns the analysis and the graph name.
-    The configured FalkorDB must be local unless `allow_remote` (see gittrace.core.scan)."""
-    from gittrace.graph import connection, store
+    Without `graph` (an empty GraphStore, then the caller's own) the graph is
+    saved to <project>/.gittrace/graph.json, as gittrace.core.scan does."""
+    from gittrace.graph import store
+    from gittrace.graph.memstore import GraphStore
 
-    if db is None:
-        connection.require_local_or_allowed(allow_remote)
     analysis = analyze(root)
-    if db is None:
-        db = connection.get_db()
     name = graph_name or store.graph_name_for(analysis.root)
-    store.write_analysis(db.select_graph(name), analysis, name)
+    target = graph if graph is not None else GraphStore(name)
+    store.write_analysis(target, analysis, name)
+    if graph is None:
+        target.save(analysis.root)
     return analysis, name

@@ -4,8 +4,8 @@ session (gittrace.cli.session), the Textual app driven headless
 (gittrace.cli.interactive), and the entry point that opens it only for
 `gittrace` alone in a terminal (gittrace.cli.main).
 
-No FalkorDB and no model: the FalkorDB check is stubbed, scans run with
---offline --no-llm, and the commands that would need a graph are faked.
+No model: scans run with --offline --no-llm, and the commands that would
+need a graph are faked.
 """
 
 from __future__ import annotations
@@ -33,7 +33,6 @@ from gittrace.cli.session import Command, CommandError, Session, parse
 
 ROOT = expected_sample_app.ROOT
 REPO = Path(__file__).resolve().parents[1]
-UP = lambda: ("up", "local")          # noqa: E731
 
 
 def _console(width: int = 140) -> Console:
@@ -115,11 +114,12 @@ class TestSession:
         with pytest.raises(CommandError, match="cannot be combined with --no-llm"):
             Session().run(parse(f'/scan "{ROOT}" --fix --no-llm'), _console())
 
-        def down(*args, **kwargs):
-            raise RuntimeError("FalkorDB connect/ping failed")
-        monkeypatch.setattr("gittrace.core.scan.scan", down)
+        project = tmp_path / "project"                 # the graph cache cannot be written
+        project.mkdir()
+        (project / "app.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+        (project / ".gittrace").write_text("not a directory", encoding="utf-8")
         with pytest.raises(CommandError, match="add --offline"):
-            Session().run(parse(f'/scan "{ROOT}" --no-llm'), _console())
+            Session().run(parse(f'/scan "{project}" --no-llm --no-blame'), _console())
 
     def test_scan_defaults_to_the_current_project(self):
         s, c = Session(project=ROOT), _console()
@@ -150,9 +150,9 @@ class TestSession:
             Session(project=ROOT).run(parse("/trace app/db.py:17"), _console())
 
         def down(*args):
-            raise RuntimeError("FalkorDB connect/ping failed")
+            raise RuntimeError("the tool broke")
         monkeypatch.setattr("gittrace.core.tools.blast_radius", down)
-        with pytest.raises(CommandError, match="FalkorDB connect/ping failed"):
+        with pytest.raises(CommandError, match="the tool broke"):
             Session(project=ROOT).run(parse("/blast-radius app/db.py::Repo.get_user"), _console())
 
     def test_trace_uses_the_current_project(self, monkeypatch):
@@ -228,30 +228,20 @@ class TestApp:
         monkeypatch.delenv("GITTRACE_EXPLAIN_MODEL", raising=False)
 
         async def go():
-            app = GitTraceApp(Session(project=ROOT), animate=False, falkordb=UP)
+            app = GitTraceApp(Session(project=ROOT), animate=False)
             async with app.run_test(size=(120, 40)) as pilot:
-                await _until(pilot, lambda: app.falkordb is not None)
                 info = str(app.query_one("#info", Static).render())
                 assert "GitTrace" in info and f"v{__version__}" in info
                 assert str(ROOT) in info
                 assert "model     scan     ollama/llama3.1:8b\n" in info          # one line each
                 assert "\n          explain  ollama/qwen2.5-coder:7b\n" in info
-                assert "● up  local" in info
                 assert app.query_one("#header").outer_size.height <= 14 + 2
                 assert app.query_one(Logo).outer_size.height <= 14
         _run(go())
 
-    def test_header_shows_falkordb_down(self):
-        async def go():
-            app = GitTraceApp(animate=False, falkordb=lambda: ("down", "local"))
-            async with app.run_test(size=(120, 40)) as pilot:
-                await _until(pilot, lambda: app.falkordb is not None)
-                assert "● down" in str(app.query_one("#info", Static).render())
-        _run(go())
-
     def test_help_model_and_errors(self):
         async def go():
-            app = GitTraceApp(animate=False, falkordb=UP)
+            app = GitTraceApp(animate=False)
             async with app.run_test(size=(120, 40)) as pilot:
                 await _submit(pilot, app, "/help")
                 await _submit(pilot, app, "/model ollama/foo:1b")
@@ -267,7 +257,7 @@ class TestApp:
         """Every description whole (no "…"), right beside its command (2 spaces
         after the command column) or, when narrow, on the next line, indented."""
         async def go():
-            app = GitTraceApp(animate=False, falkordb=UP)
+            app = GitTraceApp(animate=False)
             async with app.run_test(size=(columns, 60)) as pilot:
                 output = app.query_one(RichLog)
                 output.clear()
@@ -298,7 +288,7 @@ class TestApp:
 
     def test_quit(self, monkeypatch):
         async def go():
-            app = GitTraceApp(animate=False, falkordb=UP)
+            app = GitTraceApp(animate=False)
             exits = []
             monkeypatch.setattr(app, "exit", lambda *a, **k: exits.append(True))
             async with app.run_test(size=(120, 40)) as pilot:
@@ -309,7 +299,7 @@ class TestApp:
 
     def test_history(self):
         async def go():
-            app = GitTraceApp(animate=False, falkordb=UP)
+            app = GitTraceApp(animate=False)
             async with app.run_test(size=(120, 40)) as pilot:
                 prompt = app.query_one(HistoryInput)
                 await _submit(pilot, app, "/help")
@@ -331,7 +321,7 @@ class TestApp:
     def test_a_command_runs_off_the_ui_thread_and_pauses_the_logo(self):
         async def go():
             s = BlockingSession()
-            app = GitTraceApp(s, animate=True, falkordb=UP)
+            app = GitTraceApp(s, animate=True)
             async with app.run_test(size=(120, 40)) as pilot:
                 spinner = app.query_one(Logo)
                 assert spinner.spinning                 # the launch turn
@@ -354,7 +344,7 @@ class TestApp:
         async def go():
             s = BlockingSession(fail=True)
             s.release.set()
-            app = GitTraceApp(s, animate=False, falkordb=UP)
+            app = GitTraceApp(s, animate=False)
             async with app.run_test(size=(120, 40)) as pilot:
                 await _submit(pilot, app, "/scan")
                 await _until(pilot, lambda: not app.busy)
@@ -364,37 +354,12 @@ class TestApp:
 
 
 class TestHeaderAndHints:
-    def test_header_never_names_the_host(self, monkeypatch):
-        from gittrace.graph import connection
-
-        host = "r-secret1234.instance-x.gcp.example.cloud"
-        monkeypatch.setattr(connection, "FALKORDB_HOST", host)
-        monkeypatch.setattr(connection, "FALKORDB_PORT", 54824)
-        monkeypatch.setattr(connection, "check", lambda: (False, "TimeoutError: <remote host>"))
-
-        async def go():
-            app = GitTraceApp(animate=False)               # the real status function
-            async with app.run_test(size=(160, 40)) as pilot:
-                await _until(pilot, lambda: app.falkordb is not None)
-                info = str(app.query_one("#info", Static).render())
-                assert "● down  remote" in info
-                assert host not in info and "secret1234" not in info and "54824" not in info
-        _run(go())
-
-    def test_local_down_says_how_to_start_it(self):
-        async def go():
-            app = GitTraceApp(animate=False, falkordb=lambda: ("down", "local"))
-            async with app.run_test(size=(160, 40)) as pilot:
-                await _until(pilot, lambda: app.falkordb is not None)
-                assert "docker compose up -d falkordb" in str(app.query_one("#info", Static).render())
-        _run(go())
-
     def test_first_run_hint(self, tmp_path):
         assert session.first_hint(REPO).startswith("try /scan tests/fixtures/sample_app")
         assert session.first_hint(tmp_path).startswith("try /scan .")
 
         async def go(project, expected):
-            app = GitTraceApp(Session(project=project), animate=False, falkordb=UP)
+            app = GitTraceApp(Session(project=project), animate=False)
             async with app.run_test(size=(120, 40)) as pilot:
                 await pilot.pause()
                 lines = [s.text.strip() for s in app.query_one(RichLog).lines]
@@ -404,7 +369,7 @@ class TestHeaderAndHints:
 
     def test_parse_failure_is_reported_once(self):
         async def go():
-            app = GitTraceApp(animate=False, falkordb=UP)
+            app = GitTraceApp(animate=False)
             async with app.run_test(size=(160, 40)) as pilot:
                 await _submit(pilot, app, f'/scan "{ROOT}" --offline --no-llm --no-blame')
                 await _until(pilot, lambda: not app.busy)
@@ -423,7 +388,7 @@ class TestAnimation:
 
     def test_no_anim_shows_the_static_frame(self):
         async def go():
-            app = GitTraceApp(animate=False, falkordb=UP)
+            app = GitTraceApp(animate=False)
             async with app.run_test(size=(120, 40)) as pilot:
                 spinner = app.query_one(Logo)
                 await pilot.pause(0.3)
@@ -433,7 +398,7 @@ class TestAnimation:
 
     def test_turn_then_hold_then_turn(self):
         async def go():
-            app = GitTraceApp(animate=True, falkordb=UP)
+            app = GitTraceApp(animate=True)
             async with app.run_test(size=(120, 40)) as pilot:
                 spinner = app.query_one(Logo)
                 assert spinner.spinning
@@ -447,7 +412,7 @@ class TestAnimation:
 
     def test_pause_mid_turn_resumes_the_turn(self):
         async def go():
-            app = GitTraceApp(animate=True, falkordb=UP)
+            app = GitTraceApp(animate=True)
             async with app.run_test(size=(120, 40)) as pilot:
                 spinner = app.query_one(Logo)
                 spinner.set_busy(True)
@@ -464,7 +429,7 @@ class TestAnimation:
 
     def test_small_terminal_shows_the_static_frame(self):
         async def go():
-            app = GitTraceApp(animate=True, falkordb=UP)
+            app = GitTraceApp(animate=True)
             async with app.run_test(size=(70, 20)) as pilot:
                 spinner = app.query_one(Logo)
                 await pilot.pause(0.2)
