@@ -256,10 +256,14 @@ Code hashes (explain code sha256 covers `gittrace/llm/*.py`, `gittrace/core/expl
 |---|---|---|---|
 | `after-tuning`, `held-out` | `a8aadf04f8c1` | `7f62a40da270` | the measured explain-v2 code |
 | `timing` | `17b003bf97de` | `edbf0c30a4cb` | the per-model time estimate and a comment |
-| Phase 7 (current) | `8665e416d4ef` | `4abb331f2884` | triage prompt v4 (`prompts.py`, `context.py`; explain uses neither its prompt nor its finding block, only the unchanged `fence` and `estimate_tokens`) and the time estimate set from the `timing` run: 2.1 s per call for both models |
+| Phase 7 | `8665e416d4ef` | `4abb331f2884` | triage prompt v4 (`prompts.py`, `context.py`; explain uses neither its prompt nor its finding block, only the unchanged `fence` and `estimate_tokens`) and the time estimate set from the `timing` run: 2.1 s per call for both models |
+| Gateway (current; not re-measured) | `fbc156c36353` | `ffcd4da1e90e` | the optional Respan Gateway path (`gateway.py`, `client.py`, `llm/__init__.py`) and the getattr facts it shares no code with |
 
-No change since `after-tuning` reaches an explain prompt, so the quality runs
-still describe the current code.
+No change up to Phase 7 reaches an explain prompt, so the quality runs
+still describe that code. The recorded explain results were produced before
+the gateway change (explain code sha256 `8665e416d4ef`); the files that hash
+covers have changed since (now `fbc156c36353`), and the explain eval was not
+re-run for them.
 
 Timing (`results/explain/timing/`, `--label timing --require-ac`): both
 models back to back on the measured targets, 102 calls each, llama3.1:8b

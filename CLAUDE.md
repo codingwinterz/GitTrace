@@ -263,7 +263,8 @@ findings and code in plain language using a local LLM.
   GITTRACE_SHOW_EMAIL=1. git on scanned repos runs with
   core.fsmonitor=false and blame --no-textconv. Typer tracebacks never
   show locals. explain estimate 2.1 s/call (AC timing); explain code
-  sha256 8665e416d4ef. CI `package` job builds, pipx-installs and
+  sha256 8665e416d4ef for the recorded explain results; after the gateway
+  change the covered files hash to fbc156c36353 (explain eval not re-run). CI `package` job builds, pipx-installs and
   smoke-tests on Linux and Windows.
 
 ## Backlog (not scheduled; do not start without approval)
