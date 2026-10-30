@@ -4,6 +4,8 @@
 export const copy = {
   hook: "You built it with AI. Do you know what an attacker can reach?",
   terminalTitle: "No Docker. No database. One command.",
+  findings: "findings",
+  critical: "critical",
   pathCaption: "Not ‘there might be a bug.’ A path from the outside to the bug.",
   roles: { route: "route", handler: "handler", calls: "calls", sink: "dangerous sink" },
   noAuth: "NO AUTH",
@@ -11,7 +13,7 @@ export const copy = {
   cards: [
     "Same answer every run: it walks a real call graph, it doesn’t guess.",
     "Shows its evidence: the exact path from route to sink.",
-    "Runs locally. The no-LLM scan sends your code nowhere.",
+    "Runs locally. The no‑LLM scan sends your code nowhere.",
   ],
   keep: "Keep your AI assistant for writing and fixing code. Use GitTrace to see what’s actually exposed.",
   numbersTitle: "The honest numbers",

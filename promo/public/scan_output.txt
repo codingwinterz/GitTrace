@@ -1,163 +1,274 @@
-┌────────────────── gittrace scan · bad ──────────────────┐
-│ ███           ███                                       │
-│ █               █                                       │
-│ ███           ███                                       │
-│ █ █             █                                       │
-│ ███           ███                                       │
+┌────────────── gittrace scan · sample_app ───────────────┐
+│  █   ███      ███                                       │
+│ ██     █        █                                       │
+│  █   ███        █                                       │
+│  █     █        █                                       │
+│ ███  ███        █                                       │
 │ FINDINGS      CRITICAL                                  │
 │                                                         │
-│ 3 critical   0 high   3 medium   0 low   0 info         │
-│ 3 reachable from an endpoint · 3 from an                │
+│ 7 critical   1 high   5 medium   0 low   0 info         │
+│ 8 reachable from an endpoint · 7 from an                │
 │ unauthenticated endpoint                                │
-│ 18 files · 41 functions · 19 endpoints scanned          │
+│ 13 files · 34 functions · 16 endpoints scanned · 1      │
+│ could not be parsed                                     │
 │ model triage off (--no-llm): rule findings only         │
 └─────────────────────────────────────────────────────────┘
 1. CRITICAL · GT-SQLI-001
-   Location: libuser.py:12
-   Reached from: GET /user/login (+2) · NO AUTH
-2. CRITICAL · GT-SQLI-001
-   Location: libuser.py:25
-   Reached from: GET /user/create (+1) · NO AUTH
+   Location: app/db.py:17
+   Reached from: GET /api/users/{name} (+1) · NO AUTH
+2. CRITICAL · GT-CMDI-001
+   Location: app/routers/debug.py:16
+   Reached from: GET /debug/run ? · NO AUTH
 3. CRITICAL · GT-SQLI-001
-   Location: libuser.py:53
-   Reached from: GET /user/chpasswd (+1) · NO AUTH
-4. MEDIUM · GT-SQLI-001
-   Location: db.py:19
+   Location: app/routers/reports.py:16
+   Reached from: GET /api/reports/by-user · NO AUTH
+4. CRITICAL · GT-DESER-001
+   Location: app/routers/reports.py:33
+   Reached from: POST /api/reports/import · NO AUTH
+5. CRITICAL · GT-CMDI-001
+   Location: app/routers/users.py:27
+   Reached from: GET /api/users/{name}/ping · NO AUTH
+6. CRITICAL · GT-CMDI-001
+   Location: app/utils/shell.py:8
+   Reached from: GET /api/users/{name}/files · NO AUTH
+7. CRITICAL · GT-CMDI-001
+   Location: app/utils/shell.py:11
+   Reached from: GET /api/users/{name}/files · NO AUTH
+8. HIGH · GT-EVAL-001
+   Location: app/routers/admin.py:11
+   Reached from: POST /api/admin/eval · auth
+9. MEDIUM · GT-SQLI-001
+   Location: app/services/maintenance.py:19
    Reached from: no endpoint · -
-5. MEDIUM · GT-SECRET-001
-   Location: vulpy-ssl.py:13
+10. MEDIUM · GT-DESER-001
+   Location: app/services/maintenance.py:29
+   Reached from: no endpoint · -
+11. MEDIUM · GT-SECRET-001
+   Location: app/auth.py:4
    Reached from: n/a (secret in source) · n/a
-6. MEDIUM · GT-SECRET-001
-   Location: vulpy.py:16
+12. MEDIUM · GT-SECRET-001
+   Location: app/routers/reports.py:8
+   Reached from: n/a (secret in source) · n/a
+13. MEDIUM · GT-SECRET-001
+   Location: app/services/maintenance.py:42
    Reached from: n/a (secret in source) · n/a
 ┌─ 1. CRITICAL  GT-SQLI-001  SQL query built from strings─┐
-│ `c.execute` runs a SQL query built at run time; use     │
-│ bound parameters.                                       │
-│ .format() · derived from parameter `password`,          │
-│ `username`                                              │
-│    9     conn.row_factory = sqlite3.Row                 │
-│   10     c = conn.cursor()                              │
-│   11                                                    │
-│ > 12     user = c.execute("SELECT * FROM users WHERE    │
-│      username = '{}' and password =                     │
-│      '{}'".format(username, password)).fetchone()       │
-│   13                                                    │
-│   14     if user:                                       │
-│   15         return user['username']                    │
+│ `cursor.execute` runs a SQL query built at run time;    │
+│ use bound parameters.                                   │
+│ f-string · derived from parameter `name`                │
+│   15     def get_user(self, name):                      │
+│   16         cursor = self.conn.cursor()                │
+│ > 17         cursor.execute(f"SELECT * FROM users WHERE │
+│      name = '{name}'")                                  │
+│   18         return cursor.fetchone()                   │
 │ Attack paths (unauthenticated first)                    │
-│ ├── GET /user/login  NO AUTH                            │
-│ │   └── mod_user.py::do_login                           │
-│ │       └── libuser.py::login                           │
-│ │           └── c.execute  at libuser.py:12             │
-│ ├── POST /user/login  NO AUTH                           │
-│ │   └── mod_user.py::do_login                           │
-│ │       └── libuser.py::login                           │
-│ │           └── c.execute  at libuser.py:12             │
-│ └── POST /api/key  NO AUTH                              │
-│     └── mod_api.py::do_key_create                       │
-│         └── libapi.py::keygen                           │
-│             └── libuser.py::login                       │
-│                 └── c.execute  at libuser.py:12         │
-│ blast radius: 6  (3 upstream caller(s), 3 endpoint(s))  │
+│ ├── GET /api/users/{name}  NO AUTH                      │
+│ │   └── app/routers/users.py::read_user                 │
+│ │       └── app/db.py::Repo.get_user                    │
+│ │           └── cursor.execute  at app/db.py:17         │
+│ └── GET /me  authenticated                              │
+│     └── app/main.py::me                                 │
+│         └── app/db.py::Repo.get_user                    │
+│             └── cursor.execute  at app/db.py:17         │
+│ blast radius: 5  (3 upstream caller(s), 2 endpoint(s))  │
 │ owner: unknown (owner lookup skipped)                   │
-│ severity: base severity high (6); reachable from 3      │
+│ severity: base severity high (6); reachable from 1      │
 │ unauthenticated endpoint(s) (+3); input derives from a  │
-│ function parameter (+1); blast radius 6 >= 5 (+1)       │
+│ function parameter (+1); blast radius 5 >= 5 (+1)       │
 └─────────────────────────────────────────────────────────┘
-┌─ 2. CRITICAL  GT-SQLI-001  SQL query built from strings─┐
-│ `c.execute` runs a SQL query built at run time; use     │
-│ bound parameters.                                       │
-│ %-formatting · derived from parameter `password`,       │
-│ `username`                                              │
-│   22     conn = sqlite3.connect('db_users.sqlite')      │
-│   23     c = conn.cursor()                              │
-│   24                                                    │
-│ > 25     c.execute("INSERT INTO users (username,        │
-│      password, failures, mfa_enabled, mfa_secret)       │
-│      VALUES ('%s', '%s', '%d', '%d', '%s')" %(username, │
-│      password, 0, 0, ''))                               │
-│   26                                                    │
-│   27     conn.commit()                                  │
-│   28     conn.close()                                   │
+┌─ 2. CRITICAL  GT-CMDI-001  Shell command built from a n─┐
+│ `os.popen` passes a non-constant command to a shell.    │
+│ parameter passed through unchanged · derived from       │
+│ parameter `cmd`                                         │
+│   14 @router.get("/run")                                │
+│   15 def run(cmd: str):                                 │
+│ > 16     return os.popen(cmd).read()                    │
 │ Attack paths (unauthenticated first)                    │
-│ ├── GET /user/create  NO AUTH                           │
-│ │   └── mod_user.py::do_create                          │
-│ │       └── libuser.py::create                          │
-│ │           └── c.execute  at libuser.py:25             │
-│ └── POST /user/create  NO AUTH                          │
-│     └── mod_user.py::do_create                          │
-│         └── libuser.py::create                          │
-│             └── c.execute  at libuser.py:25             │
-│ blast radius: 3  (1 upstream caller(s), 2 endpoint(s))  │
+│ └── GET /debug/run  NO AUTH  (prefix not fully          │
+│     resolved)                                           │
+│     └── app/routers/debug.py::run                       │
+│         └── os.popen  at app/routers/debug.py:16        │
+│ blast radius: 1  (0 upstream caller(s), 1 endpoint(s))  │
+│ uncertain: every deciding route has an unresolved       │
+│ prefix                                                  │
 │ owner: unknown (owner lookup skipped)                   │
-│ severity: base severity high (6); reachable from 2      │
+│ severity: base severity high (6); reachable from 1      │
 │ unauthenticated endpoint(s) (+3); input derives from a  │
-│ function parameter (+1)                                 │
+│ function parameter (+1); uncertain: the deciding        │
+│ endpoints' route prefixes were not fully resolved       │
 └─────────────────────────────────────────────────────────┘
 ┌─ 3. CRITICAL  GT-SQLI-001  SQL query built from strings─┐
-│ `c.execute` runs a SQL query built at run time; use     │
+│ `conn.execute` runs a SQL query built at run time; use  │
 │ bound parameters.                                       │
-│ .format() · derived from parameter `password`,          │
-│ `username`                                              │
-│   50     conn.row_factory = sqlite3.Row                 │
-│   51     c = conn.cursor()                              │
-│   52                                                    │
-│ > 53     c.execute("UPDATE users SET password = '{}'    │
-│      WHERE username = '{}'".format(password, username)) │
-│   54     conn.commit()                                  │
-│   55                                                    │
-│   56     return True                                    │
+│ string concatenation (+) · via variable `sql` · derived │
+│ from parameter `order`, `user_id`                       │
+│   13     conn = connect()                               │
+│   14     sql = "SELECT * FROM reports WHERE user_id =   │
+│      '" + user_id + "'"                                 │
+│   15     sql += " ORDER BY " + order                    │
+│ > 16     return conn.execute(sql).fetchall()            │
 │ Attack paths (unauthenticated first)                    │
-│ ├── GET /user/chpasswd  NO AUTH                         │
-│ │   └── mod_user.py::do_chpasswd                        │
-│ │       └── libuser.py::password_change                 │
-│ │           └── c.execute  at libuser.py:53             │
-│ └── POST /user/chpasswd  NO AUTH                        │
-│     └── mod_user.py::do_chpasswd                        │
-│         └── libuser.py::password_change                 │
-│             └── c.execute  at libuser.py:53             │
-│ blast radius: 3  (1 upstream caller(s), 2 endpoint(s))  │
+│ └── GET /api/reports/by-user  NO AUTH                   │
+│     └── app/routers/reports.py::by_user                 │
+│         └── conn.execute  at app/routers/reports.py:16  │
+│ blast radius: 1  (0 upstream caller(s), 1 endpoint(s))  │
 │ owner: unknown (owner lookup skipped)                   │
-│ severity: base severity high (6); reachable from 2      │
+│ severity: base severity high (6); reachable from 1      │
 │ unauthenticated endpoint(s) (+3); input derives from a  │
 │ function parameter (+1)                                 │
 └─────────────────────────────────────────────────────────┘
-┌─ 4. MEDIUM  GT-SQLI-001  SQL query built from strings  ─┐
-│ `c.execute` runs a SQL query built at run time; use     │
+┌─ 4. CRITICAL  GT-DESER-001  Unsafe deserialization  app─┐
+│ `yaml.load` can run code from the data it loads.        │
+│ no Loader (unsafe default) · parameter passed through   │
+│ unchanged · derived from parameter `body`               │
+│   31 @router.post("/import")                            │
+│   32 def import_report(body: str):                      │
+│ > 33     return yaml.load(body)                         │
+│ Attack paths (unauthenticated first)                    │
+│ └── POST /api/reports/import  NO AUTH                   │
+│     └── app/routers/reports.py::import_report           │
+│         └── yaml.load  at app/routers/reports.py:33     │
+│ blast radius: 1  (0 upstream caller(s), 1 endpoint(s))  │
+│ owner: unknown (owner lookup skipped)                   │
+│ severity: base severity high (6); reachable from 1      │
+│ unauthenticated endpoint(s) (+3); input derives from a  │
+│ function parameter (+1)                                 │
+└─────────────────────────────────────────────────────────┘
+┌─ 5. CRITICAL  GT-CMDI-001  Shell command built from a n─┐
+│ `subprocess.check_output` passes a non-constant command │
+│ to a shell.                                             │
+│ shell=True · string concatenation (+) · derived from    │
+│ parameter `name`                                        │
+│   25 @router.get("/{name}/ping")                        │
+│   26 async def ping_user(name: str):                    │
+│ > 27     output = sp.check_output("ping -c 1 " + name,  │
+│      shell=True)                                        │
+│   28     return {"output": output.decode()}             │
+│ Attack paths (unauthenticated first)                    │
+│ └── GET /api/users/{name}/ping  NO AUTH                 │
+│     └── app/routers/users.py::ping_user                 │
+│         └── subprocess.check_output  at                 │
+│             app/routers/users.py:27                     │
+│ blast radius: 1  (0 upstream caller(s), 1 endpoint(s))  │
+│ owner: unknown (owner lookup skipped)                   │
+│ severity: base severity high (6); reachable from 1      │
+│ unauthenticated endpoint(s) (+3); input derives from a  │
+│ function parameter (+1)                                 │
+└─────────────────────────────────────────────────────────┘
+┌─ 6. CRITICAL  GT-CMDI-001  Shell command built from a n─┐
+│ `os.system` passes a non-constant command to a shell.   │
+│ string concatenation (+) · derived from parameter `msg` │
+│   7     def log(msg):                                   │
+│ > 8         os.system("logger " + msg)                  │
+│ Attack paths (unauthenticated first)                    │
+│ └── GET /api/users/{name}/files  NO AUTH                │
+│     └── app/routers/users.py::list_files                │
+│         └── app/utils/shell.py::run_command             │
+│             └── app/utils/shell.py::run_command.log     │
+│                 └── os.system  at app/utils/shell.py:8  │
+│ blast radius: 3  (2 upstream caller(s), 1 endpoint(s))  │
+│ owner: unknown (owner lookup skipped)                   │
+│ severity: base severity high (6); reachable from 1      │
+│ unauthenticated endpoint(s) (+3); input derives from a  │
+│ function parameter (+1)                                 │
+└─────────────────────────────────────────────────────────┘
+┌─ 7. CRITICAL  GT-CMDI-001  Shell command built from a n─┐
+│ `subprocess.run` passes a non-constant command to a     │
+│ shell.                                                  │
+│ shell=True · parameter passed through unchanged ·       │
+│ derived from parameter `cmd`                            │
+│    8         os.system("logger " + msg)                 │
+│    9                                                    │
+│   10     log(cmd)                                       │
+│ > 11     return run(cmd, shell=True,                    │
+│      capture_output=True).stdout                        │
+│ Attack paths (unauthenticated first)                    │
+│ └── GET /api/users/{name}/files  NO AUTH                │
+│     └── app/routers/users.py::list_files                │
+│         └── app/utils/shell.py::run_command             │
+│             └── subprocess.run  at                      │
+│                 app/utils/shell.py:11                   │
+│ blast radius: 2  (1 upstream caller(s), 1 endpoint(s))  │
+│ owner: unknown (owner lookup skipped)                   │
+│ severity: base severity high (6); reachable from 1      │
+│ unauthenticated endpoint(s) (+3); input derives from a  │
+│ function parameter (+1)                                 │
+└─────────────────────────────────────────────────────────┘
+┌─ 8. HIGH  GT-EVAL-001  Dynamic code evaluation  app/rou─┐
+│ `eval` executes code from a non-constant value.         │
+│ parameter passed through unchanged · derived from       │
+│ parameter `expr`                                        │
+│    9 @router.post("/eval")                              │
+│   10 def run_expression(expr: str):                     │
+│ > 11     return {"result": eval(expr)}                  │
+│ Attack paths (unauthenticated first)                    │
+│ └── POST /api/admin/eval  authenticated                 │
+│     └── app/routers/admin.py::run_expression            │
+│         └── eval  at app/routers/admin.py:11            │
+│ blast radius: 1  (0 upstream caller(s), 1 endpoint(s))  │
+│ owner: unknown (owner lookup skipped)                   │
+│ severity: base severity high (6); reachable only from 1 │
+│ authenticated endpoint(s) (+1); input derives from a    │
+│ function parameter (+1)                                 │
+└─────────────────────────────────────────────────────────┘
+┌─ 9. MEDIUM  GT-SQLI-001  SQL query built from strings  ─┐
+│ `conn.execute` runs a SQL query built at run time; use  │
 │ bound parameters.                                       │
-│ %-formatting                                            │
-│   16     c.execute("CREATE TABLE users (user text,      │
-│      password text, failures int)")                     │
-│   17                                                    │
-│   18     for u,p in users:                              │
-│ > 19         c.execute("INSERT INTO users (user,        │
-│      password, failures) VALUES ('%s', '%s', '%d')"     │
-│      %(u, p, 0))                                        │
-│   20                                                    │
-│   21     conn.commit()                                  │
-│   22     conn.close()                                   │
+│ %-formatting · via variable `query` · derived from      │
+│ parameter `days`                                        │
+│   17 def purge(conn, days):                             │
+│   18     query = "DELETE FROM sessions WHERE age > %s"  │
+│      % days                                             │
+│ > 19     conn.execute(query)                            │
 │ Attack paths (unauthenticated first)                    │
 │ └── no endpoint reaches this code                       │
 │ blast radius: 1  (1 upstream caller(s), 0 endpoint(s))  │
 │ owner: unknown (owner lookup skipped)                   │
 │ severity: base severity high (6); not reachable from    │
-│ any endpoint (-2)                                       │
+│ any endpoint (-2); input derives from a function        │
+│ parameter (+1)                                          │
 └─────────────────────────────────────────────────────────┘
-┌─ 5. MEDIUM  GT-SECRET-001  Hardcoded secret  vulpy-ssl.─┐
-│ `SECRET_KEY` is assigned a hardcoded secret; load it    │
+┌─ 10. MEDIUM  GT-DESER-001  Unsafe deserialization  app/─┐
+│ `pickle.load` can run code from the data it loads.      │
+│ non-constant value · via variable `fh` · derived from   │
+│ parameter `path`                                        │
+│   27 def load_cache(path):                              │
+│   28     with open(path, "rb") as fh:                   │
+│ > 29         return pickle.load(fh)                     │
+│ Attack paths (unauthenticated first)                    │
+│ └── no endpoint reaches this code                       │
+│ blast radius: 0  (0 upstream caller(s), 0 endpoint(s))  │
+│ owner: unknown (owner lookup skipped)                   │
+│ severity: base severity high (6); not reachable from    │
+│ any endpoint (-2); input derives from a function        │
+│ parameter (+1)                                          │
+└─────────────────────────────────────────────────────────┘
+┌─ 11. MEDIUM  GT-SECRET-001  Hardcoded secret  app/auth.─┐
+│ `API_TOKEN` is assigned a hardcoded secret; load it     │
 │ from the environment.                                   │
-│ string constant of 7 characters                         │
-│ > 13 app.config['SECRET_KEY'] = 'aaa****'               │
+│ string constant of 16 characters                        │
+│ > 4 API_TOKEN = "s3c*************"                      │
 │ owner: unknown (owner lookup skipped)                   │
 │ severity: base severity medium (4); not adjusted for    │
 │ reachability (rule is not flow-sensitive)               │
 └─────────────────────────────────────────────────────────┘
-┌─ 6. MEDIUM  GT-SECRET-001  Hardcoded secret  vulpy.py:1─┐
-│ `SECRET_KEY` is assigned a hardcoded secret; load it    │
-│ from the environment.                                   │
-│ string constant of 7 characters                         │
-│ > 16 app.config['SECRET_KEY'] = 'aaa****'               │
+┌─ 12. MEDIUM  GT-SECRET-001  Hardcoded secret  app/route─┐
+│ `REPORT_API_KEY` is assigned a hardcoded secret; load   │
+│ it from the environment.                                │
+│ string constant of 26 characters                        │
+│ > 8 REPORT_API_KEY = "rk_***********************"       │
 │ owner: unknown (owner lookup skipped)                   │
 │ severity: base severity medium (4); not adjusted for    │
 │ reachability (rule is not flow-sensitive)               │
 └─────────────────────────────────────────────────────────┘
+┌─ 13. MEDIUM  GT-SECRET-001  Hardcoded secret  app/servi─┐
+│ `smtp_password` is assigned a hardcoded secret; load it │
+│ from the environment.                                   │
+│ string constant of 12 characters                        │
+│ > 42         self.smtp_password = "Tr0*********"        │
+│ owner: unknown (owner lookup skipped)                   │
+│ severity: base severity medium (4); not adjusted for    │
+│ reachability (rule is not flow-sensitive)               │
+└─────────────────────────────────────────────────────────┘
+Not scanned (parse failures):
+  scripts/half_merged.py: syntax error at line 3

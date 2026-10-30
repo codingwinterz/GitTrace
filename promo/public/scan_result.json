@@ -1,41 +1,49 @@
 {
-  "project": "bad",
-  "graph": "gittrace_bad_bac02f2d",
+  "project": "sample_app",
+  "graph": "gittrace_sample_app_72018044",
   "settings": {
     "depth": 10,
     "min_severity": "info"
   },
   "scanned": {
-    "files": 18,
-    "parse_failures": 0,
-    "functions": 41,
-    "endpoints": 19,
-    "calls": 277
+    "files": 13,
+    "parse_failures": 1,
+    "functions": 34,
+    "endpoints": 16,
+    "calls": 82
   },
-  "parse_failures": [],
+  "parse_failures": [
+    {
+      "file": "scripts/half_merged.py",
+      "reason": "syntax error at line 3"
+    }
+  ],
   "llm": {
     "enabled": false
   },
   "summary": {
-    "total": 6,
+    "total": 13,
     "by_severity": {
-      "critical": 3,
-      "high": 0,
-      "medium": 3,
+      "critical": 7,
+      "high": 1,
+      "medium": 5,
       "low": 0,
       "info": 0
     },
     "by_rule": {
-      "GT-SECRET-001": 2,
-      "GT-SQLI-001": 4
+      "GT-CMDI-001": 4,
+      "GT-DESER-001": 2,
+      "GT-EVAL-001": 1,
+      "GT-SECRET-001": 3,
+      "GT-SQLI-001": 3
     },
-    "reachable": 3,
-    "unauthenticated": 3,
+    "reachable": 8,
+    "unauthenticated": 7,
     "test_findings": 0
   },
   "findings": [
     {
-      "id": "libuser.py::12::12",
+      "id": "app/db.py::17::9",
       "rule_id": "GT-SQLI-001",
       "category": "sql-injection",
       "title": "SQL query built from strings",
@@ -44,28 +52,27 @@
       "base_severity": "high",
       "reasons": [
         "base severity high (6)",
-        "reachable from 3 unauthenticated endpoint(s) (+3)",
+        "reachable from 1 unauthenticated endpoint(s) (+3)",
         "input derives from a function parameter (+1)",
-        "blast radius 6 >= 5 (+1)"
+        "blast radius 5 >= 5 (+1)"
       ],
       "location": {
-        "file": "libuser.py",
-        "line": 12,
-        "column": 12,
-        "end_line": 12
+        "file": "app/db.py",
+        "line": 17,
+        "column": 9,
+        "end_line": 17
       },
-      "snippet": "    user = c.execute(\"SELECT * FROM users WHERE username = '{}' and password = '{}'\".format(username, password)).fetchone()",
-      "function": "libuser.py::login",
-      "callee": "c.execute",
-      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "snippet": "        cursor.execute(f\"SELECT * FROM users WHERE name = '{name}'\")",
+      "function": "app/db.py::Repo.get_user",
+      "callee": "cursor.execute",
+      "message": "`cursor.execute` runs a SQL query built at run time; use bound parameters.",
       "evidence": [
-        ".format()",
-        "derived from parameter `password`, `username`"
+        "f-string",
+        "derived from parameter `name`"
       ],
       "param_derived": true,
       "params": [
-        "password",
-        "username"
+        "name"
       ],
       "reachability": {
         "applies": true,
@@ -74,91 +81,387 @@
         "uncertain": false,
         "routes": [
           {
-            "endpoint": "GET /user/login -> mod_user.py::do_login",
+            "endpoint": "GET /api/users/{name} -> app/routers/users.py::read_user",
             "method": "GET",
-            "path": "/user/login",
+            "path": "/api/users/{name}",
             "auth_required": false,
             "prefix_resolved": true,
             "hops": 1,
             "path_nodes": [
-              "GET /user/login -> mod_user.py::do_login",
-              "mod_user.py::do_login",
-              "libuser.py::login"
+              "GET /api/users/{name} -> app/routers/users.py::read_user",
+              "app/routers/users.py::read_user",
+              "app/db.py::Repo.get_user"
             ]
           },
           {
-            "endpoint": "POST /user/login -> mod_user.py::do_login",
-            "method": "POST",
-            "path": "/user/login",
-            "auth_required": false,
+            "endpoint": "GET /me -> app/main.py::me",
+            "method": "GET",
+            "path": "/me",
+            "auth_required": true,
             "prefix_resolved": true,
             "hops": 1,
             "path_nodes": [
-              "POST /user/login -> mod_user.py::do_login",
-              "mod_user.py::do_login",
-              "libuser.py::login"
+              "GET /me -> app/main.py::me",
+              "app/main.py::me",
+              "app/db.py::Repo.get_user"
             ]
-          },
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 5,
+        "callers": [
+          "app/db.py::AuditRepo.get_user",
+          "app/main.py::me",
+          "app/routers/users.py::read_user"
+        ],
+        "endpoints": 2
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "app/routers/debug.py::16::12",
+      "rule_id": "GT-CMDI-001",
+      "category": "command-injection",
+      "title": "Shell command built from a non-constant value",
+      "severity": "critical",
+      "score": 10,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 1 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)",
+        "uncertain: the deciding endpoints' route prefixes were not fully resolved"
+      ],
+      "location": {
+        "file": "app/routers/debug.py",
+        "line": 16,
+        "column": 12,
+        "end_line": 16
+      },
+      "snippet": "    return os.popen(cmd).read()",
+      "function": "app/routers/debug.py::run",
+      "callee": "os.popen",
+      "message": "`os.popen` passes a non-constant command to a shell.",
+      "evidence": [
+        "parameter passed through unchanged",
+        "derived from parameter `cmd`"
+      ],
+      "param_derived": true,
+      "params": [
+        "cmd"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": true,
+        "routes": [
           {
-            "endpoint": "POST /api/key -> mod_api.py::do_key_create",
+            "endpoint": "GET /debug/run -> app/routers/debug.py::run",
+            "method": "GET",
+            "path": "/debug/run",
+            "auth_required": false,
+            "prefix_resolved": false,
+            "hops": 0,
+            "path_nodes": [
+              "GET /debug/run -> app/routers/debug.py::run",
+              "app/routers/debug.py::run"
+            ]
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 1,
+        "callers": [],
+        "endpoints": 1
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "app/routers/reports.py::16::12",
+      "rule_id": "GT-SQLI-001",
+      "category": "sql-injection",
+      "title": "SQL query built from strings",
+      "severity": "critical",
+      "score": 10,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 1 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)"
+      ],
+      "location": {
+        "file": "app/routers/reports.py",
+        "line": 16,
+        "column": 12,
+        "end_line": 16
+      },
+      "snippet": "    return conn.execute(sql).fetchall()",
+      "function": "app/routers/reports.py::by_user",
+      "callee": "conn.execute",
+      "message": "`conn.execute` runs a SQL query built at run time; use bound parameters.",
+      "evidence": [
+        "string concatenation (+)",
+        "via variable `sql`",
+        "derived from parameter `order`, `user_id`"
+      ],
+      "param_derived": true,
+      "params": [
+        "order",
+        "user_id"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": false,
+        "routes": [
+          {
+            "endpoint": "GET /api/reports/by-user -> app/routers/reports.py::by_user",
+            "method": "GET",
+            "path": "/api/reports/by-user",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 0,
+            "path_nodes": [
+              "GET /api/reports/by-user -> app/routers/reports.py::by_user",
+              "app/routers/reports.py::by_user"
+            ]
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 1,
+        "callers": [],
+        "endpoints": 1
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "app/routers/reports.py::33::12",
+      "rule_id": "GT-DESER-001",
+      "category": "unsafe-deserialization",
+      "title": "Unsafe deserialization",
+      "severity": "critical",
+      "score": 10,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 1 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)"
+      ],
+      "location": {
+        "file": "app/routers/reports.py",
+        "line": 33,
+        "column": 12,
+        "end_line": 33
+      },
+      "snippet": "    return yaml.load(body)",
+      "function": "app/routers/reports.py::import_report",
+      "callee": "yaml.load",
+      "message": "`yaml.load` can run code from the data it loads.",
+      "evidence": [
+        "no Loader (unsafe default)",
+        "parameter passed through unchanged",
+        "derived from parameter `body`"
+      ],
+      "param_derived": true,
+      "params": [
+        "body"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": false,
+        "routes": [
+          {
+            "endpoint": "POST /api/reports/import -> app/routers/reports.py::import_report",
             "method": "POST",
-            "path": "/api/key",
+            "path": "/api/reports/import",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 0,
+            "path_nodes": [
+              "POST /api/reports/import -> app/routers/reports.py::import_report",
+              "app/routers/reports.py::import_report"
+            ]
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 1,
+        "callers": [],
+        "endpoints": 1
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "app/routers/users.py::27::14",
+      "rule_id": "GT-CMDI-001",
+      "category": "command-injection",
+      "title": "Shell command built from a non-constant value",
+      "severity": "critical",
+      "score": 10,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 1 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)"
+      ],
+      "location": {
+        "file": "app/routers/users.py",
+        "line": 27,
+        "column": 14,
+        "end_line": 27
+      },
+      "snippet": "    output = sp.check_output(\"ping -c 1 \" + name, shell=True)",
+      "function": "app/routers/users.py::ping_user",
+      "callee": "subprocess.check_output",
+      "message": "`subprocess.check_output` passes a non-constant command to a shell.",
+      "evidence": [
+        "shell=True",
+        "string concatenation (+)",
+        "derived from parameter `name`"
+      ],
+      "param_derived": true,
+      "params": [
+        "name"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": false,
+        "routes": [
+          {
+            "endpoint": "GET /api/users/{name}/ping -> app/routers/users.py::ping_user",
+            "method": "GET",
+            "path": "/api/users/{name}/ping",
+            "auth_required": false,
+            "prefix_resolved": true,
+            "hops": 0,
+            "path_nodes": [
+              "GET /api/users/{name}/ping -> app/routers/users.py::ping_user",
+              "app/routers/users.py::ping_user"
+            ]
+          }
+        ]
+      },
+      "blast_radius": {
+        "total": 1,
+        "callers": [],
+        "endpoints": 1
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "app/utils/shell.py::8::9",
+      "rule_id": "GT-CMDI-001",
+      "category": "command-injection",
+      "title": "Shell command built from a non-constant value",
+      "severity": "critical",
+      "score": 10,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "reachable from 1 unauthenticated endpoint(s) (+3)",
+        "input derives from a function parameter (+1)"
+      ],
+      "location": {
+        "file": "app/utils/shell.py",
+        "line": 8,
+        "column": 9,
+        "end_line": 8
+      },
+      "snippet": "        os.system(\"logger \" + msg)",
+      "function": "app/utils/shell.py::run_command.log",
+      "callee": "os.system",
+      "message": "`os.system` passes a non-constant command to a shell.",
+      "evidence": [
+        "string concatenation (+)",
+        "derived from parameter `msg`"
+      ],
+      "param_derived": true,
+      "params": [
+        "msg"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": true,
+        "unauthenticated": true,
+        "uncertain": false,
+        "routes": [
+          {
+            "endpoint": "GET /api/users/{name}/files -> app/routers/users.py::list_files",
+            "method": "GET",
+            "path": "/api/users/{name}/files",
             "auth_required": false,
             "prefix_resolved": true,
             "hops": 2,
             "path_nodes": [
-              "POST /api/key -> mod_api.py::do_key_create",
-              "mod_api.py::do_key_create",
-              "libapi.py::keygen",
-              "libuser.py::login"
+              "GET /api/users/{name}/files -> app/routers/users.py::list_files",
+              "app/routers/users.py::list_files",
+              "app/utils/shell.py::run_command",
+              "app/utils/shell.py::run_command.log"
             ]
           }
         ]
       },
       "blast_radius": {
-        "total": 6,
+        "total": 3,
         "callers": [
-          "libapi.py::keygen",
-          "mod_api.py::do_key_create",
-          "mod_user.py::do_login"
+          "app/routers/users.py::list_files",
+          "app/utils/shell.py::run_command"
         ],
-        "endpoints": 3
+        "endpoints": 1
       },
       "in_tests": false,
       "owner": null,
       "triage": null
     },
     {
-      "id": "libuser.py::25::5",
-      "rule_id": "GT-SQLI-001",
-      "category": "sql-injection",
-      "title": "SQL query built from strings",
+      "id": "app/utils/shell.py::11::12",
+      "rule_id": "GT-CMDI-001",
+      "category": "command-injection",
+      "title": "Shell command built from a non-constant value",
       "severity": "critical",
       "score": 10,
       "base_severity": "high",
       "reasons": [
         "base severity high (6)",
-        "reachable from 2 unauthenticated endpoint(s) (+3)",
+        "reachable from 1 unauthenticated endpoint(s) (+3)",
         "input derives from a function parameter (+1)"
       ],
       "location": {
-        "file": "libuser.py",
-        "line": 25,
-        "column": 5,
-        "end_line": 25
+        "file": "app/utils/shell.py",
+        "line": 11,
+        "column": 12,
+        "end_line": 11
       },
-      "snippet": "    c.execute(\"INSERT INTO users (username, password, failures, mfa_enabled, mfa_secret) VALUES ('%s', '%s', '%d', '%d', '%s')\" %(username, password, 0, 0, ''))",
-      "function": "libuser.py::create",
-      "callee": "c.execute",
-      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "snippet": "    return run(cmd, shell=True, capture_output=True).stdout",
+      "function": "app/utils/shell.py::run_command",
+      "callee": "subprocess.run",
+      "message": "`subprocess.run` passes a non-constant command to a shell.",
       "evidence": [
-        "%-formatting",
-        "derived from parameter `password`, `username`"
+        "shell=True",
+        "parameter passed through unchanged",
+        "derived from parameter `cmd`"
       ],
       "param_derived": true,
       "params": [
-        "password",
-        "username"
+        "cmd"
       ],
       "reachability": {
         "applies": true,
@@ -167,148 +470,123 @@
         "uncertain": false,
         "routes": [
           {
-            "endpoint": "GET /user/create -> mod_user.py::do_create",
+            "endpoint": "GET /api/users/{name}/files -> app/routers/users.py::list_files",
             "method": "GET",
-            "path": "/user/create",
+            "path": "/api/users/{name}/files",
             "auth_required": false,
             "prefix_resolved": true,
             "hops": 1,
             "path_nodes": [
-              "GET /user/create -> mod_user.py::do_create",
-              "mod_user.py::do_create",
-              "libuser.py::create"
-            ]
-          },
-          {
-            "endpoint": "POST /user/create -> mod_user.py::do_create",
-            "method": "POST",
-            "path": "/user/create",
-            "auth_required": false,
-            "prefix_resolved": true,
-            "hops": 1,
-            "path_nodes": [
-              "POST /user/create -> mod_user.py::do_create",
-              "mod_user.py::do_create",
-              "libuser.py::create"
+              "GET /api/users/{name}/files -> app/routers/users.py::list_files",
+              "app/routers/users.py::list_files",
+              "app/utils/shell.py::run_command"
             ]
           }
         ]
       },
       "blast_radius": {
-        "total": 3,
+        "total": 2,
         "callers": [
-          "mod_user.py::do_create"
+          "app/routers/users.py::list_files"
         ],
-        "endpoints": 2
+        "endpoints": 1
       },
       "in_tests": false,
       "owner": null,
       "triage": null
     },
     {
-      "id": "libuser.py::53::5",
-      "rule_id": "GT-SQLI-001",
-      "category": "sql-injection",
-      "title": "SQL query built from strings",
-      "severity": "critical",
-      "score": 10,
+      "id": "app/routers/admin.py::11::23",
+      "rule_id": "GT-EVAL-001",
+      "category": "code-injection",
+      "title": "Dynamic code evaluation",
+      "severity": "high",
+      "score": 8,
       "base_severity": "high",
       "reasons": [
         "base severity high (6)",
-        "reachable from 2 unauthenticated endpoint(s) (+3)",
+        "reachable only from 1 authenticated endpoint(s) (+1)",
         "input derives from a function parameter (+1)"
       ],
       "location": {
-        "file": "libuser.py",
-        "line": 53,
-        "column": 5,
-        "end_line": 53
+        "file": "app/routers/admin.py",
+        "line": 11,
+        "column": 23,
+        "end_line": 11
       },
-      "snippet": "    c.execute(\"UPDATE users SET password = '{}' WHERE username = '{}'\".format(password, username))",
-      "function": "libuser.py::password_change",
-      "callee": "c.execute",
-      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "snippet": "    return {\"result\": eval(expr)}",
+      "function": "app/routers/admin.py::run_expression",
+      "callee": "eval",
+      "message": "`eval` executes code from a non-constant value.",
       "evidence": [
-        ".format()",
-        "derived from parameter `password`, `username`"
+        "parameter passed through unchanged",
+        "derived from parameter `expr`"
       ],
       "param_derived": true,
       "params": [
-        "password",
-        "username"
+        "expr"
       ],
       "reachability": {
         "applies": true,
         "reachable": true,
-        "unauthenticated": true,
+        "unauthenticated": false,
         "uncertain": false,
         "routes": [
           {
-            "endpoint": "GET /user/chpasswd -> mod_user.py::do_chpasswd",
-            "method": "GET",
-            "path": "/user/chpasswd",
-            "auth_required": false,
-            "prefix_resolved": true,
-            "hops": 1,
-            "path_nodes": [
-              "GET /user/chpasswd -> mod_user.py::do_chpasswd",
-              "mod_user.py::do_chpasswd",
-              "libuser.py::password_change"
-            ]
-          },
-          {
-            "endpoint": "POST /user/chpasswd -> mod_user.py::do_chpasswd",
+            "endpoint": "POST /api/admin/eval -> app/routers/admin.py::run_expression",
             "method": "POST",
-            "path": "/user/chpasswd",
-            "auth_required": false,
+            "path": "/api/admin/eval",
+            "auth_required": true,
             "prefix_resolved": true,
-            "hops": 1,
+            "hops": 0,
             "path_nodes": [
-              "POST /user/chpasswd -> mod_user.py::do_chpasswd",
-              "mod_user.py::do_chpasswd",
-              "libuser.py::password_change"
+              "POST /api/admin/eval -> app/routers/admin.py::run_expression",
+              "app/routers/admin.py::run_expression"
             ]
           }
         ]
       },
       "blast_radius": {
-        "total": 3,
-        "callers": [
-          "mod_user.py::do_chpasswd"
-        ],
-        "endpoints": 2
+        "total": 1,
+        "callers": [],
+        "endpoints": 1
       },
       "in_tests": false,
       "owner": null,
       "triage": null
     },
     {
-      "id": "db.py::19::9",
+      "id": "app/services/maintenance.py::19::5",
       "rule_id": "GT-SQLI-001",
       "category": "sql-injection",
       "title": "SQL query built from strings",
       "severity": "medium",
-      "score": 4,
+      "score": 5,
       "base_severity": "high",
       "reasons": [
         "base severity high (6)",
-        "not reachable from any endpoint (-2)"
+        "not reachable from any endpoint (-2)",
+        "input derives from a function parameter (+1)"
       ],
       "location": {
-        "file": "db.py",
+        "file": "app/services/maintenance.py",
         "line": 19,
-        "column": 9,
+        "column": 5,
         "end_line": 19
       },
-      "snippet": "        c.execute(\"INSERT INTO users (user, password, failures) VALUES ('%s', '%s', '%d')\" %(u, p, 0))",
-      "function": "db.py::db_init",
-      "callee": "c.execute",
-      "message": "`c.execute` runs a SQL query built at run time; use bound parameters.",
+      "snippet": "    conn.execute(query)",
+      "function": "app/services/maintenance.py::purge",
+      "callee": "conn.execute",
+      "message": "`conn.execute` runs a SQL query built at run time; use bound parameters.",
       "evidence": [
-        "%-formatting"
+        "%-formatting",
+        "via variable `query`",
+        "derived from parameter `days`"
       ],
-      "param_derived": false,
-      "params": [],
+      "param_derived": true,
+      "params": [
+        "days"
+      ],
       "reachability": {
         "applies": true,
         "reachable": false,
@@ -319,7 +597,7 @@
       "blast_radius": {
         "total": 1,
         "callers": [
-          "db.py::<module>"
+          "app/services/maintenance.py::nightly"
         ],
         "endpoints": 0
       },
@@ -328,7 +606,55 @@
       "triage": null
     },
     {
-      "id": "vulpy-ssl.py::13::1",
+      "id": "app/services/maintenance.py::29::16",
+      "rule_id": "GT-DESER-001",
+      "category": "unsafe-deserialization",
+      "title": "Unsafe deserialization",
+      "severity": "medium",
+      "score": 5,
+      "base_severity": "high",
+      "reasons": [
+        "base severity high (6)",
+        "not reachable from any endpoint (-2)",
+        "input derives from a function parameter (+1)"
+      ],
+      "location": {
+        "file": "app/services/maintenance.py",
+        "line": 29,
+        "column": 16,
+        "end_line": 29
+      },
+      "snippet": "        return pickle.load(fh)",
+      "function": "app/services/maintenance.py::load_cache",
+      "callee": "pickle.load",
+      "message": "`pickle.load` can run code from the data it loads.",
+      "evidence": [
+        "non-constant value",
+        "via variable `fh`",
+        "derived from parameter `path`"
+      ],
+      "param_derived": true,
+      "params": [
+        "path"
+      ],
+      "reachability": {
+        "applies": true,
+        "reachable": false,
+        "unauthenticated": false,
+        "uncertain": false,
+        "routes": []
+      },
+      "blast_radius": {
+        "total": 0,
+        "callers": [],
+        "endpoints": 0
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "app/auth.py::4::1",
       "rule_id": "GT-SECRET-001",
       "category": "hardcoded-secret",
       "title": "Hardcoded secret",
@@ -340,17 +666,17 @@
         "not adjusted for reachability (rule is not flow-sensitive)"
       ],
       "location": {
-        "file": "vulpy-ssl.py",
-        "line": 13,
+        "file": "app/auth.py",
+        "line": 4,
         "column": 1,
-        "end_line": 13
+        "end_line": 4
       },
-      "snippet": "app.config['SECRET_KEY'] = 'aaa****'",
-      "function": "vulpy-ssl.py::<module>",
+      "snippet": "API_TOKEN = \"s3c*************\"",
+      "function": "app/auth.py::<module>",
       "callee": null,
-      "message": "`SECRET_KEY` is assigned a hardcoded secret; load it from the environment.",
+      "message": "`API_TOKEN` is assigned a hardcoded secret; load it from the environment.",
       "evidence": [
-        "string constant of 7 characters"
+        "string constant of 16 characters"
       ],
       "param_derived": false,
       "params": [],
@@ -371,7 +697,7 @@
       "triage": null
     },
     {
-      "id": "vulpy.py::16::1",
+      "id": "app/routers/reports.py::8::1",
       "rule_id": "GT-SECRET-001",
       "category": "hardcoded-secret",
       "title": "Hardcoded secret",
@@ -383,17 +709,60 @@
         "not adjusted for reachability (rule is not flow-sensitive)"
       ],
       "location": {
-        "file": "vulpy.py",
-        "line": 16,
+        "file": "app/routers/reports.py",
+        "line": 8,
         "column": 1,
-        "end_line": 16
+        "end_line": 8
       },
-      "snippet": "app.config['SECRET_KEY'] = 'aaa****'",
-      "function": "vulpy.py::<module>",
+      "snippet": "REPORT_API_KEY = \"rk_***********************\"",
+      "function": "app/routers/reports.py::<module>",
       "callee": null,
-      "message": "`SECRET_KEY` is assigned a hardcoded secret; load it from the environment.",
+      "message": "`REPORT_API_KEY` is assigned a hardcoded secret; load it from the environment.",
       "evidence": [
-        "string constant of 7 characters"
+        "string constant of 26 characters"
+      ],
+      "param_derived": false,
+      "params": [],
+      "reachability": {
+        "applies": false,
+        "reachable": false,
+        "unauthenticated": false,
+        "uncertain": false,
+        "routes": []
+      },
+      "blast_radius": {
+        "total": 0,
+        "callers": [],
+        "endpoints": 0
+      },
+      "in_tests": false,
+      "owner": null,
+      "triage": null
+    },
+    {
+      "id": "app/services/maintenance.py::42::9",
+      "rule_id": "GT-SECRET-001",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded secret",
+      "severity": "medium",
+      "score": 4,
+      "base_severity": "medium",
+      "reasons": [
+        "base severity medium (4)",
+        "not adjusted for reachability (rule is not flow-sensitive)"
+      ],
+      "location": {
+        "file": "app/services/maintenance.py",
+        "line": 42,
+        "column": 9,
+        "end_line": 42
+      },
+      "snippet": "        self.smtp_password = \"Tr0*********\"",
+      "function": "app/services/maintenance.py::Mailer.__init__",
+      "callee": null,
+      "message": "`smtp_password` is assigned a hardcoded secret; load it from the environment.",
+      "evidence": [
+        "string constant of 12 characters"
       ],
       "param_derived": false,
       "params": [],
