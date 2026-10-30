@@ -11,12 +11,14 @@
 **Point it at a Python web project. It finds the dangerous code an HTTP route can actually reach, shows the path from the route to the bug, who calls it, who last changed it, and asks a local model whether it is real.**
 
 [![tests](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml/badge.svg)](https://github.com/codingwinterz/GitTrace/actions/workflows/tests.yml)
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)
+![Python 3.12-3.14](https://img.shields.io/badge/python-3.12--3.14-3776AB)
 ![license MIT](https://img.shields.io/badge/license-MIT-green)
 
 - **Scope, honestly:** Python only; routes from FastAPI, Flask and Flask-RESTful/RESTX; five kinds of finding (SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization, hardcoded secrets).
 - **Rules detect, the model only comments.** Every finding comes from a deterministic rule. A local model (via Ollama) gives an opinion on each one; it cannot add or remove findings or change the CI gate.
-- **Within those five categories it is comparable to Bandit, withis is the v2 command-line rebuild; the earlier web demo is tagged [`v1.0.0`](https://github.com/codingwinterz/GitTrace/tree/v1.0.0).
+- **Within those five categories it is comparable to Bandit, with added reachability and ownership context** (measured below, on small samples).
+
+Built for Graph Hacks, Track 01 (team SUDO SAIYAN, Avaneesh S). This is the v2 command-line rebuild; the earlier web demo is tagged [`v1.0.0`](https://github.com/codingwinterz/GitTrace/tree/v1.0.0).
 
 ---
 
@@ -241,7 +243,7 @@ From a clone, `pipx install --force ".[gateway]"`. It spends your own provider k
 # in the environment (or a .env file, see Settings): provider keys, the switch, a model
 export OPENAI_API_KEY=...            # or ANTHROPIC_API_KEY, GEMINI_API_KEY, ... (or none, for local Ollama)
 export GITTRACE_GATEWAY=1
-export GITTRACE_MODEL=gpt-4o-mini    # the gateway's model name, not a LiteLLM one
+export GITTRACE_MODEL=openai/<model> # the gateway's model name, not a LiteLLM one
 
 gittrace scan path/to/project        # the usual command; triage now goes through the gateway
 gittrace explain path/to/project     # GITTRACE_EXPLAIN_MODEL works the same way
@@ -249,7 +251,7 @@ gittrace explain path/to/project     # GITTRACE_EXPLAIN_MODEL works the same way
 
 - **Without `GITTRACE_GATEWAY_CONFIG`** the gateway is built from the provider keys found in the environment, plus local Ollama, which is how respan-gateway configures itself with no config file. GitTrace's default `ollama/llama3.1:8b` is then the gateway's `ollama` provider, so the default setup reaches the same local model by the same name (`OLLAMA_API_BASE` is honoured).
 - **With `GITTRACE_GATEWAY_CONFIG=/path/to/gateway.toml`** the gateway reads that config instead: providers, secrets written `key = "env:NAME"`, client keys and routing. Its guide is [configuration.md](https://github.com/respanai/respan-gateway/blob/v0.3.0/docs/configuration.md).
-- **Routes are model names.** `GITTRACE_MODEL=smart` with `[routes.smart] to = ["anthropic/claude-haiku-5-5", "openai/gpt-6-luna"]` makes each finding's triage try the first, then the second. GitTrace passes the name through untouched, so the reports, the cache and `--model` all show what you asked for.
+- **Routes are model names.** `GITTRACE_MODEL=smart` with `[routes.smart] to = ["anthropic/claude-haiku-5-5", "openai/<model>"]` makes each finding's triage try the first, then the second. GitTrace passes the name through untouched, so the reports, the cache and `--model` all show what you asked for.
 - **The scanned project's `gateway.toml` is never read**, as its `.env` is not: a file in the directory you run from must not decide where your provider keys are sent.
 - **When it cannot work** (not installed, a config that does not parse, no provider that can be reached) the scan stops with exit 2 and says which, like a model that cannot be called at all. `--no-llm` is unaffected.
 
@@ -592,7 +594,7 @@ The `timing-battery` pass measures the battery more than the models: qwen2.5-cod
 
 ## AI assistance disclosure (Rule 11)
 
-This project was built with AI coding assistance. An AI coding agent (Codebuff) wrote and edited code, tests, and documentation in this repository under the author's direction; the author ran the application, verified the graph queries against the live FalkorDB instance, and validated the outputs quoted in this README. No result in this document is a model claim — each one was produced by executing the code in this repo. The `v2` command-line rebuild (released as 2.0.0) was written with Claude Code under the author's direction, phase by phase.
+This project was built with AI coding assistance. An AI coding agent (Codebuff) wrote and edited code, tests, and documentation in this repository under the author's direction; the author ran the application, verified the graph queries against the live FalkorDB instance (this applied to v1), and validated the outputs quoted in this README. Version 2.1.0 has no database: it uses an in-process graph whose behaviour is checked by the test suite and by before/after comparison against the earlier results. No result in this document is a model claim — each one was produced by executing the code in this repo. The `v2` command-line rebuild (released as 2.0.0) was written with Claude Code under the author's direction, phase by phase.
 
 ## License
 
