@@ -25,17 +25,17 @@ Built for Graph Hacks, Track 01 (team SUDO SAIYAN, Avaneesh S). This is the v2 c
 ## Install
 
 ```bash
-pipx install git+https://github.com/codingwinterz/GitTrace@v2.0.0     # or, from a clone: pipx install .
+pipx install "git+https://github.com/codingwinterz/GitTrace@v2.1.0"     # Python 3.12-3.14; or, from a clone: pipx install .
 gittrace --version
 ```
 
-Python 3.11 or newer. [pipx](https://pipx.pypa.io) puts `gittrace` (and `gittrace-mcp`, the MCP server) on your PATH in their own environment; `pip install .` in a virtualenv works too.
+Python 3.12-3.14. [pipx](https://pipx.pypa.io) puts `gittrace` (and `gittrace-mcp`, the MCP server) on your PATH in their own environment; `pip install .` in a virtualenv works too.
 
-**Use Python 3.12, 3.13 or 3.14 for now.** Python 3.15 is new, and several dependencies (pydantic-core, tiktoken, tree-sitter, ...) have not published prebuilt wheels for it yet, so installing on 3.15 tries to compile them and fails without a C and Rust toolchain. If your default Python is 3.15, choose the version explicitly:
+**Use Python 3.12, 3.13 or 3.14 for now.** Python 3.15 is new, and several dependencies (pydantic-core, tiktoken, tree-sitter, ...) have not published prebuilt wheels for it yet, so GitTrace declares `requires-python = ">=3.12,<3.15"`: on 3.15 the installer stops with a clear "requires a different Python" message instead of trying to compile them. If your default Python is 3.15, choose the version explicitly:
 
 ```bash
-pipx install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0
-uv tool install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0    # the same with uv
+pipx install --python 3.14 "git+https://github.com/codingwinterz/GitTrace@v2.1.0"
+uv tool install --python 3.14 "git+https://github.com/codingwinterz/GitTrace@v2.1.0"    # the same with uv
 ```
 
 ### First run: Ollama
@@ -230,10 +230,11 @@ The graph stays on this machine, in the scanned project's `.gittrace/` folder (w
 
 ### Model layer through the Respan Gateway
 
-`GITTRACE_GATEWAY=1` sends every model call (scan triage, `explain` summaries, the `--fix` request) through the open-source [Respan Gateway](https://github.com/respanai/respan-gateway), in the same process, instead of LiteLLM calling the provider directly. Nothing else about the call changes: the same prompt, temperature, seed, reply-token limit, JSON-schema reply and timeout, validated and retried the same way, and a reply that is invalid or unavailable fails the same way. The gateway is the Rust gateway of [`respanai/respan-gateway`](https://github.com/respanai/respan-gateway) (its `python/README.md` documents the Python API), installed from PyPI as `respan-gateway==0.3.0` by the optional `gateway` extra, which a plain install leaves out. Install GitTrace with it (from the default branch: the `v2.0.0` tag has no gateway):
+`GITTRACE_GATEWAY=1` sends every model call (scan triage, `explain` summaries, the `--fix` request) through the open-source [Respan Gateway](https://github.com/respanai/respan-gateway), in the same process, instead of LiteLLM calling the provider directly. Nothing else about the call changes: the same prompt, temperature, seed, reply-token limit, JSON-schema reply and timeout, validated and retried the same way, and a reply that is invalid or unavailable fails the same way. The gateway is the Rust gateway of [`respanai/respan-gateway`](https://github.com/respanai/respan-gateway) (its `python/README.md` documents the Python API), installed from PyPI as `respan-gateway==0.3.0` by the optional `gateway` extra, which a plain install leaves out. Install GitTrace with it (the extra is in `v2.1.0` and later; `v2.0.0` has no gateway):
 
 ```bash
-pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"
+pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace@v2.1.0"
+uv tool install --force --python 3.14 "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace@v2.1.0"    # the same with uv
 ```
 
 From a clone, `pipx install --force ".[gateway]"`. It spends your own provider keys; a Respan account, credits and a tracing export are separate, optional features and no part of this.
@@ -408,7 +409,7 @@ python -m pytest tests/test_llm_live.py -v          # one real triage; skips wit
 - `tests/test_explain.py` covers `explain` with the model mocked: the facts (entry points, imports, side effects call by call, services, important functions, flow trees, findings), the bottom-up order, the prompt budget, the fence and secret masking, the grounding check, the cache, errors, and the CLI (formats, `--out`, `--file`, `--function`, `--all`, the confirmation above 10 minutes).
 - `tests/test_eval_hygiene.py` fails if a raw secret value from the eval targets appears in `eval/results/` or a review file (see `eval/README.md`).
 - `tests/test_config.py` and `tests/test_machine.py` cover where settings come from, and `doctor` / `up` against a fake machine; `tests/test_interactive.py` and `tests/test_logo.py` the interactive mode.
-- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13, the integration suites, and a `package` job on Linux and Windows that builds the wheel, installs it with pipx and runs the installed `gittrace` outside the checkout. No service container is needed.
+- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.12–3.14, the integration suites, and a `package` job on Linux and Windows that builds the wheel, installs it with pipx and runs the installed `gittrace` outside the checkout. No service container is needed.
 
 ## Evaluation
 

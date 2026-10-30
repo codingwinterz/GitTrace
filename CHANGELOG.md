@@ -5,7 +5,22 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-10-30 (tag `v2.1.0`)
+
 GitTrace no longer needs Docker, Redis or a database server: `pipx install` and run.
+
+In short:
+
+- **Docker and FalkorDB removed:** the code graph is an in-process NetworkX graph, cached in
+  `<project>/.gittrace/graph.json`; no container, service or database settings.
+- **Optional `gateway` extra:** model calls can go through an in-process Respan Gateway
+  (`GITTRACE_GATEWAY=1`); a plain install leaves it out.
+- **More reachability:** Falcon `add_route`, Flask `add_url_rule` and
+  `threading.Thread(target=...)`.
+- **Claims check:** every reachability count in the docs has a record in `eval/claims.json`,
+  checked against the result files (`eval/claims.py`, `tests/test_claims.py`).
+- **Python 3.12-3.14:** `requires-python = ">=3.12,<3.15"`, so Python 3.15 gets a clear
+  resolver message instead of a failed tree-sitter build; `doctor` and CI follow (3.11 dropped).
 
 ### Added
 
@@ -17,7 +32,7 @@ GitTrace no longer needs Docker, Redis or a database server: `pipx install` and 
 - **Model layer through the Respan Gateway:** `GITTRACE_GATEWAY=1` routes scan triage,
   `explain` summaries and `--fix` through an in-process
   [Respan Gateway](https://github.com/respanai/respan-gateway) (`respan-gateway==0.3.0`, the optional `gateway` extra:
-  `pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"`;
+  `pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace@v2.1.0"`;
   configured by `GITTRACE_GATEWAY_CONFIG` or the provider keys in the environment) instead of
   LiteLLM calling the provider directly. The same prompt, JSON schema, timeout and errors;
   the gateway's model names, routes and provider keys. Off by default, no Respan account or
