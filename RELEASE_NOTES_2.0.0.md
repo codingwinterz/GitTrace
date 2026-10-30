@@ -33,8 +33,8 @@ With uv: `uv tool install --python 3.14 "git+https://github.com/codingwinterz/Gi
 
 Reachability on the four vulnerable test apps (20 ground-truth entries), by run:
 
-- Marked reachable: 7 marked, 0 wrong, in every run.
-- Marked reachable without auth: 7 marked, 1 wrong in the untouched run; 6 marked, 0 wrong after the auth-detection fix.
+- Marked reachable: `untouched`: 7 marked, 0 wrong; `after-reachability`: 7 marked, 0 wrong; `after-reach-fixes`: 7 marked, 0 wrong.
+- Marked reachable without auth: `untouched`: 7 marked, 1 wrong; `after-reachability`: 6 marked, 0 wrong (the auth-detection fix); `after-reach-fixes`: 6 marked, 0 wrong.
 
 The 13 entries it still misses are all in vulnpy: 11 are reached through `getattr`/`import_module` dispatch, and 2 through Falcon routes that vulnpy binds conditionally. Full per-run numbers are in `eval/README.md`.
 
