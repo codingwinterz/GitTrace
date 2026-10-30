@@ -32,7 +32,7 @@ In short:
 - **Model layer through the Respan Gateway:** `GITTRACE_GATEWAY=1` routes scan triage,
   `explain` summaries and `--fix` through an in-process
   [Respan Gateway](https://github.com/respanai/respan-gateway) (`respan-gateway==0.3.0`, the optional `gateway` extra:
-  `pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"`;
+  `pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace@v2.1.0"`;
   configured by `GITTRACE_GATEWAY_CONFIG` or the provider keys in the environment) instead of
   LiteLLM calling the provider directly. The same prompt, JSON schema, timeout and errors;
   the gateway's model names, routes and provider keys. Off by default, no Respan account or

@@ -113,7 +113,7 @@ def check_python(version=sys.version_info) -> Check:
     if tuple(version[:2]) >= MIN_PYTHON:
         return Check("python", "ok", v)
     return Check("python", "fail", f"{v}; GitTrace needs {'.'.join(map(str, MIN_PYTHON))} or newer",
-                 "install a newer Python and reinstall GitTrace (pipx install gittrace)")
+                 "install Python 3.12-3.14 and reinstall GitTrace (pipx install --python 3.14 \"git+https://github.com/codingwinterz/GitTrace@v2.1.0\")")
 
 
 def check_settings() -> Check:

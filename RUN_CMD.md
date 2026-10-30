@@ -33,7 +33,7 @@ py -3.14 -m pipx ensurepath
 Close cmd and open a new one (so the PATH change takes effect), then:
 
 ```bat
-pipx install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0
+pipx install --python 3.14 "git+https://github.com/codingwinterz/GitTrace@v2.1.0"
 gittrace --version
 ```
 
@@ -42,7 +42,7 @@ gittrace --version
 ```bat
 git clone https://github.com/codingwinterz/GitTrace.git
 cd GitTrace
-git checkout v2.0.0
+git checkout v2.1.0
 py -3.14 -m venv .venv
 .venv\Scripts\activate.bat
 pip install -r requirements.txt
