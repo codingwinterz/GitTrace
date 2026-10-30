@@ -29,9 +29,9 @@ pipx install git+https://github.com/codingwinterz/GitTrace@v2.0.0     # or, from
 gittrace --version
 ```
 
-Python 3.11 or newer. [pipx](https://pipx.pypa.io) puts `gittrace` (and `gittrace-mcp`, the MCP server) on your PATH in their own environment; `pip install .` in a virtualenv works too.
+Python 3.12-3.14. [pipx](https://pipx.pypa.io) puts `gittrace` (and `gittrace-mcp`, the MCP server) on your PATH in their own environment; `pip install .` in a virtualenv works too.
 
-**Use Python 3.12, 3.13 or 3.14 for now.** Python 3.15 is new, and several dependencies (pydantic-core, tiktoken, tree-sitter, ...) have not published prebuilt wheels for it yet, so installing on 3.15 tries to compile them and fails without a C and Rust toolchain. If your default Python is 3.15, choose the version explicitly:
+**Use Python 3.12, 3.13 or 3.14 for now.** Python 3.15 is new, and several dependencies (pydantic-core, tiktoken, tree-sitter, ...) have not published prebuilt wheels for it yet, so GitTrace declares `requires-python = ">=3.12,<3.15"`: on 3.15 the installer stops with a clear "requires a different Python" message instead of trying to compile them. If your default Python is 3.15, choose the version explicitly:
 
 ```bash
 pipx install --python 3.14 git+https://github.com/codingwinterz/GitTrace@v2.0.0
@@ -408,7 +408,7 @@ python -m pytest tests/test_llm_live.py -v          # one real triage; skips wit
 - `tests/test_explain.py` covers `explain` with the model mocked: the facts (entry points, imports, side effects call by call, services, important functions, flow trees, findings), the bottom-up order, the prompt budget, the fence and secret masking, the grounding check, the cache, errors, and the CLI (formats, `--out`, `--file`, `--function`, `--all`, the confirmation above 10 minutes).
 - `tests/test_eval_hygiene.py` fails if a raw secret value from the eval targets appears in `eval/results/` or a review file (see `eval/README.md`).
 - `tests/test_config.py` and `tests/test_machine.py` cover where settings come from, and `doctor` / `up` against a fake machine; `tests/test_interactive.py` and `tests/test_logo.py` the interactive mode.
-- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.11–3.13, the integration suites, and a `package` job on Linux and Windows that builds the wheel, installs it with pipx and runs the installed `gittrace` outside the checkout. No service container is needed.
+- CI (`.github/workflows/tests.yml`) runs the offline suites on Python 3.12–3.14, the integration suites, and a `package` job on Linux and Windows that builds the wheel, installs it with pipx and runs the installed `gittrace` outside the checkout. No service container is needed.
 
 ## Evaluation
 

@@ -35,7 +35,7 @@ from rich.text import Text
 from gittrace.cli import render
 
 OLLAMA_DEFAULT = "http://localhost:11434"
-MIN_PYTHON = (3, 11)
+MIN_PYTHON = (3, 12)
 # GiB of VRAM at num_ctx 8192, measured on the evaluation laptop (README, "Model triage").
 VRAM_GIB = {"llama3.1:8b": 5.6, "qwen2.5-coder:7b": 4.7}
 STYLE = {"ok": render.TEAL, "warn": render.AMBER, "fail": render.RED, "info": render.LAVENDER}

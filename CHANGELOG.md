@@ -19,6 +19,8 @@ In short:
   `threading.Thread(target=...)`.
 - **Claims check:** every reachability count in the docs has a record in `eval/claims.json`,
   checked against the result files (`eval/claims.py`, `tests/test_claims.py`).
+- **Python 3.12-3.14:** `requires-python = ">=3.12,<3.15"`, so Python 3.15 gets a clear
+  resolver message instead of a failed tree-sitter build; `doctor` and CI follow (3.11 dropped).
 
 ### Added
 

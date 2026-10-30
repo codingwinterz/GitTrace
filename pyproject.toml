@@ -9,7 +9,7 @@ description = "Find vulnerabilities your HTTP routes can actually reach in a Pyt
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.11"
+requires-python = ">=3.12,<3.15"
 authors = [{ name = "Avaneesh S" }]
 keywords = ["security", "static-analysis", "sast", "python", "fastapi", "flask", "llm"]
 classifiers = [
@@ -18,7 +18,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",

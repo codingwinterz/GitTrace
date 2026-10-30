@@ -28,7 +28,7 @@ python -m pytest tests -q                               # everything; the live m
 - The offline suites are every `tests/test_*.py` except those three; run at least these before
   pushing:
   `python -m pytest tests -q --ignore=tests/test_ingest_integration.py --ignore=tests/test_scan_integration.py --ignore=tests/test_llm_live.py`
-- CI runs the offline suites on Python 3.11–3.13, the integration suites, and builds, installs
+- CI runs the offline suites on Python 3.12–3.14, the integration suites, and builds, installs
   and smoke-tests the package on Linux and Windows. No service container is needed.
 - Every graph query must be tested against the real graph store, not only with mocked results.
 
