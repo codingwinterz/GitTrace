@@ -83,6 +83,24 @@
    "source_file": "eval/results/after-reachability/summary.json"
   },
   {
+   "claim_id": "release-reach-after-reach-fixes",
+   "doc": "RELEASE_NOTES_2.0.0.md",
+   "label": "after-reach-fixes",
+   "dimension": "reachable",
+   "marked": 7,
+   "wrong": 0,
+   "source_file": "eval/results/after_reach_fixes.json"
+  },
+  {
+   "claim_id": "release-unauth-after-reach-fixes",
+   "doc": "RELEASE_NOTES_2.0.0.md",
+   "label": "after-reach-fixes",
+   "dimension": "unauthenticated",
+   "marked": 6,
+   "wrong": 0,
+   "source_file": "eval/results/after_reach_fixes.json"
+  },
+  {
    "claim_id": "changelog-reach-untouched",
    "doc": "CHANGELOG.md",
    "label": "untouched",

@@ -13,7 +13,7 @@ With uv: `uv tool install --python 3.14 "git+https://github.com/codingwinterz/Gi
 
 ### What's new
 
-- **In-process graph (NetworkX)** replaces FalkorDB. The four graph tools (`list_findings`, `trace_attack_path`, `blast_radius`, `finding_owner`) keep their names and output formats. On the evaluation targets, route paths and blast radius came out identical to the FalkorDB version for all 76 findings checked.
+- **In-process graph (NetworkX)** replaces FalkorDB. The four graph tools (`list_findings`, `trace_attack_path`, `blast_radius`, `finding_owner`) keep their names and output formats. The saved trace_attack_path and blast_radius output for every finding on the evaluation targets was byte-identical before and after the port (eval/results/baseline_reachability.json vs eval/results/after_reachability_port.json).
 - **Cache safety:** the cache records a hash of every source file and is refused once any file changes. It's written atomically, and it doesn't store function source code, so secrets in the project aren't copied into it.
 - **More routes found:** Falcon (`app.add_route`), Flask `add_url_rule` (including in loops), and `threading.Thread(target=...)` calls are now followed.
 - **getattr dispatch:** `getattr(obj, name)()` on a project object held in a variable is followed as a low-confidence, `dynamic` edge.
@@ -33,8 +33,8 @@ With uv: `uv tool install --python 3.14 "git+https://github.com/codingwinterz/Gi
 
 Reachability on the four vulnerable test apps (20 ground-truth entries), by run:
 
-- Marked reachable: 7 marked, 0 wrong, in every run.
-- Marked reachable without auth: 7 marked, 1 wrong in the untouched run; 6 marked, 0 wrong after the auth-detection fix.
+- Marked reachable: `untouched`: 7 marked, 0 wrong; `after-reachability`: 7 marked, 0 wrong; `after-reach-fixes`: 7 marked, 0 wrong.
+- Marked reachable without auth: `untouched`: 7 marked, 1 wrong; `after-reachability`: 6 marked, 0 wrong (the auth-detection fix); `after-reach-fixes`: 6 marked, 0 wrong.
 
 The 13 entries it still misses are all in vulnpy: 11 are reached through `getattr`/`import_module` dispatch, and 2 through Falcon routes that vulnpy binds conditionally. Full per-run numbers are in `eval/README.md`.
 
