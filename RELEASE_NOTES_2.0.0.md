@@ -1,14 +1,45 @@
-# GitTrace 2.0.0
+## GitTrace 2.1.0: no Docker, no database server
 
-GitTrace scans a Python web project and finds the dangerous code an HTTP route can actually reach. It shows the path from the route to the bug, who calls it, who last changed it, and asks a local model whether the finding is real.
+GitTrace now builds its code graph in memory and caches it in `<project>/.gittrace/graph.json`. You no longer need Docker or FalkorDB. The only optional program left is Ollama, for the local model, and `--no-llm` scans don't need it.
 
-2.0.0 rebuilds GitTrace as a command-line tool (`gittrace scan`, `gittrace explain`, an interactive mode, `doctor`, `up`, and the `gittrace-mcp` server). It supports Python only, with FastAPI, Flask and Flask-RESTful/RESTX routes.
+### Install
 
-    pipx install git+https://github.com/codingwinterz/GitTrace@v2.0.0
+Python 3.12-3.14:
 
-- **Detection is comparable to Bandit, not better**, in the same five categories. Untouched, GitTrace scored 88% precision and 74% recall against Bandit's 83% and 81%. On the held-out DVGA, both found 4 of 5.
-- **Reachability:** of the 20 true positives that a route truly reaches, marked reachable: `untouched`: 7 marked, 0 wrong; `after-reachability`: 7 marked, 0 wrong. Marked reachable without auth: `untouched`: 7 marked, 1 wrong (VF-1, `POST /search`, whose JWT is checked in the handler); `after-reachability`: 6 marked, 0 wrong.
-- **Known weakness: many false positives on real projects.** After tuning, 3 of 3 findings on CTFd and 13 of 15 on mealie were false positives (27 of 29 on the held-out open-webui).
-- The samples are small, so read these numbers as indications, not benchmarks. Details are in the README ("Results at a glance") and `eval/`.
+    pipx install "git+https://github.com/codingwinterz/GitTrace@v2.1.0"
+    gittrace --version
 
-The 1.0 web demo is kept in the [`v1.0.0`](https://github.com/codingwinterz/GitTrace/tree/v1.0.0) tag.
+With uv: `uv tool install --python 3.14 "git+https://github.com/codingwinterz/GitTrace@v2.1.0"`
+
+### What's new
+
+- **In-process graph (NetworkX)** replaces FalkorDB. The four graph tools (`list_findings`, `trace_attack_path`, `blast_radius`, `finding_owner`) keep their names and output formats. On the evaluation targets, route paths and blast radius came out identical to the FalkorDB version for all 76 findings checked.
+- **Cache safety:** the cache records a hash of every source file and is refused once any file changes. It's written atomically, and it doesn't store function source code, so secrets in the project aren't copied into it.
+- **More routes found:** Falcon (`app.add_route`), Flask `add_url_rule` (including in loops), and `threading.Thread(target=...)` calls are now followed.
+- **getattr dispatch:** `getattr(obj, name)()` on a project object held in a variable is followed as a low-confidence, `dynamic` edge.
+- **Optional Respan Gateway:** `pip install "gittrace[gateway] ..."` plus `GITTRACE_GATEWAY=1` routes model calls through it. A plain install doesn't include it.
+- **Claims are checked:** every reachability number in the docs is tied to a run label and verified against the evaluation results by a test.
+- **Python 3.12-3.14:** `requires-python = ">=3.12,<3.15"`, so Python 3.15 gets a clear installer message and not a failed build.
+
+### Breaking changes
+
+- Removed: `gittrace graphs`, the `--allow-remote` flag (on `scan` and `/scan`), and the `FALKORDB_*` settings.
+- `gittrace up` no longer starts a container; it checks Ollama and pulls models with `--pull`.
+- `gittrace doctor` no longer checks Docker or a database.
+- Python 3.11 is no longer supported.
+- Graphs previously stored in FalkorDB are not migrated. Run `gittrace scan` again.
+
+### Results
+
+Reachability on the four vulnerable test apps (20 ground-truth entries), by run:
+
+- Marked reachable: 7 marked, 0 wrong, in every run.
+- Marked reachable without auth: 7 marked, 1 wrong in the untouched run; 6 marked, 0 wrong after the auth-detection fix.
+
+The 13 entries it still misses are all in vulnpy: 11 are reached through `getattr`/`import_module` dispatch, and 2 through Falcon routes that vulnpy binds conditionally. Full per-run numbers are in `eval/README.md`.
+
+### Known limits
+
+Python only; FastAPI, Flask, Flask-RESTful/RESTX and Falcon routes; five finding categories; dynamic dispatch is not resolved. Small evaluation samples: read the numbers as indications, not benchmarks.
+
+**Full changelog:** see `CHANGELOG.md`.
