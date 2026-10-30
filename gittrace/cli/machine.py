@@ -35,7 +35,7 @@ from rich.text import Text
 from gittrace.cli import render
 
 OLLAMA_DEFAULT = "http://localhost:11434"
-MIN_PYTHON = (3, 11)
+MIN_PYTHON = (3, 12)
 # GiB of VRAM at num_ctx 8192, measured on the evaluation laptop (README, "Model triage").
 VRAM_GIB = {"llama3.1:8b": 5.6, "qwen2.5-coder:7b": 4.7}
 STYLE = {"ok": render.TEAL, "warn": render.AMBER, "fail": render.RED, "info": render.LAVENDER}
@@ -113,7 +113,7 @@ def check_python(version=sys.version_info) -> Check:
     if tuple(version[:2]) >= MIN_PYTHON:
         return Check("python", "ok", v)
     return Check("python", "fail", f"{v}; GitTrace needs {'.'.join(map(str, MIN_PYTHON))} or newer",
-                 "install a newer Python and reinstall GitTrace (pipx install gittrace)")
+                 "install Python 3.12-3.14 and reinstall GitTrace (pipx install --python 3.14 \"git+https://github.com/codingwinterz/GitTrace@v2.1.0\")")
 
 
 def check_settings() -> Check:

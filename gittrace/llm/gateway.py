@@ -113,8 +113,8 @@ def complete(model: str, messages: list[dict], schema: type[BaseModel], *, timeo
     return content or ""
 
 
-# The install command, as the README gives it (the extra is not in v2.0.0).
-INSTALL = 'pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"'
+# The install command, as the README gives it (the extra is in v2.1.0 and later).
+INSTALL = 'pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace@v2.1.0"'
 
 
 def _import():

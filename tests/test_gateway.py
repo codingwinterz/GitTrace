@@ -45,7 +45,7 @@ HAS_RESPAN = importlib.util.find_spec("respan_gateway") is not None
 
 REASON = "the name comes from the URL path and reaches the query"
 # The install command the README gives for the gateway extra.
-INSTALL = 'pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace"'
+INSTALL = 'pipx install --force "gittrace[gateway] @ git+https://github.com/codingwinterz/GitTrace@v2.1.0"'
 
 
 def reply(**extra) -> str:
