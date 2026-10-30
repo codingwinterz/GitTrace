@@ -2,7 +2,7 @@
 
 
 
-https://github.com/user-attachments/assets/9142be63-94e0-4b06-8d31-66a2cd2488b6
+
 
 
 
@@ -16,9 +16,7 @@ https://github.com/user-attachments/assets/9142be63-94e0-4b06-8d31-66a2cd2488b6
 
 - **Scope, honestly:** Python only; routes from FastAPI, Flask and Flask-RESTful/RESTX; five kinds of finding (SQL built from strings, `eval`/`exec`, shell commands from non-constant input, unsafe deserialization, hardcoded secrets).
 - **Rules detect, the model only comments.** Every finding comes from a deterministic rule. A local model (via Ollama) gives an opinion on each one; it cannot add or remove findings or change the CI gate.
-- **Within those five categories it is comparable to Bandit, with added reachability and ownership context** (measured below, on small samples).
-
-Built for Graph Hacks, Track 01 (team SUDO SAIYAN, Avaneesh S). This is the v2 command-line rebuild; the earlier web demo is tagged [`v1.0.0`](https://github.com/codingwinterz/GitTrace/tree/v1.0.0).
+- **Within those five categories it is comparable to Bandit, withis is the v2 command-line rebuild; the earlier web demo is tagged [`v1.0.0`](https://github.com/codingwinterz/GitTrace/tree/v1.0.0).
 
 ---
 
