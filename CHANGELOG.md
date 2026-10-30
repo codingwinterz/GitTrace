@@ -5,7 +5,20 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-10-30 (tag `v2.1.0`)
+
 GitTrace no longer needs Docker, Redis or a database server: `pipx install` and run.
+
+In short:
+
+- **Docker and FalkorDB removed:** the code graph is an in-process NetworkX graph, cached in
+  `<project>/.gittrace/graph.json`; no container, service or database settings.
+- **Optional `gateway` extra:** model calls can go through an in-process Respan Gateway
+  (`GITTRACE_GATEWAY=1`); a plain install leaves it out.
+- **More reachability:** Falcon `add_route`, Flask `add_url_rule` and
+  `threading.Thread(target=...)`.
+- **Claims check:** every reachability count in the docs has a record in `eval/claims.json`,
+  checked against the result files (`eval/claims.py`, `tests/test_claims.py`).
 
 ### Added
 
