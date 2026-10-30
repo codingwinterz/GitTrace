@@ -8,7 +8,9 @@
 import { Config } from "@remotion/cli/config";
 
 Config.setRspack(true);
-Config.setVideoImageFormat("jpeg");
+// PNG frames: with JPEG frames the H.264 output is full-range yuvj420p, not yuv420p.
+Config.setVideoImageFormat("png");
+Config.setPixelFormat("yuv420p");
 Config.setOverwriteOutput(true);
 Config.setDefaultPremountInSeconds(2);
 
