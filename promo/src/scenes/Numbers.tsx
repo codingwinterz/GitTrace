@@ -1,126 +1,85 @@
 import React from "react";
-import { Easing, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { copy } from "../copy";
 import { claim, Claim, SHOWN } from "../data/claims";
 import { useLayout, useMargin } from "../layout";
 import { theme } from "../theme";
 import { fadeOut, Scene, useEnter } from "../components/ui";
 
-const LIMIT_AT = 300;
+const OUT = 14;           // frames: the scene fades its own content out (no crossfade into the known limit)
 
-const useCount = (at: number) => {
+const RunTag: React.FC<{ label: string; size: number }> = ({ label, size }) => (
+  <span style={{ fontFamily: theme.mono, fontSize: size, color: theme.bg, background: theme.accent, borderRadius: 8, padding: "4px 14px" }}>{label}</span>
+);
+
+// One claim, "N marked, M wrong", under its run label. The final numbers fade
+// in as they are (no counting up), so every frame shows the record's values.
+const RunClaim: React.FC<{ c: Claim; at: number; tag?: string; size: number; tagSize: number; split: boolean }> = ({ c, at, tag, size, tagSize, split }) => {
   const frame = useCurrentFrame();
-  return interpolate(frame, [at, at + 36], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.out(Easing.cubic) });
+  const enter = useEnter(at, 24);
+  return (
+    <div data-claim-id={c.claim_id} style={{ ...enter, opacity: frame < at ? 0 : Number(enter.opacity) }}>
+      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+        <RunTag label={c.label} size={tagSize} />
+        {tag ? <span style={{ fontSize: tagSize, color: theme.muted }}>{tag}</span> : null}
+      </div>
+      <div style={{ marginTop: 12, fontSize: size, fontWeight: 800, lineHeight: 1.15 }}>
+        <span style={{ display: split ? "block" : "inline" }}>{c.marked} {copy.marked},{split ? null : " "}</span>
+        <span style={{ display: split ? "block" : "inline", color: c.wrong ? theme.danger : theme.text }}>{c.wrong} {copy.wrong}</span>
+      </div>
+    </div>
+  );
 };
 
-const RunTag: React.FC<{ label: string }> = ({ label }) => (
-  <span style={{ fontFamily: theme.mono, fontSize: useLayout() === "wide" ? 30 : 26, color: theme.bg, background: theme.accent, borderRadius: 8, padding: "4px 12px" }}>{label}</span>
-);
-
-// One claim, "N marked, M wrong", counted up from zero, under its run label.
-const Count: React.FC<{ c: Claim; t: number; size: number; split: boolean }> = ({ c, t, size, split }) => (
-  <div data-claim-id={c.claim_id} style={{ fontSize: size, fontWeight: 800, lineHeight: 1.15 }}>
-    <span style={{ display: split ? "block" : "inline" }}>{Math.round(c.marked * t)} {copy.marked},{split ? null : " "}</span>
-    <span style={{ display: split ? "block" : "inline", color: c.wrong ? theme.danger : theme.text }}>{Math.round(c.wrong * t)} {copy.wrong}</span>
-  </div>
-);
-
-const Card: React.FC<{ at: number; children: React.ReactNode; flex?: number }> = ({ at, children, flex = 1 }) => {
-  const enter = useEnter(at - 6, 40);
+const Card: React.FC<{ at: number; title: string; titleSize: number; pad: string; children: React.ReactNode }> = ({ at, title, titleSize, pad, children }) => {
+  const frame = useCurrentFrame();
+  const enter = useEnter(at, 40);
   return (
-    <div style={{ flex, background: theme.panel, border: `2px solid ${theme.line}`, borderRadius: 20, padding: "22px 26px", ...enter }}>
+    <div style={{ flex: 1, background: theme.panel, border: `2px solid ${theme.line}`, borderRadius: 22, padding: pad,
+      ...enter, opacity: frame < at ? 0 : Number(enter.opacity) }}>
+      <div style={{ fontSize: titleSize, fontWeight: 700, color: theme.muted, marginBottom: 20 }}>{title}</div>
       {children}
     </div>
   );
 };
 
-const RunClaim: React.FC<{ c: Claim; at: number; tag?: string; size: number; split: boolean }> = ({ c, at, tag, size, split }) => {
-  const t = useCount(at);
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <RunTag label={c.label} />
-        {tag ? <span style={{ fontSize: useLayout() === "wide" ? 30 : 26, color: theme.muted }}>{tag}</span> : null}
-      </div>
-      <div style={{ marginTop: 12 }}><Count c={c} t={t} size={size} split={split} /></div>
-    </div>
-  );
-};
-
-const LimitCard: React.FC<{ font: number }> = ({ font }) => (
-  <div style={{ background: theme.panel, border: `2px solid ${theme.line}`, borderLeft: `10px solid ${theme.danger}`,
-    borderRadius: 22, padding: "36px 44px" }}>
-    <div style={{ fontSize: 40, fontWeight: 800, color: theme.danger, textTransform: "uppercase", letterSpacing: 3 }}>{copy.limitTitle}</div>
-    <div style={{ marginTop: 14, fontSize: font, fontWeight: 700, lineHeight: 1.22 }}>{copy.limit}</div>
-  </div>
-);
-
+// Two cards side by side, "Marked reachable" and "Marked reachable without
+// auth", each with its two runs, then the note on the wrong one; centred.
 export const Numbers: React.FC = () => {
   const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
   const wide = useLayout() === "wide";
   const margin = useMargin();
   const title = useEnter(0);
   const sub = useEnter(8);
-  const r1 = useEnter(24);
-  const r2 = useEnter(110);
-  const note = useEnter(190);
-  const limit = useEnter(LIMIT_AT, 50);
-  const shown = (at: number, e: { opacity: number; transform: string }) => ({ ...e, opacity: frame < at ? 0 : Number(e.opacity) });
-
-  // Wide: everything on one screen. The reachable card (both runs) and the two
-  // without-auth run cards side by side, the note, then the known limit below.
-  if (wide) {
-    return (
-      <Scene>
-        <div style={{ position: "absolute", top: margin - 10, left: margin, right: margin }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 28 }}>
-            <div style={{ fontSize: 64, fontWeight: 800, ...title }}>{copy.numbersTitle}</div>
-            <div style={{ fontSize: 36, color: theme.muted, ...sub }}>{copy.numbersCaption}</div>
-          </div>
-          <div style={{ display: "flex", gap: 28, marginTop: 30 }}>
-            <Card at={30} flex={1.25}>
-              <div style={{ fontSize: 40, fontWeight: 700, color: theme.muted, marginBottom: 14, ...r1 }}>{copy.reachable}</div>
-              <RunClaim c={claim(SHOWN.reachUntouched)} at={34} size={44} split={false} />
-              <div style={{ height: 18 }} />
-              <RunClaim c={claim(SHOWN.reachLater)} at={50} size={44} split={false} />
-            </Card>
-            <Card at={110}>
-              <div style={{ fontSize: 40, fontWeight: 700, color: theme.muted, marginBottom: 14, ...r2 }}>{copy.withoutAuth}</div>
-              <RunClaim c={claim(SHOWN.unauthUntouched)} at={120} tag={copy.before} size={50} split />
-            </Card>
-            <Card at={140}>
-              <div style={{ fontSize: 40, fontWeight: 700, color: theme.muted, marginBottom: 14, ...r2 }}>{copy.withoutAuth}</div>
-              <RunClaim c={claim(SHOWN.unauthLater)} at={150} tag={copy.after} size={50} split />
-            </Card>
-          </div>
-          <div style={{ marginTop: 22, fontSize: 40, lineHeight: 1.3, ...note }}>{copy.wrongOne}</div>
-          <div style={{ marginTop: 28, ...shown(LIMIT_AT, limit) }}><LimitCard font={44} /></div>
-        </div>
-      </Scene>
-    );
-  }
-
-  const out = fadeOut(frame, LIMIT_AT - 16);
+  const note = useEnter(170);
+  const z = wide
+    ? { title: 72, sub: 40, card: 46, num: 64, tag: 36, note: 44, gap: 40, pad: "34px 40px", split: false }
+    : { title: 68, sub: 36, card: 38, num: 46, tag: 26, note: 34, gap: 24, pad: "24px 26px", split: true };
   return (
-    <Scene>
-      <div style={{ position: "absolute", top: 62, left: theme.side, right: theme.side, opacity: out }}>
-        <div style={{ fontSize: 68, fontWeight: 800, ...title }}>{copy.numbersTitle}</div>
-        <div style={{ fontSize: 34, color: theme.muted, marginTop: 4, ...sub }}>{copy.numbersCaption}</div>
-        <div style={{ fontSize: 38, fontWeight: 700, color: theme.muted, marginTop: 24, marginBottom: 10, ...r1 }}>{copy.reachable}</div>
-        <div style={{ display: "flex", gap: 24 }}>
-          <Card at={34}><RunClaim c={claim(SHOWN.reachUntouched)} at={34} size={50} split /></Card>
-          <Card at={50}><RunClaim c={claim(SHOWN.reachLater)} at={50} size={50} split /></Card>
+    <Scene opacity={fadeOut(frame, durationInFrames - OUT, OUT)}>
+      <AbsoluteFill style={{ justifyContent: "center", padding: margin }}>
+        <div style={{ display: "flex", flexDirection: wide ? "row" : "column", alignItems: wide ? "baseline" : "flex-start", gap: wide ? 28 : 4 }}>
+          <div style={{ fontSize: z.title, fontWeight: 800, ...title }}>{copy.numbersTitle}</div>
+          <div style={{ fontSize: z.sub, color: theme.muted, ...sub }}>{copy.numbersCaption}</div>
         </div>
-        <div style={{ fontSize: 38, fontWeight: 700, color: theme.muted, marginTop: 24, marginBottom: 10, ...r2 }}>{copy.withoutAuth}</div>
-        <div style={{ display: "flex", gap: 24 }}>
-          <Card at={120}><RunClaim c={claim(SHOWN.unauthUntouched)} at={120} tag={copy.before} size={50} split /></Card>
-          <Card at={150}><RunClaim c={claim(SHOWN.unauthLater)} at={150} tag={copy.after} size={50} split /></Card>
+        <div style={{ display: "flex", flexDirection: wide ? "row" : "column", gap: z.gap, marginTop: wide ? 44 : 24 }}>
+          <Card at={24} title={copy.reachable} titleSize={z.card} pad={z.pad}>
+            <div style={{ display: "flex", flexDirection: wide ? "column" : "row", gap: wide ? 28 : 40 }}>
+              <RunClaim c={claim(SHOWN.reachUntouched)} at={34} size={z.num} tagSize={z.tag} split={z.split} />
+              <RunClaim c={claim(SHOWN.reachLater)} at={50} size={z.num} tagSize={z.tag} split={z.split} />
+            </div>
+          </Card>
+          <Card at={90} title={copy.withoutAuth} titleSize={z.card} pad={z.pad}>
+            <div style={{ display: "flex", flexDirection: wide ? "column" : "row", gap: wide ? 28 : 40 }}>
+              <RunClaim c={claim(SHOWN.unauthUntouched)} at={100} tag={copy.before} size={z.num} tagSize={z.tag} split={z.split} />
+              <RunClaim c={claim(SHOWN.unauthLater)} at={130} tag={copy.after} size={z.num} tagSize={z.tag} split={z.split} />
+            </div>
+          </Card>
         </div>
-        <div style={{ marginTop: 22, fontSize: 34, lineHeight: 1.3, ...note }}>{copy.wrongOne}</div>
-      </div>
-      <div style={{ position: "absolute", top: 300, left: theme.side, right: theme.side, ...shown(LIMIT_AT, limit) }}>
-        <LimitCard font={52} />
-      </div>
+        <div style={{ marginTop: wide ? 40 : 24, fontSize: z.note, lineHeight: 1.3, ...note,
+          opacity: frame < 170 ? 0 : Number(note.opacity) }}>{copy.wrongOne}</div>
+      </AbsoluteFill>
     </Scene>
   );
 };

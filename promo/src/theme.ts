@@ -1,5 +1,8 @@
-// Dark background, one accent (structure) plus red (danger). Body text is at
-// least ~48px so it reads on a phone; key content stays 80px from the sides.
+// Dark background, one accent (structure) plus red (danger). In the wide
+// video body text is at least 40px and captions at least 36px; key content
+// stays 96px (wide) or 80px (square) from the edges.
+import timing from "./timing.json";
+
 export const theme = {
   bg: "#0a0e16",
   panel: "#121a28",
@@ -13,19 +16,24 @@ export const theme = {
   side: 80,
 };
 
-export const FPS = 30;
+// Timing lives in timing.json so scripts/check-claims.mjs can check it too.
+export const FPS = timing.fps;
 export const SIZE = 1080;
-export const FADE = 15;
+export const FADE = timing.fade;
+export const EDGE_FADE = timing.edgeFade;
+export const LIMIT = timing.limit;
 
-// Scene lengths in frames: the storyboard's windows (5, 9, 18, 16, 14, 8 s),
-// each scene before a transition lengthened by the FADE it shares with the
-// next, so the video is exactly 70 s.
-export const SCENES = {
-  hook: 5 * FPS + FADE,
-  terminal: 9 * FPS + FADE,
-  path: 18 * FPS + FADE,
-  why: 16 * FPS + FADE,
-  numbers: 14 * FPS + FADE,
-  outro: 8 * FPS,
-};
-export const TOTAL = Object.values(SCENES).reduce((a, b) => a + b, 0) - 5 * FADE;
+type SceneName = keyof typeof timing.windowsSeconds;
+const crossfades = timing.crossfadeAfter as SceneName[];
+
+// Scene lengths in frames: each scene's on-screen window, lengthened by the
+// FADE it shares with the next scene when a crossfade follows it. The known
+// limit has no crossfade on either side: Numbers and Limit fade their own
+// content out over the steady background, so the card is never under another
+// scene.
+export const SCENES = Object.fromEntries(
+  (Object.keys(timing.windowsSeconds) as SceneName[]).map((k) => [
+    k, Math.round(timing.windowsSeconds[k] * FPS) + (crossfades.includes(k) ? FADE : 0),
+  ]),
+) as Record<SceneName, number>;
+export const TOTAL = Object.values(SCENES).reduce((a, b) => a + b, 0) - crossfades.length * FADE;

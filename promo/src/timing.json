@@ -1,0 +1,8 @@
+{
+  "fps": 30,
+  "fade": 15,
+  "edgeFade": 15,
+  "windowsSeconds": { "hook": 4.5, "terminal": 11, "path": 15, "why": 13.5, "numbers": 9, "limit": 6, "outro": 11 },
+  "crossfadeAfter": ["hook", "terminal", "path", "why"],
+  "limit": { "inStart": 6, "inEnd": 24, "outLength": 14 }
+}

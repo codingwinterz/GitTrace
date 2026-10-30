@@ -13,9 +13,11 @@ export const useEnter = (at: number, distance = 28) => {
   return { opacity: p, transform: `translateY(${(1 - p) * distance}px)` };
 };
 
-export const fadeOut = (frame: number, at: number, len = 12) => interpolate(frame, [at, at + len], [1, 0], clamp);
+export const fadeOut = (frame: number, at: number, len = 12) =>
+  interpolate(frame, [at, at + len], [1, 0], { ...clamp, easing: Easing.inOut(Easing.cubic) });
 
-// A faint grid drifting slowly behind every scene.
+// A faint grid drifting slowly behind every scene. Drawn once for the whole
+// video (Root.tsx), so its frame is the video's frame and it never jumps.
 export const Background: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
@@ -34,9 +36,9 @@ export const Background: React.FC = () => {
   );
 };
 
-export const Scene: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <AbsoluteFill style={{ color: theme.text, fontFamily: theme.sans }}>
-    <Background />
+// A scene's foreground; the background is shared (see Background).
+export const Scene: React.FC<{ children: React.ReactNode; opacity?: number }> = ({ children, opacity = 1 }) => (
+  <AbsoluteFill style={{ color: theme.text, fontFamily: theme.sans, opacity }}>
     {children}
   </AbsoluteFill>
 );
