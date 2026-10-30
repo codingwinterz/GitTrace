@@ -6,8 +6,8 @@ import { theme } from "../theme";
 import { Scene, WordReveal } from "../components/ui";
 
 // "You built it with AI. Do you know what an attacker can reach?" word by word;
-// the second sentence in the accent. Wide: the two sentences on their own
-// lines, left-aligned with wide margins.
+// the second sentence in the accent. Wide: centred, the second sentence on its
+// own line(s), at 114 px.
 export const Hook: React.FC = () => {
   const wide = useLayout() === "wide";
   const margin = useMargin();
@@ -17,12 +17,13 @@ export const Hook: React.FC = () => {
     const words = copy.hook.split(" ");
     const first = words.slice(0, firstSentence + 1).join(" ");
     const second = words.slice(firstSentence + 1).join(" ");
+    const style: React.CSSProperties = { fontSize: 114, fontWeight: 800, lineHeight: 1.12, textAlign: "center" };
     return (
       <Scene>
-        <AbsoluteFill style={{ justifyContent: "center", padding: `0 ${margin}px` }}>
-          <WordReveal text={first} at={8} every={5} style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.12, whiteSpace: "nowrap" }} />
+        <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: `0 ${margin}px` }}>
+          <WordReveal text={first} at={8} every={5} style={style} />
           <WordReveal text={second} at={8 + (firstSentence + 1) * 5} every={5}
-            color={() => theme.accent} style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.12, marginTop: 18, whiteSpace: "nowrap" }} />
+            color={() => theme.accent} style={{ ...style, marginTop: 24 }} />
         </AbsoluteFill>
       </Scene>
     );

@@ -5,8 +5,8 @@ import { useLayout, useMargin } from "../layout";
 import { theme } from "../theme";
 import { fadeOut, Scene, useEnter } from "../components/ui";
 
-const CARD_AT = [40, 140, 240];
-const KEEP_AT = 345;
+const CARD_AT = [30, 110, 190];
+const KEEP_AT = 270;
 
 const cardStyle = (font: number): React.CSSProperties => ({
   background: theme.panel, border: `2px solid ${theme.line}`, borderLeft: `10px solid ${theme.accent}`,
@@ -45,12 +45,12 @@ export const Why: React.FC = () => {
   if (wide) {
     return (
       <Scene>
-        <div style={{ position: "absolute", top: margin, left: margin, right: margin, textAlign: "center",
+        <div style={{ position: "absolute", top: 180, left: margin, right: margin, textAlign: "center",
           fontSize: 68, fontWeight: 800, ...title }}>{copy.why}</div>
-        <div style={{ position: "absolute", top: 250, left: margin, right: margin, height: 380, display: "flex", gap: 36 }}>
+        <div style={{ position: "absolute", top: 330, left: margin, right: margin, height: 370, display: "flex", gap: 36 }}>
           {copy.cards.map((c, i) => <WideCard key={c} text={c} at={CARD_AT[i]} />)}
         </div>
-        <div style={{ position: "absolute", top: 700, left: margin + 80, right: margin + 80, textAlign: "center",
+        <div style={{ position: "absolute", top: 760, left: margin + 80, right: margin + 80, textAlign: "center",
           fontSize: 52, fontWeight: 700, lineHeight: 1.25, ...keep }}>{copy.keep}</div>
       </Scene>
     );
